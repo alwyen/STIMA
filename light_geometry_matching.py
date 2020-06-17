@@ -125,7 +125,7 @@ def centroid(img, img_type):
     for center in centers:
         center_list.append((round(center.pt[0]), round(center.pt[1]))) #pt[0] --> x, pt[1] --> y
 
-    draw_centers(center_list, img)
+    # draw_centers(center_list, img)
 
     return center_list
 
@@ -216,6 +216,7 @@ def shape_comparer(shape_from_nodes_list_1, shape_from_nodes_list_2, degree):
                 # desc1 = shape_list_1_moment.describe(shape_outline_1)
                 # desc2 = shape_list_2_moment.describe(shape_outline_2)
                 euclid_dist = dist.euclidean(desc1, desc2)
+                # print(euclid_dist)
 
                 shape_score = area_score + euclid_dist
                 if shape_score < 0.1:
@@ -251,13 +252,11 @@ def geometry_matching(path1, path2):
     processed_1 = process_image(img1)
     processed_2 = process_image(img2)
 
-    # img1_blob_centers = centroid(processed_1, 'previous')
-    # img2_blob_centers = centroid(processed_2, 'current')
+    img1_blob_centers = centroid(processed_1, 'previous')
+    img2_blob_centers = centroid(processed_2, 'current')
 
-    img1_blob_centers = centroid(img1_copy, 'previous')
-    img2_blob_centers = centroid(img2_copy, 'current')
-    show_centers(img1_copy, img1_blob_centers)
-
+    # show_centers(img1_copy, img1_blob_centers)
+    # show_centers(img2_copy, img2_blob_centers)
 
     max_number_nodes = min(len(img1_blob_centers), len(img2_blob_centers))
 
