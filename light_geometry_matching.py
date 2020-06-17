@@ -125,7 +125,7 @@ def centroid(img, img_type):
     for center in centers:
         center_list.append((round(center.pt[0]), round(center.pt[1]))) #pt[0] --> x, pt[1] --> y
 
-    # draw_centers(center_list, img)
+    draw_centers(center_list, img)
 
     return center_list
 
@@ -152,8 +152,13 @@ def outline_shape(img_shape):
     return outline
 
 def show_centers(img, center_list):
+    copy_image = np.copy(img)
     for pt in center_list:
-        draw_circle(img, pt)
+        cv2.circle(copy_image, pt, 2, 0, 1)
+        cv2.imshow('center', copy_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        copy_image = np.copy(img)
 
 '''
 the returned list should contain lists with shapes drawn from 3 nodes, 4 nodes, ..., max_number_nodes
@@ -161,6 +166,7 @@ in each node list (e.g. 3 nodes used to draw shapes), there should be another li
 each tuple contains the shape image [0] and the original image annotated with the shape [1]
 '''
 def draw_shapes(orig_image_copy, bw_img, center_list, max_number_nodes):
+    node_present = None
     if max_number_nodes < 4:
         print('Error: less than 4 blobs detected')
     node_category_list = []
@@ -178,6 +184,8 @@ def draw_shapes(orig_image_copy, bw_img, center_list, max_number_nodes):
             shape = np.copy(bw_img)
             point_combination = list(combinations(combination, 2)) #for each quantity of nodes (e.g. 3 nodes), make pairs (e.g. [a,b], [a,c], [b,c])
             for pair in point_combination:
+                if pair[0] == center_list[5] or pair[1] == center_list[5]:
+                    node_present = center_list[5]
                 cv2.line(shape, pair[0], pair[1], 100, line_thickness) #drawing line for shape image
                 cv2.line(copy_img, pair[0], pair[1], 255, line_thickness) #annotating original image with white lines
                 distance_bt_points = point_dist(pair[0], pair[1])
@@ -185,6 +193,7 @@ def draw_shapes(orig_image_copy, bw_img, center_list, max_number_nodes):
                     max_dist = distance_bt_points
                 elif max_dist < distance_bt_points:
                     max_dist = distance_bt_points
+            # cv2.circle(shape, center_list[5], int(round(max_dist/4)), 100, 1)
             shape[shape > 100] = 0
             shape[shape == 100] = 255
             shape_from_num_nodes_list.append((shape, copy_img, max_dist)) #for this set of number of nodes, add shapes to master shape list
@@ -202,7 +211,6 @@ def shape_comparer(shape_from_nodes_list_1, shape_from_nodes_list_2, degree):
             for shape_list_2 in shape_from_nodes_list_2[x]:
                 shape_list_1_moment = ZernikeMoments(round(shape_list_1[2]/2), degree)
                 shape_list_2_moment = ZernikeMoments(round(shape_list_2[2]/2), degree)
-                
                 shape_outline_1 = outline_shape(shape_list_1[0])
                 shape_outline_2 = outline_shape(shape_list_2[0])
                 area_shape_1 = np.sum(shape_outline_1)/255
@@ -211,18 +219,19 @@ def shape_comparer(shape_from_nodes_list_1, shape_from_nodes_list_2, degree):
                 #arbitrary value listed here
                 area_score = abs(area_shape_1 - area_shape_2)/shape_weight
 
-                desc1 = shape_list_1_moment.describe(shape_list_1[0]) #describe shape-only image
-                desc2 = shape_list_2_moment.describe(shape_list_2[0])
-                # desc1 = shape_list_1_moment.describe(shape_outline_1)
-                # desc2 = shape_list_2_moment.describe(shape_outline_2)
+                # desc1 = shape_list_1_moment.describe(shape_list_1[0]) #describe shape-only image
+                # desc2 = shape_list_2_moment.describe(shape_list_2[0])
+                desc1 = shape_list_1_moment.describe(shape_outline_1)
+                desc2 = shape_list_2_moment.describe(shape_outline_2)
                 euclid_dist = dist.euclidean(desc1, desc2)
                 # print(euclid_dist)
 
                 shape_score = area_score + euclid_dist
                 if shape_score < 0.1:
                     print('Euclidean Dist: ' + str(euclid_dist))
-                    cv2.imshow('img1', shape_list_1[1])
-                    cv2.imshow('img2', shape_list_2[1])
+                    print('Shape Score: ' + str(shape_score))
+                    cv2.imshow('img1', shape_outline_1)
+                    cv2.imshow('img2', shape_outline_2)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
 
