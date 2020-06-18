@@ -61,7 +61,6 @@ def extract_images_from_video(video_path):
         success, frame = video.read()
         if count%new_framerate == 0:
             frame_list.append(frame)
-            orb_feature_detection(frame)
             # cv2.imshow('frame#: ' + str(count), frame)
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()
@@ -173,13 +172,23 @@ def draw_shapes(orig_image_copy, bw_img, center_list, max_number_nodes):
     for num_nodes in range(4, max_number_nodes+1):
     # for num_nodes in range(4, 7):
         print('Node Quantity: ' + str(num_nodes))
-        combination_list = list(combinations(center_list, num_nodes)) #create tubles of all possible combinations for n number of nodes; e.g. each tuple has 3 points
+        combination_list = list(combinations(center_list, num_nodes)) #create tubles of all possible combinations for n number of nodes
+        #\
+        # ==> this contains all the nodes used to build a shape; USE THIS
+
         shape_from_num_nodes_list = [] #list for a given number of nodes used to draw shapes
         for combination in combination_list: #go through each tuple and draw the shapes; add those shapes to a list
+            bulb_type_list = np.zeros(len(combination)) #information about bulb type that belongs to each blob in an image
             # shape = np.zeros((height, width, 1), dtype = np.uint8) #height, width, number of channels
+            try:
+                index = combination.index(center_list[5])
+                bulb_type_list[index] = 1
+            except:
+                pass
+            vertice_list = list(zip(combination, bulb_type_list))
+            #--> not sure how to design this database; com back?
+            
             max_dist = -1 #initialization
-            min_dist = -1
-            min_dist_pair = None
             copy_img = np.copy(orig_image_copy)
             shape = np.copy(bw_img)
             point_combination = list(combinations(combination, 2)) #for each quantity of nodes (e.g. 3 nodes), make pairs (e.g. [a,b], [a,c], [b,c])
