@@ -2,9 +2,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF\ecosmart_CFL_14w.jpg' #cfl_1
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF\maxlite_CFL_15w.jpg' #cfl_1
-img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF\ge_incandescant_25w.jpg' #incandescent_1
+img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_CFL_14w.jpg' #cfl_1
+# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\maxlite_CFL_15w.jpg' #cfl_1
+# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ge_incandescant_25w.jpg' #incandescent_1
+# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_incandescent_40w.jpg' #incandescent_2
 height = 576
 width = 1024
 
@@ -30,15 +31,14 @@ def brf_extraction(img):
     # show_plot(column)
     return column
 
-
 def moving_average(image_column, window_size):
     average = []
     for x in range(len(image_column)-window_size):
-        average.append(np.sum(image_column[x:x+window_size])/window_size)
+        average.append(np.sum(image_column[x:x+window_size])/window_size/255)
     return average
 
 if __name__ == '__main__':
     img = img_from_path(img_path)
     brf = brf_extraction(img)
-    average = moving_average(brf, 3)
+    average = moving_average(brf, 5)
     show_plot(average)
