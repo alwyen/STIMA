@@ -5,9 +5,9 @@ from scipy import interpolate
 import scipy.signal as ss
 
 # img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_CFL_14w.jpg' #cfl_1
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\maxlite_CFL_15w.jpg' #cfl_1
+img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\maxlite_CFL_15w.jpg' #cfl_1
 # img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ge_incandescant_25w.jpg' #incandescent_1
-img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_incandescent_40w.jpg' #incandescent_2
+# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_incandescent_40w.jpg' #incandescent_2
 # img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\paper_1.jpg'
 height = 576
 width = 1024
@@ -50,11 +50,13 @@ def envelope_processing(brf):
     lower_envelope_values[trough_indices] = trough_values
     lower_envelope = lower_model(np.arange(0, len(brf), 1))
 
-
-    plt.plot(brf)
-    plt.plot(upper_envelope)
-    plt.plot(lower_envelope)
+    processed_envelope = (upper_envelope + lower_envelope)/2
+    # plt.plot(brf)
+    # plt.plot(upper_envelope)
+    # plt.plot(lower_envelope)
+    plt.plot(processed_envelope)
     plt.show()
+    return processed_envelope
 
 def moving_average(image_column, window_size):
     average = []
@@ -68,10 +70,14 @@ def crop_brf(brf, start_index, end_index):
 if __name__ == '__main__':
     img = img_from_path(img_path)
     brf = brf_extraction(img)
+    brf = crop_brf(brf, 0, 250)
+
     brf_average = moving_average(brf, 5)
-    brf = crop_brf(brf_average, 0, 250)
-    # brf = crop_brf(brf, 0, 250)
+    brf = crop_brf(brf_average, 0, 500)
+
     # brf = crop_brf(average, 888, 1602)
-    # show_plot(average)
-    envelope_processing(brf)
+    show_plot(brf)
+    brf = envelope_processing(brf)
+    # brf = envelope_processing(brf)
+    # envelope_processing(brf_average)
     # show_plot(brf)
