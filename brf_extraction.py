@@ -38,20 +38,20 @@ def envelope_processing(brf):
 
     peak_indices = ss.find_peaks(brf)[0]
     peak_values = brf[peak_indices]
-    upper_model = interpolate.interp1d(peak_indices, peak_values)
+    upper_model = interpolate.interp1d(peak_indices, peak_values, fill_value='extrapolate')
     upper_envelope_values = np.zeros(len(brf))
     upper_envelope_values[peak_indices] = peak_values
-    upper_envelope = upper_model(peak_indices)
+    upper_envelope = upper_model(np.arange(0, len(brf), 1))
 
     trough_indices = ss.find_peaks(-brf)[0]
     trough_values = brf[trough_indices]
-    lower_model = interpolate.interp1d(trough_indices, trough_values)
+    lower_model = interpolate.interp1d(trough_indices, trough_values, fill_value='extrapolate')
     lower_envelope_values = np.zeros(len(brf))
     lower_envelope_values[trough_indices] = trough_values
-    lower_envelope = lower_model(trough_indices)
+    lower_envelope = lower_model(np.arange(0, len(brf), 1))
 
 
-    # plt.plot(brf)
+    plt.plot(brf)
     plt.plot(upper_envelope)
     plt.plot(lower_envelope)
     plt.show()
