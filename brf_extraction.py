@@ -33,7 +33,7 @@ def brf_extraction(img):
     # column = img[0:height,1239]
     return column
 
-def envelope_processing(brf):
+def upper_envelope(brf):
     brf = np.array(brf)
 
     peak_indices = ss.find_peaks(brf)[0]
@@ -43,6 +43,11 @@ def envelope_processing(brf):
     upper_envelope_values[peak_indices] = peak_values
     upper_envelope = upper_model(np.arange(0, len(brf), 1))
 
+    return upper_envelope
+
+def lower_envelope(brf):
+    brf = np.array(brf)
+
     trough_indices = ss.find_peaks(-brf)[0]
     trough_values = brf[trough_indices]
     lower_model = interpolate.interp1d(trough_indices, trough_values, fill_value='extrapolate')
@@ -50,12 +55,10 @@ def envelope_processing(brf):
     lower_envelope_values[trough_indices] = trough_values
     lower_envelope = lower_model(np.arange(0, len(brf), 1))
 
+    return lower_envelope
+
+def upper_lower_envelope_mean(upper_envelope, lower_envelope):
     processed_envelope = (upper_envelope + lower_envelope)/2
-    # plt.plot(brf)
-    # plt.plot(upper_envelope)
-    # plt.plot(lower_envelope)
-    plt.plot(processed_envelope)
-    plt.show()
     return processed_envelope
 
 def moving_average(image_column, window_size):
@@ -72,12 +75,13 @@ if __name__ == '__main__':
     brf = brf_extraction(img)
     brf = crop_brf(brf, 0, 250)
 
-    brf_average = moving_average(brf, 5)
-    brf = crop_brf(brf_average, 0, 500)
-
-    # brf = crop_brf(average, 888, 1602)
-    show_plot(brf)
-    brf = envelope_processing(brf)
+    brf = crop_brf(brf, 0, 500)
+    upper_envelope = upper_envelope(brf)
+    lower_envelope = lower_envelope(brf)
+    processed_brf = upper_lower_envelope_mean(upper_envelope, lower_envelope)
+    show_plot(processed_brf)
+    brf_average = moving_average(processed_brf, 5)
+    show_plot(brf_average)
     # brf = envelope_processing(brf)
     # envelope_processing(brf_average)
     # show_plot(brf)
