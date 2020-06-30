@@ -34,8 +34,6 @@ def brf_extraction(img):
     return column
 
 def upper_envelope(brf):
-    brf = np.array(brf)
-
     peak_indices = ss.find_peaks(brf)[0]
     peak_values = brf[peak_indices]
     upper_model = interpolate.interp1d(peak_indices, peak_values, fill_value='extrapolate')
@@ -46,8 +44,6 @@ def upper_envelope(brf):
     return upper_envelope
 
 def lower_envelope(brf):
-    brf = np.array(brf)
-
     trough_indices = ss.find_peaks(-brf)[0]
     trough_values = brf[trough_indices]
     lower_model = interpolate.interp1d(trough_indices, trough_values, fill_value='extrapolate')
@@ -61,27 +57,50 @@ def upper_lower_envelope_mean(upper_envelope, lower_envelope):
     processed_envelope = (upper_envelope + lower_envelope)/2
     return processed_envelope
 
+def smooth_interpolation(brf):
+    x = np.arange(0, len(brf), 1)
+    univ_spline = interpolate.UnivariateSpline(x, brf)
+    plt.plot(x, univ_spline(x))
+    plt.show()
+
 def moving_average(image_column, window_size):
     average = []
     for x in range(len(image_column)-window_size):
         average.append(np.sum(image_column[x:x+window_size])/window_size/255)
     return average
-
+ 
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
 if __name__ == '__main__':
     img = img_from_path(img_path)
     brf = brf_extraction(img)
+    brf = np.array(brf) #conversion into numpy array
     brf = crop_brf(brf, 0, 250)
 
     brf = crop_brf(brf, 0, 500)
-    upper_envelope = upper_envelope(brf)
-    lower_envelope = lower_envelope(brf)
-    processed_brf = upper_lower_envelope_mean(upper_envelope, lower_envelope)
+    u_e = upper_envelope(brf)
+    l_e = lower_envelope(brf)
+    processed_brf = upper_lower_envelope_mean(u_e, l_e)
+
+    print('Univariate Spline')
+    smooth_interpolation(brf)
+
+    print('Processed')
     show_plot(processed_brf)
+
+    print('Upper of Processed')
+    upper_processed = upper_envelope(processed_brf)
+    show_plot(upper_processed)
+
+    print('Lower of Processsed')
+    lower_processed = lower_envelope(processed_brf)
+    show_plot(lower_processed)
+
+    print('Moving Average')
     brf_average = moving_average(processed_brf, 5)
     show_plot(brf_average)
+
     # brf = envelope_processing(brf)
     # envelope_processing(brf_average)
     # show_plot(brf)
