@@ -2,15 +2,26 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
+from scipy.ndimage import shift
 import scipy.signal as ss
 
-img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_CFL_14w.jpg' #cfl_1
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\maxlite_CFL_15w.jpg' #cfl_1
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ge_incandescant_25w.jpg' #incandescent_1
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_incandescent_40w.jpg' #incandescent_2
-# img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\paper_1.jpg'
+from signal_alignment import phase_align, chisqr_align
+
+path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images'
+
+ecosmart_CFL_14w = 'ecosmart_CFL_14w'
+maxlite_CFL_15w = 'maxlite_CFL_15w'
+ge_incandescant_25w = 'ge_incandescant_25w'
+philips_incandescent_40w = 'philips_incandescent_40w'
+
 height = 576
 width = 1024
+
+def get_rolling_dc(bulb):
+    img_paths = path + '\\' + bulb
+    rolling = img_paths + '_rolling.jpg'
+    dc = img_paths + '_dc.jpg'
+    return rolling, dc
 
 def img_from_path(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
@@ -18,6 +29,7 @@ def img_from_path(img_path):
     return img
 
 def show_plot(array):
+    plt.figure(figsize = (10, 2))
     plt.plot(array)
     plt.show()
 
@@ -79,38 +91,70 @@ def moving_average(image_column, window_size):
         average.append(np.sum(image_column[x:x+window_size])/window_size/255)
     return average
 
+#maybe just get rid of this..
 def savitzky_golay_filter(brf, window_length, polyorder):
     filtered_data = ss.savgol_filter(brf, window_length, polyorder) #array, window_length, order of polynomial to fit samples; win > poly
-    plt.plot(filtered_data)
-    plt.show()
+    return filtered_data
 
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
+def align_brfs(brf_1, brf_2):
+    #shfit amount corresponds to second argument (brf_2)
+    shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
+    plt.plot(brf_1, label = 'brf_1')
+    plt.plot(shift(brf_2, shift_amount, mode = 'nearest'), label = 'brf_2 shifted')
+    plt.show()
+
+def compare_brfs():
+    img_rolling_1, img_dc_1 = get_rolling_dc(ecosmart_CFL_14w)
+    img_rolling_1 = img_from_path(img_rolling_1)
+    img_dc_1 = img_from_path(img_dc_1)
+
+    img_rolling_2, img_dc_2 = get_rolling_dc(maxlite_CFL_15w)
+    img_rolling_2 = img_from_path(img_rolling_2)
+    img_dc_2 = img_from_path(img_dc_2)
+
+    brf_rolling_1 = crop_brf(brf_extraction(img_rolling_1), 0, 500)
+    brf_rolling_2 = crop_brf(brf_extraction(img_rolling_2), 0, 500)
+
+    smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, 61, 3)
+    smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, 61, 3)
+
+    align_brfs(smoothed_brf_1, smoothed_brf_2)
+    align_brfs(brf_rolling_1, brf_rolling_2)
+
 if __name__ == '__main__':
-    img = img_from_path(img_path)
-    brf = brf_extraction(img)
-    brf = np.array(brf) #conversion into numpy array
-    # brf = crop_brf(brf, 0, 250)
-    brf = crop_brf(brf, 0, 500)
-    # brf = moving_average(brf, 5)
+    compare_brfs()
+
+    # img = img_from_path(img_path)
+    # brf = brf_extraction(img)
+    # brf = np.array(brf) #conversion into numpy array
+    # # brf = crop_brf(brf, 0, 250)
+    # brf = crop_brf(brf, 0, 500)
+    # # brf = moving_average(brf, 5)
+    # # show_plot(brf)
+
+    # u_e = upper_envelope(brf)
+    # l_e = lower_envelope(brf)
+    # processed_brf = upper_lower_envelope_mean(u_e, l_e)
+    # upper_processed = upper_envelope(processed_brf)
+    # lower_processed = lower_envelope(processed_brf)
+    # processed_average = moving_average(processed_brf, 10)
+    # brf_average = moving_average(brf, 5)
+
+
+    # print('BRF')
     # show_plot(brf)
 
-    u_e = upper_envelope(brf)
-    l_e = lower_envelope(brf)
-    processed_brf = upper_lower_envelope_mean(u_e, l_e)
-    upper_processed = upper_envelope(processed_brf)
-    lower_processed = lower_envelope(processed_brf)
-    processed_average = moving_average(processed_brf, 10)
-    
-    print('BRF')
-    show_plot(brf)
+    # print('Processed')
+    # show_plot(processed_brf)
 
-    print('Processed')
-    show_plot(processed_brf)
-
-    print('Savgov filter')
-    savitzky_golay_filter(brf, 51, 3)
+    # print('Savgov filter')
+    # for x in range(23, 62, 2):
+    #     print(x)
+    #     savitzky_golay_filter(brf, x, 3)
+        # savitzky_golay_filter(brf_average, x, 3)
 
     # print('Moving Average')
     # brf_average = moving_average(processed_brf, 5)

@@ -9,6 +9,8 @@ from itertools import combinations
 img1_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\Shape Matching Image Tests\gain17.5x_exp16.67ms_left.jpg'
 img2_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\Shape Matching Image Tests\gain17.5x_exp16.67ms_right.jpg'
 
+video_path_1 = r'C:\Users\alexy\Downloads\20200701_135609 (online-video-cutter.com).mp4'
+
 # img1_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_1.jpg'
 # img2_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_2.jpg'
 # img3_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_test_img.jpg'
@@ -61,6 +63,7 @@ def extract_images_from_video(video_path):
         success, frame = video.read()
         if count%new_framerate == 0:
             frame_list.append(frame)
+            show_image(frame)
             # cv2.imshow('frame#: ' + str(count), frame)
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()
@@ -295,7 +298,9 @@ def euclid_dst_zernike():
     pass
 
 if __name__ == '__main__':
-    geometry_matching(img1_path, img2_path)
+    # geometry_matching(img1_path, img2_path)
+
+    frames = extract_images_from_video(video_path_1)
 
     # img1 = img_from_path(img1_path)
     # img2 = img_from_path(img2_path)
