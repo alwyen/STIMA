@@ -9,6 +9,8 @@ from signal_alignment import phase_align, chisqr_align
 
 path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images'
 
+#make classes man..
+
 ecosmart_CFL_14w = 'ecosmart_CFL_14w'
 maxlite_CFL_15w = 'maxlite_CFL_15w'
 ge_incandescant_25w = 'ge_incandescant_25w'
@@ -99,33 +101,58 @@ def savitzky_golay_filter(brf, window_length, polyorder):
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
-def align_brfs(brf_1, brf_2):
+def normalize_img(rolling_img, dc_img):
+    normalized_img = np.divide(rolling_img, dc_img)
+    height = normalized_img.shape[0]
+    width = normalized_img.shape[1]
+    normalized_img = normalized_img/(np.sum(normalized_img)/width/height)
+    return normalized_img
+
+def align_brfs(brf_1, bulb_1_name, brf_2, bulb_2_name):
     #shfit amount corresponds to second argument (brf_2)
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
-    plt.plot(brf_1, label = 'brf_1')
-    plt.plot(shift(brf_2, shift_amount, mode = 'nearest'), label = 'brf_2 shifted')
-    plt.show()
+    shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
+    # plt.figure(figsize = (10, 2))
+    # plt.plot(brf_1, label = bulb_1_name)
+    # plt.plot(shifted_brf_2, label = bulb_2_name)
+    # plt.legend(loc = 'best')
+    # plt.show()
+    return brf_1, shifted_brf_2
 
-def compare_brfs():
-    img_rolling_1, img_dc_1 = get_rolling_dc(ecosmart_CFL_14w)
+def compare_brfs(bulb_1, bulb_2):
+    img_rolling_1, img_dc_1 = get_rolling_dc(bulb_1)
     img_rolling_1 = img_from_path(img_rolling_1)
     img_dc_1 = img_from_path(img_dc_1)
+    normalized_1 = normalize_img(img_rolling_1, img_dc_1)
 
-    img_rolling_2, img_dc_2 = get_rolling_dc(maxlite_CFL_15w)
+    img_rolling_2, img_dc_2 = get_rolling_dc(bulb_2)
     img_rolling_2 = img_from_path(img_rolling_2)
     img_dc_2 = img_from_path(img_dc_2)
+    normalized_2 = normalize_img(img_rolling_2, img_dc_2)
 
-    brf_rolling_1 = crop_brf(brf_extraction(img_rolling_1), 0, 500)
-    brf_rolling_2 = crop_brf(brf_extraction(img_rolling_2), 0, 500)
+    brf_rolling_1 = brf_extraction(normalized_1)
+    brf_rolling_2 = brf_extraction(normalized_2)
+
+    # brf_rolling_1 = crop_brf(brf_extraction(normalized_1), 0, 500)
+    # brf_rolling_2 = crop_brf(brf_extraction(normalized_2), 0, 500)
 
     smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, 61, 3)
     smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, 61, 3)
 
-    align_brfs(smoothed_brf_1, smoothed_brf_2)
-    align_brfs(brf_rolling_1, brf_rolling_2)
+    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, bulb_1, smoothed_brf_2, bulb_2)
+    # correlate = ss.correlate(aligned_brf_1, aligned_brf_2, mode = 'same') / 128
+    correlate = ss.correlate(smoothed_brf_1, smoothed_brf_2, mode = 'same') / 128
+    plt.plot(correlate)
+    plt.plot(aligned_brf_1)
+    plt.plot(aligned_brf_2)
+    show_plot(correlate)
+    plt.show()
+    
+    # align_brfs(brf_rolling_1, brf_rolling_2)
 
 if __name__ == '__main__':
-    compare_brfs()
+    compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w)
+    compare_brfs(ge_incandescant_25w, philips_incandescent_40w)
 
     # img = img_from_path(img_path)
     # brf = brf_extraction(img)
