@@ -5,7 +5,6 @@ import numpy as np
 sig = np.repeat([0., 1., 1., 0., 1., 0., 0., 1.], 128)
 sig_noise = sig + np.random.randn(len(sig))
 corr = signal.correlate(sig_noise, np.ones(128), mode='same') / 128
-
 clock = np.arange(64, len(sig), 128)
 fig, (ax_orig, ax_noise, ax_corr) = plt.subplots(3, 1, sharex=True)
 ax_orig.plot(sig)

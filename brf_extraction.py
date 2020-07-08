@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.ndimage import shift
 import scipy.signal as ss
+from scipy.stats.stats import pearsonr
+import pandas as pd
+from dtw import dtw, accelerated_dtw
 
 from signal_alignment import phase_align, chisqr_align
 
@@ -119,7 +122,28 @@ def align_brfs(brf_1, bulb_1_name, brf_2, bulb_2_name):
     # plt.show()
     return brf_1, shifted_brf_2
 
-def compare_brfs(bulb_1, bulb_2):
+def pearson_coeff_moving(brf_1, brf_2):
+    array = np.array([brf_1, brf_2])
+    array = array.reshape(len(brf_1), len(array))
+    df = pd.DataFrame(array)
+
+    overall_pearson_r = df.corr(method = 'pearson').iloc[0,1]
+    print(f"Pandas computed Pearson r: {overall_pearson_r}")
+    # out: Pandas computed Pearson r: 0.2058774513561943
+
+    r, p = pearsonr(brf_1, brf_2)
+    print(f"Scipy computed Pearson r: {r} and p-value: {p}")
+
+def dtw_method(brf_1, brf_2):
+    array = np.array([brf_1, brf_2])
+    array = array.reshape(len(brf_1), len(array))
+    df = pd.DataFrame(array)
+    s1 = df.iloc[:,0].interpolate().values
+    s2 = df.iloc[:,1].interpolate().values
+    d, cost_matrix, acc_cost_matrix, path = accelerated_dtw(s1, s2, dist = 'euclidean')
+    print(np.round(d,2))
+
+def compare_brfs(bulb_1, bulb_2, savgov_window):
     img_rolling_1, img_dc_1 = get_rolling_dc(bulb_1)
     img_rolling_1 = img_from_path(img_rolling_1)
     img_dc_1 = img_from_path(img_dc_1)
@@ -136,23 +160,43 @@ def compare_brfs(bulb_1, bulb_2):
     # brf_rolling_1 = crop_brf(brf_extraction(normalized_1), 0, 500)
     # brf_rolling_2 = crop_brf(brf_extraction(normalized_2), 0, 500)
 
-    smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, 61, 3)
-    smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, 61, 3)
+    # smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, savgov_window, 3)
+    # smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, savgov_window, 3)
+    smoothed_brf_1 = brf_rolling_1
+    smoothed_brf_2 = brf_rolling_2
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, bulb_1, smoothed_brf_2, bulb_2)
-    # correlate = ss.correlate(aligned_brf_1, aligned_brf_2, mode = 'same') / 128
-    correlate = ss.correlate(smoothed_brf_1, smoothed_brf_2, mode = 'same') / 128
-    plt.plot(correlate)
     plt.plot(aligned_brf_1)
     plt.plot(aligned_brf_2)
-    show_plot(correlate)
     plt.show()
-    
-    # align_brfs(brf_rolling_1, brf_rolling_2)
+
+    cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
+
+    correlate_1 = ss.correlate(cropped_brf_1, aligned_brf_2, mode = 'full')/len(cropped_brf_1)
+    correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
+    return correlate_1
+
+    # correlate_2 = ss.correlate(cropped_brf_1, aligned_brf_1, mode = 'full')/len(cropped_brf_1)
+    # correlate_2 = crop_brf(correlate_2, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
+
+    # correlate_3 = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
+    # correlate_3 = crop_brf(correlate_3, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
 
 if __name__ == '__main__':
-    compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w)
-    compare_brfs(ge_incandescant_25w, philips_incandescent_40w)
+    #I think you need to go back to filtering - losing information in signal?
+    for window_size in range(61, 70, 2):
+        print(f'Window Size: {window_size}')
+        cfl_cfl_self = compare_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w, window_size)
+        cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
+        inc_inc = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
+        cfl_inc = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
+
+        plt.plot(cfl_cfl_self, label = 'self')
+        plt.plot(cfl_cfl, label = 'cfl_cfl')
+        plt.plot(inc_inc, label = 'inc_inc')
+        plt.plot(cfl_inc, label = 'cfl_inc')
+        plt.legend()
+        plt.show()
 
     # img = img_from_path(img_path)
     # brf = brf_extraction(img)
