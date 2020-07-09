@@ -10,7 +10,7 @@ from dtw import dtw, accelerated_dtw
 
 from signal_alignment import phase_align, chisqr_align
 
-path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images'
+path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 
 #make classes man..
 
@@ -38,6 +38,12 @@ def show_plot(array):
     plt.plot(array)
     plt.show()
 
+def show_two_brfs(brf_1, brf_2):
+    plt.figure(figsize = (10, 2))
+    plt.plot(brf_1)
+    plt.plot(brf_2)
+    plt.show()
+
 def show_image(img):
     cv2.imshow('img', img)
     cv2.waitKey(0)
@@ -50,6 +56,21 @@ def brf_extraction(img):
     # column = img[0:height,1239]
     return column
 
+def normalize_img(rolling_img, dc_img):
+    normalized_img = np.divide(rolling_img, dc_img)
+    height = normalized_img.shape[0]
+    width = normalized_img.shape[1]
+    normalized_img = normalized_img/(np.sum(normalized_img)/width/height)
+    return normalized_img
+
+def process_extract_brf(bulb_path):
+    img_rolling, img_dc = get_rolling_dc(bulb_path)
+    img_rolling = img_from_path(img_rolling)
+    img_dc = img_from_path(img_dc)
+    normalized = normalize_img(img_rolling, img_dc)
+    brf_rolling = brf_extraction(normalized)
+    return brf_rolling
+
 def fit_curve(brf):
     x = np.arange(0, len(brf), 1)
     brf_model = interpolate.interp1d(x, brf, kind = 'cubic')
@@ -59,6 +80,8 @@ def fit_curve(brf):
 
 def upper_envelope(brf):
     peak_indices = ss.find_peaks(brf)[0]
+    # for x in range(len(peak_indices) - 1):
+    #     print(peak_indices[x+1] - peak_indices[x])
     peak_values = brf[peak_indices]
     # upper_model = interpolate.interp1d(peak_indices, peak_values, fill_value='extrapolate')
     upper_model = interpolate.UnivariateSpline(peak_indices, peak_values)
@@ -104,13 +127,6 @@ def savitzky_golay_filter(brf, window_length, polyorder):
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
-def normalize_img(rolling_img, dc_img):
-    normalized_img = np.divide(rolling_img, dc_img)
-    height = normalized_img.shape[0]
-    width = normalized_img.shape[1]
-    normalized_img = normalized_img/(np.sum(normalized_img)/width/height)
-    return normalized_img
-
 def align_brfs(brf_1, bulb_1_name, brf_2, bulb_2_name):
     #shfit amount corresponds to second argument (brf_2)
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
@@ -143,94 +159,65 @@ def dtw_method(brf_1, brf_2):
     d, cost_matrix, acc_cost_matrix, path = accelerated_dtw(s1, s2, dist = 'euclidean')
     print(np.round(d,2))
 
+def compare_brfs_same_bulb(bulb_path, savgov_window):
+    bulb_path_1 = bulb_path + '_0'
+    bulb_path_2 = bulb_path + '_1'
+
+    brf_1 = process_extract_brf(bulb_path_1)
+    brf_2 = process_extract_brf(bulb_path_2)
+
+    smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
+    smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
+
+    cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
+    correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
+    correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
+    return correlate
+
 def compare_brfs(bulb_1, bulb_2, savgov_window):
-    img_rolling_1, img_dc_1 = get_rolling_dc(bulb_1)
-    img_rolling_1 = img_from_path(img_rolling_1)
-    img_dc_1 = img_from_path(img_dc_1)
-    normalized_1 = normalize_img(img_rolling_1, img_dc_1)
-
-    img_rolling_2, img_dc_2 = get_rolling_dc(bulb_2)
-    img_rolling_2 = img_from_path(img_rolling_2)
-    img_dc_2 = img_from_path(img_dc_2)
-    normalized_2 = normalize_img(img_rolling_2, img_dc_2)
-
-    brf_rolling_1 = brf_extraction(normalized_1)
-    brf_rolling_2 = brf_extraction(normalized_2)
+    bulb_1 += '_0'
+    bulb_2 += '_1'
+    brf_rolling_1 = process_extract_brf(bulb_1)
+    brf_rolling_2 = process_extract_brf(bulb_2)
 
     # brf_rolling_1 = crop_brf(brf_extraction(normalized_1), 0, 500)
     # brf_rolling_2 = crop_brf(brf_extraction(normalized_2), 0, 500)
 
-    # smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, savgov_window, 3)
-    # smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, savgov_window, 3)
-    smoothed_brf_1 = brf_rolling_1
-    smoothed_brf_2 = brf_rolling_2
+    smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, savgov_window, 3)
+    smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, savgov_window, 3)
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, bulb_1, smoothed_brf_2, bulb_2)
-    plt.plot(aligned_brf_1)
-    plt.plot(aligned_brf_2)
-    plt.show()
+
+    show_two_brfs(aligned_brf_1, aligned_brf_2)
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
-
     correlate_1 = ss.correlate(cropped_brf_1, aligned_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
     return correlate_1
 
-    # correlate_2 = ss.correlate(cropped_brf_1, aligned_brf_1, mode = 'full')/len(cropped_brf_1)
-    # correlate_2 = crop_brf(correlate_2, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
-
-    # correlate_3 = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
-    # correlate_3 = crop_brf(correlate_3, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
 
 if __name__ == '__main__':
     #I think you need to go back to filtering - losing information in signal?
-    for window_size in range(61, 70, 2):
-        print(f'Window Size: {window_size}')
-        cfl_cfl_self = compare_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w, window_size)
-        cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
-        inc_inc = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
-        cfl_inc = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
+    window_size = 61
+    ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
+    maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
+    ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
+    philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
 
-        plt.plot(cfl_cfl_self, label = 'self')
-        plt.plot(cfl_cfl, label = 'cfl_cfl')
-        plt.plot(inc_inc, label = 'inc_inc')
-        plt.plot(cfl_inc, label = 'cfl_inc')
-        plt.legend()
-        plt.show()
+    cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
+    incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
+    cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
 
-    # img = img_from_path(img_path)
-    # brf = brf_extraction(img)
-    # brf = np.array(brf) #conversion into numpy array
-    # # brf = crop_brf(brf, 0, 250)
-    # brf = crop_brf(brf, 0, 500)
-    # # brf = moving_average(brf, 5)
-    # # show_plot(brf)
+    #plots below
+    plt.title('Cross-Correlation Graphs')
+    plt.plot(ecosmart_cfl, label = 'Bulb Compared to Itself at Different Position')
+    plt.plot(cfl_cfl, label = 'Same Type of Bulb, Different Manufacturer')
+    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison')
+    plt.legend()
+    plt.show()
 
-    # u_e = upper_envelope(brf)
-    # l_e = lower_envelope(brf)
-    # processed_brf = upper_lower_envelope_mean(u_e, l_e)
-    # upper_processed = upper_envelope(processed_brf)
-    # lower_processed = lower_envelope(processed_brf)
-    # processed_average = moving_average(processed_brf, 10)
-    # brf_average = moving_average(brf, 5)
-
-
-    # print('BRF')
-    # show_plot(brf)
-
-    # print('Processed')
-    # show_plot(processed_brf)
-
-    # print('Savgov filter')
-    # for x in range(23, 62, 2):
-    #     print(x)
-    #     savitzky_golay_filter(brf, x, 3)
-        # savitzky_golay_filter(brf_average, x, 3)
-
-    # print('Moving Average')
-    # brf_average = moving_average(processed_brf, 5)
-    # show_plot(brf_average)
-
-    # brf = envelope_processing(brf)
-    # envelope_processing(brf_average)
-    # show_plot(brf)
+    plt.plot(ge_incandescent, label = 'Bulb Compared to Itself at Different Position')
+    plt.plot(incandescent_incandescent, label = 'Same Type of Bulb, Different Manufacturer')
+    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison')
+    plt.legend()
+    plt.show()
