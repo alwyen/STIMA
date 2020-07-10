@@ -18,6 +18,7 @@ ecosmart_CFL_14w = 'ecosmart_CFL_14w'
 maxlite_CFL_15w = 'maxlite_CFL_15w'
 ge_incandescant_25w = 'ge_incandescant_25w'
 philips_incandescent_40w = 'philips_incandescent_40w'
+feit_led17p5w = 'feit_led17.5w'
 
 height = 576
 width = 1024
@@ -168,6 +169,8 @@ def compare_brfs_same_bulb(bulb_path, savgov_window):
 
     smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
     smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
+    # smoothed_brf_1 = brf_1
+    # smoothed_brf_2 = brf_2
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
@@ -185,6 +188,8 @@ def compare_brfs(bulb_1, bulb_2, savgov_window):
 
     smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, savgov_window, 3)
     smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, savgov_window, 3)
+    # smoothed_brf_1 = brf_rolling_1
+    # smoothed_brf_2 = brf_rolling_2
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, bulb_1, smoothed_brf_2, bulb_2)
 
@@ -207,17 +212,28 @@ if __name__ == '__main__':
     cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
     incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
     cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
+    cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
+    cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
+    cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
 
     #plots below
     plt.title('Cross-Correlation Graphs')
-    plt.plot(ecosmart_cfl, label = 'Bulb Compared to Itself at Different Position')
+    plt.plot(maxlite_cfl, label = 'Bulb Compared to Itself at Different Position (Maxlite)')
+    plt.plot(ecosmart_cfl, label = 'Bulb Compared to Itself at Different Position (Ecosmart)')
     plt.plot(cfl_cfl, label = 'Same Type of Bulb, Different Manufacturer')
-    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison')
+    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison 1')
+    plt.plot(cfl_incandescent_2, label = 'CFL-Incandescent BRF Comparison 2')
+    plt.plot(cfl_incandescent_3, label = 'CFL-Incandescent BRF Comparison 3')
+    plt.plot(cfl_incandescent_4, label = 'CFL-Incandescent BRF Comparison 4')
     plt.legend()
     plt.show()
 
-    plt.plot(ge_incandescent, label = 'Bulb Compared to Itself at Different Position')
+    plt.plot(ge_incandescent, label = 'Bulb Compared to Itself at Different Position (GE)')
+    plt.plot(philips_incandescent, label = 'Bulb Compared to Itself at Different Position (Philips)')
     plt.plot(incandescent_incandescent, label = 'Same Type of Bulb, Different Manufacturer')
-    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison')
+    plt.plot(cfl_incandescent_1, label = 'CFL-Incandescent BRF Comparison 1')
+    plt.plot(cfl_incandescent_2, label = 'CFL-Incandescent BRF Comparison 2')
+    plt.plot(cfl_incandescent_3, label = 'CFL-Incandescent BRF Comparison 3')
+    plt.plot(cfl_incandescent_4, label = 'CFL-Incandescent BRF Comparison 4')
     plt.legend()
     plt.show()
