@@ -93,48 +93,6 @@ def process_extract_brf(bulb_path):
     normalized_brf = normalize_brf(brf_rolling)
     return normalized_brf
 
-def fit_curve(brf):
-    x = np.arange(0, len(brf), 1)
-    brf_model = interpolate.interp1d(x, brf, kind = 'cubic')
-    interpolated_brf = brf_model(x)
-    plt.plot(interpolated_brf)
-    plt.show()
-
-def upper_envelope(brf):
-    peak_indices = ss.find_peaks(brf)[0]
-    # for x in range(len(peak_indices) - 1):
-    #     print(peak_indices[x+1] - peak_indices[x])
-    peak_values = brf[peak_indices]
-    # upper_model = interpolate.interp1d(peak_indices, peak_values, fill_value='extrapolate')
-    upper_model = interpolate.UnivariateSpline(peak_indices, peak_values)
-    upper_envelope_values = np.zeros(len(brf))
-    upper_envelope_values[peak_indices] = peak_values
-    upper_envelope = upper_model(np.arange(0, len(brf), 1))
-
-    return upper_envelope
-
-def lower_envelope(brf):
-    trough_indices = ss.find_peaks(-brf)[0]
-    trough_values = brf[trough_indices]
-    # lower_model = interpolate.interp1d(trough_indices, trough_values, fill_value='extrapolate')
-    lower_model = interpolate.UnivariateSpline(trough_indices, trough_values)
-    lower_envelope_values = np.zeros(len(brf))
-    lower_envelope_values[trough_indices] = trough_values
-    lower_envelope = lower_model(np.arange(0, len(brf), 1))
-
-    return lower_envelope
-
-def upper_lower_envelope_mean(upper_envelope, lower_envelope):
-    processed_envelope = (upper_envelope + lower_envelope)/2
-    return processed_envelope
-
-def smooth_interpolation(brf):
-    x = np.arange(0, len(brf), 1)
-    univ_spline = interpolate.UnivariateSpline(x, brf)
-
-    plt.plot(x, univ_spline(x))
-    plt.show()
-
 def moving_average(image_column, window_size):
     average = []
     for x in range(len(image_column)-window_size):
@@ -171,15 +129,6 @@ def pearson_coeff_moving(brf_1, brf_2):
 
     r, p = pearsonr(brf_1, brf_2)
     print(f"Scipy computed Pearson r: {r} and p-value: {p}")
-
-def dtw_method(brf_1, brf_2):
-    array = np.array([brf_1, brf_2])
-    array = array.reshape(len(brf_1), len(array))
-    df = pd.DataFrame(array)
-    s1 = df.iloc[:,0].interpolate().values
-    s2 = df.iloc[:,1].interpolate().values
-    d, cost_matrix, acc_cost_matrix, path = accelerated_dtw(s1, s2, dist = 'euclidean')
-    print( round(d,2))
 
 def compare_brfs_same_bulb(bulb_path, savgov_window):
     bulb_path_1 = bulb_path + '_0'
