@@ -24,8 +24,8 @@ feit_led17p5w = 'feit_led17.5w'
 height = 576
 width = 1024
 
-def get_rolling_dc(bulb):
-    img_paths = path + '\\' + bulb
+def get_rolling_dc_paths(img_path):
+    img_paths = path + '\\' + img_path
     rolling = img_paths + '_rolling.jpg'
     dc = img_paths + '_dc.jpg'
     return rolling, dc
@@ -42,8 +42,9 @@ def show_plot(array):
 
 def show_two_brfs(brf_1, brf_2):
     plt.figure(figsize = (10, 2))
-    plt.plot(brf_1)
-    plt.plot(brf_2)
+    plt.plot(brf_1, label = '1')
+    plt.plot(brf_2, label = '2')
+    plt.legend()
     plt.show()
 
 def plot_entire_image(rolling_image):
@@ -83,12 +84,9 @@ def normalize_brf(brf):
     return brf_points
 
 def process_extract_brf(bulb_path):
-    img_rolling, img_dc = get_rolling_dc(bulb_path)    
+    img_rolling, img_dc = get_rolling_dc_paths(bulb_path)    
     img_rolling = img_from_path(img_rolling)
-
-    plot_entire_image(img_rolling)
-
-    img_dc = img_from_path(img_dc)
+    # img_dc = img_from_path(img_dc)
     brf_rolling = brf_extraction(img_rolling)
     normalized_brf = normalize_brf(brf_rolling)
     return normalized_brf
@@ -100,6 +98,8 @@ def moving_average(image_column, window_size):
     return average
 
 #maybe just get rid of this..
+#second or third order polynomial??
+#window_length should be based off of the period length??
 def savitzky_golay_filter(brf, window_length, polyorder):
     filtered_data = ss.savgol_filter(brf, window_length, polyorder) #array, window_length, order of polynomial to fit samples; win > poly
     return filtered_data
@@ -107,15 +107,10 @@ def savitzky_golay_filter(brf, window_length, polyorder):
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
-def align_brfs(brf_1, bulb_1_name, brf_2, bulb_2_name):
+def align_brfs(brf_1, brf_2):
     #shfit amount corresponds to second argument (brf_2)
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
     shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
-    # plt.figure(figsize = (10, 2))
-    # plt.plot(brf_1, label = bulb_1_name)
-    # plt.plot(shifted_brf_2, label = bulb_2_name)
-    # plt.legend(loc = 'best')
-    # plt.show()
     return brf_1, shifted_brf_2
 
 def pearson_coeff_moving(brf_1, brf_2):
@@ -142,6 +137,9 @@ def compare_brfs_same_bulb(bulb_path, savgov_window):
     # smoothed_brf_1 = brf_1
     # smoothed_brf_2 = brf_2
 
+    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
+    show_two_brfs(aligned_brf_1, aligned_brf_2)
+
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
@@ -161,7 +159,7 @@ def compare_brfs(bulb_1, bulb_2, savgov_window):
     # smoothed_brf_1 = brf_rolling_1
     # smoothed_brf_2 = brf_rolling_2
 
-    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, bulb_1, smoothed_brf_2, bulb_2)
+    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
 
     show_two_brfs(aligned_brf_1, aligned_brf_2)
 
@@ -170,14 +168,29 @@ def compare_brfs(bulb_1, bulb_2, savgov_window):
     correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
     return correlate_1
 
+def compare_different_sensitivity_brfs(brf_1, brf_2):
+    img_path_1 = path_1 + '\\' + brf_1 + '_rolling.jpg'
+    img_path_2 = path + '\\' + brf_2 + '_0_rolling.jpg'
+    brf_1 = brf_extraction(img_from_path(img_path_1))
+    brf_2 = brf_extraction(img_from_path(img_path_2))
+    smoothed_brf_1 = savitzky_golay_filter(brf_1, 61, 3)
+    smoothed_brf_2 = savitzky_golay_filter(brf_2, 61, 3)
+    normalized_brf_1 = normalize_brf(smoothed_brf_1)
+    normalized_brf_2 = normalize_brf(smoothed_brf_2)
+    aligned_brf_1, aligned_brf_2 = align_brfs(normalized_brf_1, normalized_brf_2)
+    show_two_brfs(aligned_brf_1, aligned_brf_2)
+
 
 if __name__ == '__main__':
     #I think you need to go back to filtering - losing information in signal?
+    compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
     window_size = 61
-    ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
-    maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
-    ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
-    philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
+    for window_size in range(31, 81, 2):
+        print(window_size)
+        ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
+        # maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
+        # ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
+        # philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
 
     cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
     incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
