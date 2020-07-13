@@ -10,6 +10,7 @@ from dtw import dtw, accelerated_dtw
 
 from signal_alignment import phase_align, chisqr_align
 
+path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 
 #make classes man..
