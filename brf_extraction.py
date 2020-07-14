@@ -100,6 +100,7 @@ def moving_average(image_column, window_size):
 #maybe just get rid of this..
 #second or third order polynomial??
 #window_length should be based off of the period length??
+#window_length value is currently arbitrarily determined
 def savitzky_golay_filter(brf, window_length, polyorder):
     filtered_data = ss.savgol_filter(brf, window_length, polyorder) #array, window_length, order of polynomial to fit samples; win > poly
     return filtered_data
@@ -127,25 +128,43 @@ def pearson_coeff_moving(brf_1, brf_2):
 
 #using a cheesy method to find the peaks
 def average_periods(brf):
-    # peak_indices = ss.find_peaks(brf)[0]
-    half_window_size = 10
-    peak_indices = []
-    cycle_list = []
-    peak_indice_approximations = ss.find_peaks(brf)[0] #need to know approximate period distance; maybe a problem
-    peak_indice_approximation_values = brf[peak_indice_approximations]
-    interpolated = interpolate.interp1d(peak_indice_approximations, peak_indice_approximation_values, fill_value= 'extrapolate')
-    peak_indices = ss.find_peaks(peak_indice_approximations)[0]
-    # for indice in peak_indice_approximations:
-    #     if indice-half_window_size < 0: continue
-    #     elif indice+half_window_size > len(brf): continue
-    #     peak_crop = brf[(indice-half_window_size):(indice+half_window_size)]
-    #     peak_indice = np.where(peak_crop == np.amax(peak_crop)) + indice - half_window_size
-    #     peak_indices.append(peak_indice[0][0]) #don't know why it needs to be [0][0]
+    # avg_dist_bt_peaks = 0
+    # not_finished = True
+
+    # #first filter for initial false positive peaks
+    # peak_indice_approximations = ss.find_peaks(brf)[0] #need to know approximate period distance; maybe a problem
+    # peak_indice_approximation_values = brf[peak_indice_approximations]
+    # interp_model = interpolate.interp1d(peak_indice_approximations, peak_indice_approximation_values, fill_value='extrapolate')
+    # interpolated_brf = np.zeros(len(brf))
+    # interpolated_brf[peak_indice_approximations] = peak_indice_approximation_values
+    # filtered_peak_brf = interp_model(np.arange(0, len(brf), 1))
+    # peak_indices = ss.find_peaks(filtered_peak_brf)[0]
+
+    # #find average distance between peaks
+    # for i in range(len(peak_indices)-1):
+    #     avg_dist_bt_peaks += peak_indices[i+1] - peak_indices[i]
+    # avg_dist_bt_peaks /= (len(peak_indices)-1)
+    # print(avg_dist_bt_peaks)
+    # #remove false positives between peaks
+    # while not_finished:
+    #     # print(len(peak_indices)-1)
+    #     for i in range(len(peak_indices)-1):
+    #         diff = peak_indices[i+1]-peak_indices[i]
+    #         # print(diff)
+    #         if diff < avg_dist_bt_peaks:
+    #             index = np.where(peak_indices == peak_indices[i+1])
+    #             peak_indices = np.delete(peak_indices, index[0])
+    #             # peak_indices.remove(peak_indices[i+1])
+    #             break
+    #         if i == (len(peak_indices)-2):
+    #             not_finished = False
+
+    peak_indices = ss.find_peaks(brf, distance = 60)[0]
+
     peak_values = brf[peak_indices]
-    # peak_values = brf[peak_indice_approximations]
     plt.plot(brf)
-    # plt.plot(peak_indices, peak_values, 'x')
-    plt.plot(peak_indice_approximations, peak_values, 'x')
+    plt.plot(peak_indices, peak_values, 'x')
+    # plt.plot(filtered_peak_brf)
     plt.show()
     #found peaks; now get cycles and do stuff with them
 
