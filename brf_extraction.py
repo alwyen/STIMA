@@ -125,13 +125,22 @@ def pearson_coeff_moving(brf_1, brf_2):
     r, p = pearsonr(brf_1, brf_2)
     print(f"Scipy computed Pearson r: {r} and p-value: {p}")
 
+#using a cheesy method to find the peaks
 def average_periods(brf):
     # peak_indices = ss.find_peaks(brf)[0]
-    peak_indices = ss.find_peaks_cwt(brf, np.arange(1, 70))
+    half_window_size = 10
+    peak_indices = []
+    peak_indice_approximations = ss.find_peaks_cwt(brf, np.arange(1, 40)) #need to know approximate period distance; maybe a problem
+    for indice in peak_indice_approximations:
+        print(indice)
+        peak_crop = brf[(indice-half_window_size):(indice+half_window_size)]
+        peak_indice = np.where(peak_crop == np.amax(peak_crop)) + indice - half_window_size
+        peak_indices.append(peak_indice[0][0]) #don't know why it needs to be [0][0]
     peak_values = brf[peak_indices]
     plt.plot(brf)
     plt.plot(peak_indices, peak_values, 'x')
     plt.show()
+    #found peaks; now get cycles and do stuff with them
 
 def compare_brfs_same_bulb(bulb_path, savgov_window):
     bulb_path_1 = bulb_path + '_0'
