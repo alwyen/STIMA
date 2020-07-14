@@ -125,6 +125,14 @@ def pearson_coeff_moving(brf_1, brf_2):
     r, p = pearsonr(brf_1, brf_2)
     print(f"Scipy computed Pearson r: {r} and p-value: {p}")
 
+def average_periods(brf):
+    # peak_indices = ss.find_peaks(brf)[0]
+    peak_indices = ss.find_peaks_cwt(brf, np.arange(1, 70))
+    peak_values = brf[peak_indices]
+    plt.plot(brf)
+    plt.plot(peak_indices, peak_values, 'x')
+    plt.show()
+
 def compare_brfs_same_bulb(bulb_path, savgov_window):
     bulb_path_1 = bulb_path + '_0'
     bulb_path_2 = bulb_path + '_1'
@@ -136,6 +144,8 @@ def compare_brfs_same_bulb(bulb_path, savgov_window):
     smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
     # smoothed_brf_1 = brf_1
     # smoothed_brf_2 = brf_2
+
+    average_periods(smoothed_brf_1)
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
     show_two_brfs(aligned_brf_1, aligned_brf_2)
@@ -179,7 +189,6 @@ def compare_different_sensitivity_brfs(brf_1, brf_2):
     normalized_brf_2 = normalize_brf(smoothed_brf_2)
     aligned_brf_1, aligned_brf_2 = align_brfs(normalized_brf_1, normalized_brf_2)
     show_two_brfs(aligned_brf_1, aligned_brf_2)
-
 
 if __name__ == '__main__':
     #I think you need to go back to filtering - losing information in signal?
