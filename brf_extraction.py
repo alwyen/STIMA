@@ -130,15 +130,22 @@ def average_periods(brf):
     # peak_indices = ss.find_peaks(brf)[0]
     half_window_size = 10
     peak_indices = []
-    peak_indice_approximations = ss.find_peaks_cwt(brf, np.arange(1, 40)) #need to know approximate period distance; maybe a problem
-    for indice in peak_indice_approximations:
-        print(indice)
-        peak_crop = brf[(indice-half_window_size):(indice+half_window_size)]
-        peak_indice = np.where(peak_crop == np.amax(peak_crop)) + indice - half_window_size
-        peak_indices.append(peak_indice[0][0]) #don't know why it needs to be [0][0]
+    cycle_list = []
+    peak_indice_approximations = ss.find_peaks(brf)[0] #need to know approximate period distance; maybe a problem
+    peak_indice_approximation_values = brf[peak_indice_approximations]
+    interpolated = interpolate.interp1d(peak_indice_approximations, peak_indice_approximation_values, fill_value= 'extrapolate')
+    peak_indices = ss.find_peaks(peak_indice_approximations)[0]
+    # for indice in peak_indice_approximations:
+    #     if indice-half_window_size < 0: continue
+    #     elif indice+half_window_size > len(brf): continue
+    #     peak_crop = brf[(indice-half_window_size):(indice+half_window_size)]
+    #     peak_indice = np.where(peak_crop == np.amax(peak_crop)) + indice - half_window_size
+    #     peak_indices.append(peak_indice[0][0]) #don't know why it needs to be [0][0]
     peak_values = brf[peak_indices]
+    # peak_values = brf[peak_indice_approximations]
     plt.plot(brf)
-    plt.plot(peak_indices, peak_values, 'x')
+    # plt.plot(peak_indices, peak_values, 'x')
+    plt.plot(peak_indice_approximations, peak_values, 'x')
     plt.show()
     #found peaks; now get cycles and do stuff with them
 
@@ -201,14 +208,12 @@ def compare_different_sensitivity_brfs(brf_1, brf_2):
 
 if __name__ == '__main__':
     #I think you need to go back to filtering - losing information in signal?
-    compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
+    # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
     window_size = 61
-    for window_size in range(31, 81, 2):
-        print(window_size)
-        ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
-        # maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
-        # ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
-        # philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
+    ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
+    maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
+    ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
+    philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
 
     cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
     incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
