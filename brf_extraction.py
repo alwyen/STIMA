@@ -288,12 +288,12 @@ if __name__ == '__main__':
     #     maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, path_3,  window_size, x)
     #     sylvania_cfl = compare_brfs_same_bulb(sylvania_CFL_13w, path_3, window_size, x)
 
-    # cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
-    # incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
-    # cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
-    # cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
-    # cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
-    # cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
+    cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
+    incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
+    cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
+    cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
+    cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
+    cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
 
     # #plots below
     # plt.title('Cross-Correlation Graphs')
