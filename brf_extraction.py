@@ -127,7 +127,17 @@ def pearson_coeff_moving(brf_1, brf_2):
     print(f"Scipy computed Pearson r: {r} and p-value: {p}")
 
 #using a cheesy method to find the peaks
-def average_periods(brf):
+def average_periods(brf, avg_window):
+    min_cycle_len = 9999
+    cycle_list = []
+    cycle_len_list = []
+    aligned_cycle_list = []
+    cycle_avg = 0
+
+    '''
+    filtering for peaks doesn't entirely work..
+    '''
+
     # avg_dist_bt_peaks = 0
     # not_finished = True
 
@@ -160,15 +170,31 @@ def average_periods(brf):
     #             not_finished = False
 
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
+    # peak_values = brf[peak_indices]
 
-    peak_values = brf[peak_indices]
-    plt.plot(brf)
-    plt.plot(peak_indices, peak_values, 'x')
-    # plt.plot(filtered_peak_brf)
+    for i in range(len(peak_indices)-1):
+        cycle = brf[peak_indices[i]:peak_indices[i+1]]
+        cycle_list.append(brf[peak_indices[i]:peak_indices[i+1]])
+
+    aligned_cycle_list.append(cycle_list[0])
+    cycle_len_list.append(len(cycle_list[0]))
+
+    for i in range(len(cycle_list)-1):
+        aligned_brf_1, aligned_brf_2 = align_brfs(cycle_list[i], cycle_list[i+1])
+        aligned_cycle_list.append(aligned_brf_2)
+        cycle_len_list.append(len(aligned_brf_2))
+
+    sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list),), key = lambda x: x[0], reverse = True)
+    min_cycle_len = sorted_max_cycle_len[avg_window][0] #gets avg_window'th smallest cycle length
+
+    for i in range(avg_window):
+        cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
+    cycle_avg /= min_cycle_len
+    plt.plot(cycle_avg)
     plt.show()
-    #found peaks; now get cycles and do stuff with them
+    
 
-def compare_brfs_same_bulb(bulb_path, savgov_window):
+def compare_brfs_same_bulb(bulb_path, savgov_window, avg_window):
     bulb_path_1 = bulb_path + '_0'
     bulb_path_2 = bulb_path + '_1'
 
@@ -180,10 +206,10 @@ def compare_brfs_same_bulb(bulb_path, savgov_window):
     # smoothed_brf_1 = brf_1
     # smoothed_brf_2 = brf_2
 
-    average_periods(smoothed_brf_1)
+    average_periods(smoothed_brf_1, avg_window)
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
-    show_two_brfs(aligned_brf_1, aligned_brf_2)
+    # show_two_brfs(aligned_brf_1, aligned_brf_2)
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
@@ -229,17 +255,19 @@ if __name__ == '__main__':
     #I think you need to go back to filtering - losing information in signal?
     # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
     window_size = 61
-    ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size)
-    maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size)
-    ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size)
-    philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size)
+    for x in range(5, 21, 1):
+        print(f'Average_Window Size: {x}')
+        ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, window_size, x)
+        maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, window_size, x)
+        ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, window_size, x)
+        philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, window_size, x)
 
-    cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
-    incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
-    cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
-    cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
-    cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
-    cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
+    # cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
+    # incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
+    # cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
+    # cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
+    # cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
+    # cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
 
     # #plots below
     # plt.title('Cross-Correlation Graphs')
