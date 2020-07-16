@@ -292,6 +292,8 @@ if __name__ == '__main__':
     # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
     window_size = 61
     avg_window = 10
+    pcoeff_list = []
+    pcoeff_name_list = []
     
     ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
     maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
@@ -299,43 +301,71 @@ if __name__ == '__main__':
     ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
     philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
 
+    #this is crazy
     ecosmart_ecosmart_pcoeff = pearson_coeff(ecosmart_avg_1, ecosmart_avg_2)
+    pcoeff_list.append(ecosmart_ecosmart_pcoeff)
+    pcoeff_name_list.append('ecosmart_ecosmart')
+
     maxlite_maxlite_pcoeff = pearson_coeff(maxlite_avg_1, maxlite_avg_2)
+    pcoeff_list.append(maxlite_maxlite_pcoeff)
+    pcoeff_name_list.append('maxlite_maxlite')
+
     sylvania_sylvania_pcoeff = pearson_coeff(sylvania_avg_1, sylvania_avg_2)
+    pcoeff_list.append(sylvania_sylvania_pcoeff)
+    pcoeff_name_list.append('sylvania_sylvania')
+
     ge_ge_pcoeff = pearson_coeff(ge_avg_1, ge_avg_2)
+    pcoeff_list.append(ge_ge_pcoeff)
+    pcoeff_name_list.append('ge_ge')
+
     philips_philips_pcoeff = pearson_coeff(philips_avg_1, philips_avg_2)
+    pcoeff_list.append(philips_philips_pcoeff)
+    pcoeff_name_list.append('philips_philips')
+
+    ecosmart_maxlite_pcoeff = pearson_coeff(ecosmart_avg_1, maxlite_avg_1)
+    pcoeff_list.append(ecosmart_maxlite_pcoeff)
+    pcoeff_name_list.append('ecosmart_maxlite')
+
+    ecosmart_sylvania_pcoeff = pearson_coeff(ecosmart_avg_1, sylvania_avg_1)
+    pcoeff_list.append(ecosmart_sylvania_pcoeff)
+    pcoeff_name_list.append('ecosmart_sylvania')
+
+    maxlite_sylvania_pcoeff = pearson_coeff(maxlite_avg_1, sylvania_avg_1)
+    pcoeff_list.append(maxlite_sylvania_pcoeff)
+    pcoeff_name_list.append('maxlite_sylvania')
 
     ecosmart_ge_pcoeff = pearson_coeff(ecosmart_avg_1, ge_avg_1)
+    pcoeff_list.append(ecosmart_ge_pcoeff)
+    pcoeff_name_list.append('ecosmart_ge')
+
     ecosmart_philips_pcoeff = pearson_coeff(ecosmart_avg_1, philips_avg_1)
+    pcoeff_list.append(ecosmart_philips_pcoeff)
+    pcoeff_name_list.append('ecosmart_philips')
 
     maxlite_ge_pcoeff = pearson_coeff(maxlite_avg_1, ge_avg_1)
+    pcoeff_list.append(maxlite_ge_pcoeff)
+    pcoeff_name_list.append('maxlite_ge')
+    
     maxlite_philips_pcoeff = pearson_coeff(maxlite_avg_1, philips_avg_1)
+    pcoeff_list.append(maxlite_philips_pcoeff)
+    pcoeff_name_list.append('maxlite_philips')
 
     sylvania_ge_pcoeff = pearson_coeff(sylvania_avg_1, ge_avg_1)
+    pcoeff_list.append(sylvania_ge_pcoeff)
+    pcoeff_name_list.append('sylvania_ge')
+
     sylvania_philips_pcoeff = pearson_coeff(sylvania_avg_1, philips_avg_1)
+    pcoeff_list.append(sylvania_philips_pcoeff)
+    pcoeff_name_list.append('sylvania_philips')
 
     ge_philips_pcoeff = pearson_coeff(ge_avg_1, philips_avg_1)
-
-    print(ecosmart_ecosmart_pcoeff)
-    print(maxlite_maxlite_pcoeff)
-    print(sylvania_sylvania_pcoeff)
-    print(ge_ge_pcoeff)
-    print(philips_philips_pcoeff)
-
-    print(ecosmart_ge_pcoeff)
-    print(ecosmart_philips_pcoeff)
-
-    print(maxlite_ge_pcoeff)
-    print(maxlite_philips_pcoeff)
-
-    print(sylvania_ge_pcoeff)
-    print(sylvania_philips_pcoeff)
-
-    #lmfao
-    pcoeff_list = [ecosmart_ecosmart_pcoeff, maxlite_maxlite_pcoeff, sylvania_sylvania_pcoeff, ge_ge_pcoeff, philips_philips_pcoeff, ecosmart_ge_pcoeff, ecosmart_ge_pcoeff, maxlite_ge_pcoeff, maxlite_philips_pcoeff, sylvania_ge_pcoeff, sylvania_philips_pcoeff, ge_philips_pcoeff]
-    pcoeff_name_list = ['ecosmart_ecosmart', 'maxlite_maxlite', 'sylvania_sylvania', 'ge_ge', 'philips_philips', 'ecosmart_ge', 'ecosmart_ge', 'maxlite_ge', 'maxlite_philips', 'sylvania_ge', 'sylvania_philips', 'ge_philips']
+    pcoeff_list.append(ge_philips_pcoeff)
+    pcoeff_name_list.append('ge_philips')
 
     pcoeff_list_sorted = sorted(list(zip(pcoeff_list,pcoeff_name_list),), key = lambda x: x[0])
+
+    for comparison in pcoeff_list_sorted:
+        print(f'{comparison[1]}: {comparison[0]}')
 
     x = np.arange(len(pcoeff_list_sorted))
     for comparison in pcoeff_list_sorted:
