@@ -294,6 +294,7 @@ if __name__ == '__main__':
     avg_window = 10
     pcoeff_list = []
     pcoeff_name_list = []
+    pcoeff_heatmap = []
     
     ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
     maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
@@ -301,86 +302,132 @@ if __name__ == '__main__':
     ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
     philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
 
-    #this is crazy
-    ecosmart_ecosmart_pcoeff = pearson_coeff(ecosmart_avg_1, ecosmart_avg_2)
-    pcoeff_list.append(ecosmart_ecosmart_pcoeff)
-    pcoeff_name_list.append('ecosmart(CFL)\necosmart(CFL)')
-
-    maxlite_maxlite_pcoeff = pearson_coeff(maxlite_avg_1, maxlite_avg_2)
-    pcoeff_list.append(maxlite_maxlite_pcoeff)
-    pcoeff_name_list.append('maxlite(CFL)\nmaxlite(CFL)')
-
-    sylvania_sylvania_pcoeff = pearson_coeff(sylvania_avg_1, sylvania_avg_2)
-    pcoeff_list.append(sylvania_sylvania_pcoeff)
-    pcoeff_name_list.append('sylvania(CFL)\nsylvania(CFL)')
-
-    ge_ge_pcoeff = pearson_coeff(ge_avg_1, ge_avg_2)
-    pcoeff_list.append(ge_ge_pcoeff)
-    pcoeff_name_list.append('ge(Inc)\nge(Inc')
-
-    philips_philips_pcoeff = pearson_coeff(philips_avg_1, philips_avg_2)
-    pcoeff_list.append(philips_philips_pcoeff)
-    pcoeff_name_list.append('philips(Inc)\nphilips(Inc)')
-
-    ecosmart_maxlite_pcoeff = pearson_coeff(ecosmart_avg_1, maxlite_avg_1)
-    pcoeff_list.append(ecosmart_maxlite_pcoeff)
-    pcoeff_name_list.append('ecosmart(CFL)\nmaxlite(CFL)')
-
-    ecosmart_sylvania_pcoeff = pearson_coeff(ecosmart_avg_1, sylvania_avg_1)
-    pcoeff_list.append(ecosmart_sylvania_pcoeff)
-    pcoeff_name_list.append('ecosmart(CFL)\nsylvania(CFL)')
-
-    maxlite_sylvania_pcoeff = pearson_coeff(maxlite_avg_1, sylvania_avg_1)
-    pcoeff_list.append(maxlite_sylvania_pcoeff)
-    pcoeff_name_list.append('maxlite(CFL)\nsylvania(CFL)')
-
-    ecosmart_ge_pcoeff = pearson_coeff(ecosmart_avg_1, ge_avg_1)
-    pcoeff_list.append(ecosmart_ge_pcoeff)
-    pcoeff_name_list.append('ecosmart(CFL)\nge(Inc)')
-
-    ecosmart_philips_pcoeff = pearson_coeff(ecosmart_avg_1, philips_avg_1)
-    pcoeff_list.append(ecosmart_philips_pcoeff)
-    pcoeff_name_list.append('ecosmart(CFL)\nphilips(Inc')
-
-    maxlite_ge_pcoeff = pearson_coeff(maxlite_avg_1, ge_avg_1)
-    pcoeff_list.append(maxlite_ge_pcoeff)
-    pcoeff_name_list.append('maxlite(CFL)\nge(Inc)')
+    brf_list_1 = [ecosmart_avg_1, maxlite_avg_1, sylvania_avg_1, ge_avg_1, philips_avg_1]
+    brf_list_1.reverse() #reversing list_1 to have heatmap going from bottom left to top right
+    brf_list_2 = [ecosmart_avg_2, maxlite_avg_2, sylvania_avg_2, ge_avg_2, philips_avg_2]
     
-    maxlite_philips_pcoeff = pearson_coeff(maxlite_avg_1, philips_avg_1)
-    pcoeff_list.append(maxlite_philips_pcoeff)
-    pcoeff_name_list.append('maxlite(CFL)\nphilips(Inc)')
+    brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
+    brf_name_list_1.reverse()
+    brf_name_list_2 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
 
-    sylvania_ge_pcoeff = pearson_coeff(sylvania_avg_1, ge_avg_1)
-    pcoeff_list.append(sylvania_ge_pcoeff)
-    pcoeff_name_list.append('sylvania(CFL)\nge(Inc)')
+    for brf_1 in brf_list_1:
+        for brf_2 in brf_list_2:
+            pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
+        pcoeff_heatmap.append(pcoeff_list)
+        pcoeff_list = []
+    
+    fig, ax = plt.subplots()
+    pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
+    ax.set_xticks(np.arange(len(brf_list_1)))
+    ax.set_yticks(np.arange(len(brf_list_2)))
+    ax.set_xticklabels(brf_name_list_2)
+    ax.set_yticklabels(brf_name_list_1)
+    ax.set_title("Pearson Correlation Heat Map")
 
-    sylvania_philips_pcoeff = pearson_coeff(sylvania_avg_1, philips_avg_1)
-    pcoeff_list.append(sylvania_philips_pcoeff)
-    pcoeff_name_list.append('sylvania(CFL)\nphilips(Inc)')
+    for i in range(len(pcoeff_heatmap)):
+        for j in range(len(pcoeff_heatmap[i])):
+            text = ax.text(j, i, pcoeff_heatmap[i][j],
+                        ha="center", va="center", color="black")
 
-    ge_philips_pcoeff = pearson_coeff(ge_avg_1, philips_avg_1)
-    pcoeff_list.append(ge_philips_pcoeff)
-    pcoeff_name_list.append('ge(Inc)\nphilips(Inc)')
-
-    pcoeff_list_sorted = sorted(list(zip(pcoeff_list,pcoeff_name_list),), key = lambda x: x[0])
-    pcoeff_list, pcoeff_name_list = list(zip(*pcoeff_list_sorted))
-    print(pcoeff_name_list)
-
-    x = np.arange(len(pcoeff_list_sorted))
-
-    # for comparison in pcoeff_list_sorted:
-    #     print(f'{comparison[1]}: {comparison[0]}')
-    #     plt.bar(x, comparison[0], label = comparison[1])
+    colorbar = fig.colorbar(pcoeff_heatplot)
+    plt.xticks(rotation = 45)
+    fig.tight_layout(pad = 4.0)
+    plt.show()
 
     # fig = plt.figure()
-    # fig.tight_layout(pad = 4.0)
-    plt.bar(x, pcoeff_list)
-    plt.title('Correlation Comparisons Between BRFs')
-    plt.ylabel('Pearson Correlation Coefficient')
-    plt.xticks(x, pcoeff_name_list, rotation = 60, fontsize = 7)
-    plt.ylim(pcoeff_list[0]-0.05, 1)
-    plt.tight_layout()
-    plt.show()
+    # colorbar = fig.colorbar(plt)
+    # plt.imshow(pcoeff_heatmap, cmap = 'Greens')
+    # ticks = np.arange(len(brf_list_1))
+    # plt.xticks(ticks, brf_name_list, rotation = 45)
+    # plt.yticks(ticks, brf_name_list)
+    # plt.tight_layout()
+    # plt.show()
+
+##############################################################################################################
+
+    # #this is crazy
+    # ecosmart_ecosmart_pcoeff = pearson_coeff(ecosmart_avg_1, ecosmart_avg_2)
+    # pcoeff_list.append(ecosmart_ecosmart_pcoeff)
+    # pcoeff_name_list.append('ecosmart(CFL)\necosmart(CFL)')
+
+    # maxlite_maxlite_pcoeff = pearson_coeff(maxlite_avg_1, maxlite_avg_2)
+    # pcoeff_list.append(maxlite_maxlite_pcoeff)
+    # pcoeff_name_list.append('maxlite(CFL)\nmaxlite(CFL)')
+
+    # sylvania_sylvania_pcoeff = pearson_coeff(sylvania_avg_1, sylvania_avg_2)
+    # pcoeff_list.append(sylvania_sylvania_pcoeff)
+    # pcoeff_name_list.append('sylvania(CFL)\nsylvania(CFL)')
+
+    # ge_ge_pcoeff = pearson_coeff(ge_avg_1, ge_avg_2)
+    # pcoeff_list.append(ge_ge_pcoeff)
+    # pcoeff_name_list.append('ge(Inc)\nge(Inc')
+
+    # philips_philips_pcoeff = pearson_coeff(philips_avg_1, philips_avg_2)
+    # pcoeff_list.append(philips_philips_pcoeff)
+    # pcoeff_name_list.append('philips(Inc)\nphilips(Inc)')
+
+    # ecosmart_maxlite_pcoeff = pearson_coeff(ecosmart_avg_1, maxlite_avg_1)
+    # pcoeff_list.append(ecosmart_maxlite_pcoeff)
+    # pcoeff_name_list.append('ecosmart(CFL)\nmaxlite(CFL)')
+
+    # ecosmart_sylvania_pcoeff = pearson_coeff(ecosmart_avg_1, sylvania_avg_1)
+    # pcoeff_list.append(ecosmart_sylvania_pcoeff)
+    # pcoeff_name_list.append('ecosmart(CFL)\nsylvania(CFL)')
+
+    # maxlite_sylvania_pcoeff = pearson_coeff(maxlite_avg_1, sylvania_avg_1)
+    # pcoeff_list.append(maxlite_sylvania_pcoeff)
+    # pcoeff_name_list.append('maxlite(CFL)\nsylvania(CFL)')
+
+    # ecosmart_ge_pcoeff = pearson_coeff(ecosmart_avg_1, ge_avg_1)
+    # pcoeff_list.append(ecosmart_ge_pcoeff)
+    # pcoeff_name_list.append('ecosmart(CFL)\nge(Inc)')
+
+    # ecosmart_philips_pcoeff = pearson_coeff(ecosmart_avg_1, philips_avg_1)
+    # pcoeff_list.append(ecosmart_philips_pcoeff)
+    # pcoeff_name_list.append('ecosmart(CFL)\nphilips(Inc')
+
+    # maxlite_ge_pcoeff = pearson_coeff(maxlite_avg_1, ge_avg_1)
+    # pcoeff_list.append(maxlite_ge_pcoeff)
+    # pcoeff_name_list.append('maxlite(CFL)\nge(Inc)')
+    
+    # maxlite_philips_pcoeff = pearson_coeff(maxlite_avg_1, philips_avg_1)
+    # pcoeff_list.append(maxlite_philips_pcoeff)
+    # pcoeff_name_list.append('maxlite(CFL)\nphilips(Inc)')
+
+    # sylvania_ge_pcoeff = pearson_coeff(sylvania_avg_1, ge_avg_1)
+    # pcoeff_list.append(sylvania_ge_pcoeff)
+    # pcoeff_name_list.append('sylvania(CFL)\nge(Inc)')
+
+    # sylvania_philips_pcoeff = pearson_coeff(sylvania_avg_1, philips_avg_1)
+    # pcoeff_list.append(sylvania_philips_pcoeff)
+    # pcoeff_name_list.append('sylvania(CFL)\nphilips(Inc)')
+
+    # ge_philips_pcoeff = pearson_coeff(ge_avg_1, philips_avg_1)
+    # pcoeff_list.append(ge_philips_pcoeff)
+    # pcoeff_name_list.append('ge(Inc)\nphilips(Inc)')
+
+    # pcoeff_list_sorted = sorted(list(zip(pcoeff_list,pcoeff_name_list),), key = lambda x: x[0])
+    # pcoeff_list, pcoeff_name_list = list(zip(*pcoeff_list_sorted))
+    # print(pcoeff_name_list)
+
+    # x = np.arange(len(pcoeff_list_sorted))
+
+    # # for comparison in pcoeff_list_sorted:
+    # #     print(f'{comparison[1]}: {comparison[0]}')
+    # #     plt.bar(x, comparison[0], label = comparison[1])
+
+    # # fig = plt.figure()
+    # # fig.tight_layout(pad = 4.0)
+    # plt.bar(x, pcoeff_list)
+    # plt.title('Correlation Comparisons Between BRFs')
+    # plt.ylabel('Pearson Correlation Coefficient')
+    # plt.xticks(x, pcoeff_name_list, rotation = 60, fontsize = 7)
+    # plt.ylim(pcoeff_list[0]-0.05, 1)
+    # plt.tight_layout()
+    # plt.show()
+
+##############################################################################################################
+
 
     # fig, ax = plt.subplots(1)
     # fig.tight_layout(pad = 4.0)
