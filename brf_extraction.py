@@ -123,17 +123,19 @@ def pearson_coeff(brf_1, brf_2):
     # overall_pearson_r = df.corr(method = 'pearson').iloc[0,1]
     # print(f"Pandas computed Pearson r: {overall_pearson_r}")
     # # out: Pandas computed Pearson r: 0.2058774513561943
-    print(len(brf_1))
-    print(len(brf_2))
+    # print(len(brf_1))
+    # print(len(brf_2))
+
 
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
     elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
 
-    print(len(brf_1))
-    print(len(brf_2))
+    # print(len(brf_1))
+    # print(len(brf_2))
 
     r, p = pearsonr(brf_1, brf_2)
-    print(f"Scipy computed Pearson r: {r} and p-value: {p}")
+    # print(f"Scipy computed Pearson r: {r} and p-value: {p}")
+    return r
 
 #using a cheesy method to find the peaks
 def average_periods(brf, avg_window):
@@ -199,11 +201,28 @@ def average_periods(brf, avg_window):
     for i in range(avg_window):
         cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
     cycle_avg /= min_cycle_len
-    plt.plot(cycle_avg)
-    plt.show()
+    # plt.plot(cycle_avg)
+    # plt.show()
 
     return cycle_avg
-    
+
+#THIS CODE IS REALLY REALLY MESSY
+def return_average_periods(bulb_path, path, savgov_window, avg_window):
+    bulb_path_1 = path + '\\' + bulb_path + '_0'
+    bulb_path_2 = path + '\\' + bulb_path + '_1'
+
+    brf_1 = process_extract_brf(bulb_path_1)
+    brf_2 = process_extract_brf(bulb_path_2)
+
+    smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
+    smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
+    # smoothed_brf_1 = brf_1
+    # smoothed_brf_2 = brf_2
+
+    averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
+    averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
+
+    return averaged_brf_1, averaged_brf_2
 
 def compare_brfs_same_bulb(bulb_path, path, savgov_window, avg_window):
     bulb_path_1 = path + '\\' + bulb_path + '_0'
@@ -220,7 +239,7 @@ def compare_brfs_same_bulb(bulb_path, path, savgov_window, avg_window):
     averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
     averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
 
-    pearson_coeff(averaged_brf_1, averaged_brf_2)
+    r = pearson_coeff(averaged_brf_1, averaged_brf_2)
 
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
     # show_two_brfs(aligned_brf_1, aligned_brf_2)
@@ -228,11 +247,11 @@ def compare_brfs_same_bulb(bulb_path, path, savgov_window, avg_window):
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
-    return correlate
+    return correlate, r
 
-def compare_brfs(bulb_1, bulb_2, savgov_window):
-    bulb_1 += '_0'
-    bulb_2 += '_1'
+def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window, avg_window):
+    bulb_1 = path_1 + '\\' + bulb_1 + '_0'
+    bulb_2 = path_2 + '\\' + bulb_2 + '_0'
     brf_rolling_1 = process_extract_brf(bulb_1)
     brf_rolling_2 = process_extract_brf(bulb_2)
 
@@ -244,14 +263,17 @@ def compare_brfs(bulb_1, bulb_2, savgov_window):
     # smoothed_brf_1 = brf_rolling_1
     # smoothed_brf_2 = brf_rolling_2
 
-    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
+    averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
+    averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
 
-    show_two_brfs(aligned_brf_1, aligned_brf_2)
+    r = pearson_coeff(averaged_brf_1, averaged_brf_2)
+
+    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate_1 = ss.correlate(cropped_brf_1, aligned_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
-    return correlate_1
+    return correlate_1, r
 
 def compare_different_sensitivity_brfs(brf_1, brf_2):
     img_path_1 = path_1 + '\\' + brf_1 + '_rolling.jpg'
@@ -271,29 +293,54 @@ if __name__ == '__main__':
     window_size = 61
     avg_window = 10
     
-    ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, path_3, window_size, avg_window)
-    maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, path_3,  window_size, avg_window)
-    sylvania_cfl = compare_brfs_same_bulb(sylvania_CFL_13w, path_3, window_size, avg_window)
-    ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, path_2, window_size, avg_window)
-    philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, path_2, window_size, avg_window)
+    ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
+    maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
+    sylvania_avg_1, sylvania_avg_2 = return_average_periods(sylvania_CFL_13w, path_3, window_size, avg_window)
+    ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
+    philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
 
-    # for x in range(5, 21, 1):
-    #     print(f'Average_Window Size: {x}')
-    #     # ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, path_2, window_size, x)
-    #     # maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, path_2,  window_size, x)
-    #     # ge_incandescent = compare_brfs_same_bulb(ge_incandescant_25w, path_2, window_size, x)
-    #     # philips_incandescent = compare_brfs_same_bulb(philips_incandescent_40w, path_2, window_size, x)
-        
-    #     ecosmart_cfl = compare_brfs_same_bulb(ecosmart_CFL_14w, path_3, window_size, x)
-    #     maxlite_cfl = compare_brfs_same_bulb(maxlite_CFL_15w, path_3,  window_size, x)
-    #     sylvania_cfl = compare_brfs_same_bulb(sylvania_CFL_13w, path_3, window_size, x)
+    ecosmart_ecosmart_pcoeff = pearson_coeff(ecosmart_avg_1, ecosmart_avg_2)
+    maxlite_maxlite_pcoeff = pearson_coeff(maxlite_avg_1, maxlite_avg_2)
+    sylvania_sylvania_pcoeff = pearson_coeff(sylvania_avg_1, sylvania_avg_2)
+    ge_ge_pcoeff = pearson_coeff(ge_avg_1, ge_avg_2)
+    philips_philips_pcoeff = pearson_coeff(philips_avg_1, philips_avg_2)
 
-    cfl_cfl = compare_brfs(ecosmart_CFL_14w, maxlite_CFL_15w, window_size)
-    incandescent_incandescent = compare_brfs(ge_incandescant_25w, philips_incandescent_40w, window_size)
-    cfl_incandescent_1 = compare_brfs(ecosmart_CFL_14w, ge_incandescant_25w, window_size)
-    cfl_incandescent_2 = compare_brfs(ecosmart_CFL_14w, philips_incandescent_40w, window_size)
-    cfl_incandescent_3 = compare_brfs(maxlite_CFL_15w, ge_incandescant_25w, window_size)
-    cfl_incandescent_4 = compare_brfs(maxlite_CFL_15w, philips_incandescent_40w, window_size)
+    ecosmart_ge_pcoeff = pearson_coeff(ecosmart_avg_1, ge_avg_1)
+    ecosmart_philips_pcoeff = pearson_coeff(ecosmart_avg_1, philips_avg_1)
+
+    maxlite_ge_pcoeff = pearson_coeff(maxlite_avg_1, ge_avg_1)
+    maxlite_philips_pcoeff = pearson_coeff(maxlite_avg_1, philips_avg_1)
+
+    sylvania_ge_pcoeff = pearson_coeff(sylvania_avg_1, ge_avg_1)
+    sylvania_philips_pcoeff = pearson_coeff(sylvania_avg_1, philips_avg_1)
+
+    ge_philips_pcoeff = pearson_coeff(ge_avg_1, philips_avg_1)
+
+    print(ecosmart_ecosmart_pcoeff)
+    print(maxlite_maxlite_pcoeff)
+    print(sylvania_sylvania_pcoeff)
+    print(ge_ge_pcoeff)
+    print(philips_philips_pcoeff)
+
+    print(ecosmart_ge_pcoeff)
+    print(ecosmart_philips_pcoeff)
+
+    print(maxlite_ge_pcoeff)
+    print(maxlite_philips_pcoeff)
+
+    print(sylvania_ge_pcoeff)
+    print(sylvania_philips_pcoeff)
+
+    #lmfao
+    pcoeff_list = [ecosmart_ecosmart_pcoeff, maxlite_maxlite_pcoeff, sylvania_sylvania_pcoeff, ge_ge_pcoeff, philips_philips_pcoeff, ecosmart_ge_pcoeff, ecosmart_ge_pcoeff, maxlite_ge_pcoeff, maxlite_philips_pcoeff, sylvania_ge_pcoeff, sylvania_philips_pcoeff, ge_philips_pcoeff]
+    pcoeff_name_list = ['ecosmart_ecosmart', 'maxlite_maxlite', 'sylvania_sylvania', 'ge_ge', 'philips_philips', 'ecosmart_ge', 'ecosmart_ge', 'maxlite_ge', 'maxlite_philips', 'sylvania_ge', 'sylvania_philips', 'ge_philips']
+
+    pcoeff_list_sorted = sorted(list(zip(pcoeff_list,pcoeff_name_list),), key = lambda x: x[0])
+
+    x = np.arange(len(pcoeff_list_sorted))
+    for comparison in pcoeff_list_sorted:
+        plt.bar(x, comparison[0], label = comparison[1])
+    plt.show()
 
     # #plots below
     # plt.title('Cross-Correlation Graphs')
