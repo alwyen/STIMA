@@ -569,7 +569,7 @@ def heatmap(precision_gain_list):
     surf_heatmap = []
     orb_heatmap = []
 
-    sorted_list = sort_list(gain_precision_list)
+    sorted_list = sort_list(precision_gain_list)
     for element in sorted_list:
         gain_list.append(element[0])
         exp_time_list.append(element[1].replace('ms', ''))
