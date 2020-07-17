@@ -216,15 +216,13 @@ def return_average_periods(bulb_path, path, savgov_window, avg_window):
 
     smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
     smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
-    # smoothed_brf_1 = brf_1
-    # smoothed_brf_2 = brf_2
 
     averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
     averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
 
     return averaged_brf_1, averaged_brf_2
 
-def compare_brfs_same_bulb(bulb_path, path, savgov_window, avg_window):
+def compare_brfs_same_bulb(bulb_path, path, savgov_window):
     bulb_path_1 = path + '\\' + bulb_path + '_0'
     bulb_path_2 = path + '\\' + bulb_path + '_1'
 
@@ -236,20 +234,32 @@ def compare_brfs_same_bulb(bulb_path, path, savgov_window, avg_window):
     # smoothed_brf_1 = brf_1
     # smoothed_brf_2 = brf_2
 
-    averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
-    averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
-
-    r = pearson_coeff(averaged_brf_1, averaged_brf_2)
-
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
     # show_two_brfs(aligned_brf_1, aligned_brf_2)
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
-    return correlate, r
+    return correlate
 
-def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window, avg_window):
+#NEED TO NORMALIZE FIRST
+def compare_averaged_brfs(brf_1, brf_2):
+    brf_1 = normalize_brf(brf_1)
+    brf_2 = normalize_brf(brf_2)
+    # show_plot(brf_1)
+    # show_plot(brf_2)
+
+    if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
+    elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
+
+    # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    correlate = np.correlate(brf_1, brf_2, 'full')/len(brf_1)
+    correlate = np.array(correlate)
+    # show_plot(correlate)
+    peak = np.amax(correlate)
+    return peak
+
+def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window):
     bulb_1 = path_1 + '\\' + bulb_1 + '_0'
     bulb_2 = path_2 + '\\' + bulb_2 + '_0'
     brf_rolling_1 = process_extract_brf(bulb_1)
@@ -263,17 +273,12 @@ def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window, avg_window):
     # smoothed_brf_1 = brf_rolling_1
     # smoothed_brf_2 = brf_rolling_2
 
-    averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
-    averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
-
-    r = pearson_coeff(averaged_brf_1, averaged_brf_2)
-
     aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
 
     cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
     correlate_1 = ss.correlate(cropped_brf_1, aligned_brf_2, mode = 'full')/len(cropped_brf_1)
     correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
-    return correlate_1, r
+    return correlate_1
 
 def compare_different_sensitivity_brfs(brf_1, brf_2):
     img_path_1 = path_1 + '\\' + brf_1 + '_rolling.jpg'
@@ -294,7 +299,11 @@ if __name__ == '__main__':
     avg_window = 10
     pcoeff_list = []
     pcoeff_name_list = []
+    peak_cross_corr_list = []
+    cross_corr_name_list = []
+
     pcoeff_heatmap = []
+    cross_corr_heatmap = []
     
     ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
     maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
@@ -312,24 +321,34 @@ if __name__ == '__main__':
 
     for brf_1 in brf_list_1:
         for brf_2 in brf_list_2:
-            pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-        pcoeff_heatmap.append(pcoeff_list)
-        pcoeff_list = []
+            # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
+            peak_cross_corr_list.append(round(compare_averaged_brfs(brf_1, brf_2), 3))
+        # pcoeff_heatmap.append(pcoeff_list)
+        cross_corr_heatmap.append(peak_cross_corr_list)
+        # pcoeff_list = []
+        peak_cross_corr_list = []
     
     fig, ax = plt.subplots()
-    pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
+    # pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
+    cross_corr_heatplot = ax.imshow(cross_corr_heatmap, cmap = "Blues")
     ax.set_xticks(np.arange(len(brf_list_1)))
     ax.set_yticks(np.arange(len(brf_list_2)))
     ax.set_xticklabels(brf_name_list_2)
     ax.set_yticklabels(brf_name_list_1)
-    ax.set_title("Pearson Correlation Heat Map")
+    # ax.set_title("Pearson Correlation Heat Map")
+    ax.set_title('Averaged Cycle Cross Correlation Heat Map')
 
     for i in range(len(pcoeff_heatmap)):
         for j in range(len(pcoeff_heatmap[i])):
             text = ax.text(j, i, pcoeff_heatmap[i][j],
                         ha="center", va="center", color="black")
 
-    colorbar = fig.colorbar(pcoeff_heatplot)
+    for i in range(len(cross_corr_heatmap)):
+        for j in range(len(cross_corr_heatmap[i])):
+            text = ax.text(j, i, cross_corr_heatmap[i][j],
+                        ha="center", va="center", color="black")
+
+    colorbar = fig.colorbar(cross_corr_heatplot)
     plt.xticks(rotation = 45)
     fig.tight_layout(pad = 4.0)
     plt.show()
