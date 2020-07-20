@@ -23,6 +23,8 @@ ge_incandescant_25w = 'ge_incandescant_25w'
 philips_incandescent_40w = 'philips_incandescent_40w'
 feit_led17p5w = 'feit_led17.5w'
 
+master_brf_list = np.array([ecosmart_CFL_14w, maxlite_CFL_15w, sylvania_CFL_13w, ge_incandescant_25w, philips_incandescent_40w])
+
 height = 576
 width = 1024
 
@@ -132,6 +134,35 @@ def pearson_coeff(brf_1, brf_2):
     r, p = pearsonr(brf_1, brf_2)
     # print(f"Scipy computed Pearson r: {r} and p-value: {p}")
     return r
+
+def extract_brfs_from_list(master_brf_list):
+    brf_list_1 = []
+    brf_list_2 = []
+
+    for bulb in master_brf_list:
+        brf_path_1 = path_3 + '\\' + bulb + '_0_rolling.jpg'
+        brf_path_2 = path_3 + '\\' + bulb + '_1_rolling.jpg'
+
+        img_1 = img_from_path(brf_path_1)
+        img_2 = img_from_path(brf_path_2)
+
+        brf_1 = normalize_brf(brf_extraction(img_1))
+        brf_2 = normalize_brf(brf_extraction(img_2))
+
+        brf_list_1.append(brf_1)
+        brf_list_2.append(brf_2)
+    
+    return brf_list_1, brf_list_2
+
+def smooth_brfs_from_list(brf_list_1, brf_list_2):
+    list_1 = np.copy(brf_list_1)
+    list_2 = np.copy(brf_list_2)
+
+    for i in range(len(list_1)):
+        list_1[i] = ss.savgol_filter(list_1[i], 61, 3) #window, polynomial order
+        list_2[i] = ss.savgol_filter(list_2[i], 61, 3)
+
+    return list_1, list_2
 
 #using a cheesy method to find the peaks
 def average_periods(brf, avg_window):
@@ -287,34 +318,14 @@ def compare_different_sensitivity_brfs(brf_1, brf_2):
     aligned_brf_1, aligned_brf_2 = align_brfs(normalized_brf_1, normalized_brf_2)
     show_two_brfs(aligned_brf_1, aligned_brf_2)
 
-if __name__ == '__main__':
-    #I think you need to go back to filtering - losing information in signal?
-    # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
-    window_size = 61
-    avg_window = 10
-    pcoeff_list = []
-    pcoeff_name_list = []
+#name for list 2 will be reverse of name for list 1
+def correlation_heat_map(brf_list_1, brf_list_2):
     peak_cross_corr_list = []
     cross_corr_name_list = []
-
-    pcoeff_heatmap = []
     cross_corr_heatmap = []
-    
-    ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
-    maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
-    sylvania_avg_1, sylvania_avg_2 = return_average_periods(sylvania_CFL_13w, path_3, window_size, avg_window)
-    ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
-    philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
 
-
-
-    brf_list_1 = [ecosmart_avg_1, maxlite_avg_1, sylvania_avg_1, ge_avg_1, philips_avg_1]
-    brf_list_1.reverse() #reversing list_1 to have heatmap going from bottom left to top right
-    brf_list_2 = [ecosmart_avg_2, maxlite_avg_2, sylvania_avg_2, ge_avg_2, philips_avg_2]
-    
-    brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
-    brf_name_list_1.reverse()
-    brf_name_list_2 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
+    brf_name_list_1 = np.array(master_brf_list)
+    brf_name_list_2 = np.flip(brf_name_list_1)
 
     for brf_1 in brf_list_1:
         for brf_2 in brf_list_2:
@@ -335,11 +346,6 @@ if __name__ == '__main__':
     # ax.set_title("Pearson Correlation Heat Map")
     ax.set_title('Averaged Cycle Cross Correlation Heat Map')
 
-    for i in range(len(pcoeff_heatmap)):
-        for j in range(len(pcoeff_heatmap[i])):
-            text = ax.text(j, i, pcoeff_heatmap[i][j],
-                        ha="center", va="center", color="black")
-
     for i in range(len(cross_corr_heatmap)):
         for j in range(len(cross_corr_heatmap[i])):
             text = ax.text(j, i, cross_corr_heatmap[i][j],
@@ -349,6 +355,75 @@ if __name__ == '__main__':
     plt.xticks(rotation = 45)
     fig.tight_layout(pad = 4.0)
     plt.show()
+
+if __name__ == '__main__':
+    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+
+    correlation_heat_map(brf_list_1, brf_list_2)
+
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+
+    correlation_heat_map(smoothed_list_1, smoothed_list_2)
+
+    # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
+    # brf_name_list_1.reverse()
+    # brf_name_list_2 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
+
+    # #I think you need to go back to filtering - losing information in signal?
+    # # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
+    # window_size = 61
+    # avg_window = 10
+    # pcoeff_list = []
+    # pcoeff_name_list = []
+    # peak_cross_corr_list = []
+    # cross_corr_name_list = []
+
+    # pcoeff_heatmap = []
+    # cross_corr_heatmap = []
+    
+    # ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
+    # maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
+    # sylvania_avg_1, sylvania_avg_2 = return_average_periods(sylvania_CFL_13w, path_3, window_size, avg_window)
+    # ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
+    # philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
+
+    # brf_list_1 = [ecosmart_avg_1, maxlite_avg_1, sylvania_avg_1, ge_avg_1, philips_avg_1]
+    # brf_list_1.reverse() #reversing list_1 to have heatmap going from bottom left to top right
+    # brf_list_2 = [ecosmart_avg_2, maxlite_avg_2, sylvania_avg_2, ge_avg_2, philips_avg_2]
+
+    # for brf_1 in brf_list_1:
+    #     for brf_2 in brf_list_2:
+    #         # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
+    #         peak_cross_corr_list.append(round(compare_averaged_brfs(brf_1, brf_2), 3))
+    #     # pcoeff_heatmap.append(pcoeff_list)
+    #     cross_corr_heatmap.append(peak_cross_corr_list)
+    #     # pcoeff_list = []
+    #     peak_cross_corr_list = []
+    
+    # fig, ax = plt.subplots()
+    # # pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
+    # cross_corr_heatplot = ax.imshow(cross_corr_heatmap, cmap = "Blues")
+    # ax.set_xticks(np.arange(len(brf_list_1)))
+    # ax.set_yticks(np.arange(len(brf_list_2)))
+    # ax.set_xticklabels(brf_name_list_2)
+    # ax.set_yticklabels(brf_name_list_1)
+    # # ax.set_title("Pearson Correlation Heat Map")
+    # ax.set_title('Averaged Cycle Cross Correlation Heat Map')
+
+    # for i in range(len(pcoeff_heatmap)):
+    #     for j in range(len(pcoeff_heatmap[i])):
+    #         text = ax.text(j, i, pcoeff_heatmap[i][j],
+    #                     ha="center", va="center", color="black")
+
+    # for i in range(len(cross_corr_heatmap)):
+    #     for j in range(len(cross_corr_heatmap[i])):
+    #         text = ax.text(j, i, cross_corr_heatmap[i][j],
+    #                     ha="center", va="center", color="black")
+
+    # colorbar = fig.colorbar(cross_corr_heatplot)
+    # plt.xticks(rotation = 45)
+    # fig.tight_layout(pad = 4.0)
+    # plt.show()
 
     # fig = plt.figure()
     # colorbar = fig.colorbar(plt)
