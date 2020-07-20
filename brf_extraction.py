@@ -164,8 +164,31 @@ def smooth_brfs_from_list(brf_list_1, brf_list_2):
 
     return list_1, list_2
 
+#avg_window is the number of cycles I want to average
+def extract_cycles_from_list(brf_list_1, brf_list_2):
+    list_1 = np.copy(brf_list_1)
+    list_2 = np.copy(brf_list_2)
+
+    show_plot(list_1)
+
+    for i in range(len(list_1)):
+        list_1[i] = average_periods(list_1[i], 10)
+        list_2[i] = average_periods(list_2[i], 10)
+
+    return list_1, list_2
+
+def normalize_brf_list(brf_list_1, brf_list_2):
+    list_1 = np.copy(brf_list_1)
+    list_2 = np.copy(brf_list_2)
+
+    for i in range(len(list_1)):
+        list_1[i] = normalize_brf(list_1[i])
+        list_2[i] = normalize_brf(list_2[i])
+
+    return list_1, list_2
+
 #using a cheesy method to find the peaks
-def average_periods(brf, avg_window):
+def average_periods(brf, num_cycles_avgerages):
     min_cycle_len = 9999
     cycle_list = []
     cycle_len_list = []
@@ -212,9 +235,9 @@ def average_periods(brf, avg_window):
 
     for i in range(len(peak_indices)-1):
         cycle = brf[peak_indices[i]:peak_indices[i+1]]
-        cycle_list.append(brf[peak_indices[i]:peak_indices[i+1]])
+        cycle_list.append(cycle)
 
-    aligned_cycle_list.append(cycle_list[0])
+    aligned_cycle_list.append(cycle_list[0]) #append the first cycle in the list
     cycle_len_list.append(len(cycle_list[0]))
 
     for i in range(len(cycle_list)-1):
@@ -223,100 +246,18 @@ def average_periods(brf, avg_window):
         cycle_len_list.append(len(aligned_brf_2))
 
     sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list),), key = lambda x: x[0], reverse = True)
-    min_cycle_len = sorted_max_cycle_len[avg_window][0] #gets avg_window'th smallest cycle length
 
-    for i in range(avg_window):
+    print(sorted_max_cycle_len[0])
+
+    min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets avg_window'th smallest cycle length
+
+    for i in range(num_cycles_avgerages):
         cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
     cycle_avg /= min_cycle_len
     # plt.plot(cycle_avg)
     # plt.show()
 
     return cycle_avg
-
-#THIS CODE IS REALLY REALLY MESSY
-def return_average_periods(bulb_path, path, savgov_window, avg_window):
-    bulb_path_1 = path + '\\' + bulb_path + '_0'
-    bulb_path_2 = path + '\\' + bulb_path + '_1'
-
-    brf_1 = process_extract_brf(bulb_path_1)
-    brf_2 = process_extract_brf(bulb_path_2)
-
-    smoothed_brf_1 = ss.savgol_filter(brf_1, savgov_window, 3)
-    smoothed_brf_2 = ss.savgol_filter(brf_2, savgov_window, 3)
-
-    averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
-    averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
-
-    return averaged_brf_1, averaged_brf_2
-
-def compare_brfs_same_bulb(bulb_path, path, savgov_window):
-    bulb_path_1 = path + '\\' + bulb_path + '_0'
-    bulb_path_2 = path + '\\' + bulb_path + '_1'
-
-    brf_1 = process_extract_brf(bulb_path_1)
-    brf_2 = process_extract_brf(bulb_path_2)
-
-    smoothed_brf_1 = ss.savgol_filter(brf_1, savgov_window, 3)
-    smoothed_brf_2 = ss.savgol_filter(brf_2, savgov_window, 3)
-    # smoothed_brf_1 = brf_1
-    # smoothed_brf_2 = brf_2
-
-    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
-    # show_two_brfs(aligned_brf_1, aligned_brf_2)
-
-    cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
-    correlate = ss.correlate(cropped_brf_1, smoothed_brf_2, mode = 'full')/len(cropped_brf_1)
-    correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
-    return correlate
-
-def compare_averaged_brfs(brf_1, brf_2):
-    brf_1 = normalize_brf(brf_1)
-    brf_2 = normalize_brf(brf_2)
-    # show_plot(brf_1)
-    # show_plot(brf_2)
-
-    if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
-    elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
-
-    # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
-    correlate = np.correlate(brf_1, brf_2, 'full')/len(brf_1)
-    correlate = np.array(correlate)
-    # show_plot(correlate)
-    peak = np.amax(correlate)
-    return peak
-
-def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window):
-    bulb_1 = path_1 + '\\' + bulb_1 + '_0'
-    bulb_2 = path_2 + '\\' + bulb_2 + '_0'
-    brf_rolling_1 = process_extract_brf(bulb_1)
-    brf_rolling_2 = process_extract_brf(bulb_2)
-
-    # brf_rolling_1 = crop_brf(brf_extraction(normalized_1), 0, 500)
-    # brf_rolling_2 = crop_brf(brf_extraction(normalized_2), 0, 500)
-
-    smoothed_brf_1 = ss.savgol_filter(brf_rolling_1, savgov_window, 3)
-    smoothed_brf_2 = ss.savgol_filter(brf_rolling_2, savgov_window, 3)
-    # smoothed_brf_1 = brf_rolling_1
-    # smoothed_brf_2 = brf_rolling_2
-
-    aligned_brf_1, aligned_brf_2 = align_brfs(smoothed_brf_1, smoothed_brf_2)
-
-    cropped_brf_1 = crop_brf(smoothed_brf_1, 0, 250)
-    correlate_1 = ss.correlate(cropped_brf_1, aligned_brf_2, mode = 'full')/len(cropped_brf_1)
-    correlate_1 = crop_brf(correlate_1, len(cropped_brf_1), len(correlate_1) - len(cropped_brf_1))
-    return correlate_1
-
-def compare_different_sensitivity_brfs(brf_1, brf_2):
-    img_path_1 = path_1 + '\\' + brf_1 + '_rolling.jpg'
-    img_path_2 = path_2 + '\\' + brf_2 + '_0_rolling.jpg'
-    brf_1 = brf_extraction(img_from_path(img_path_1))
-    brf_2 = brf_extraction(img_from_path(img_path_2))
-    smoothed_brf_1 = ss.savgol_filter(brf_1, 61, 3)
-    smoothed_brf_2 = ss.savgol_filter(brf_2, 61, 3)
-    normalized_brf_1 = normalize_brf(smoothed_brf_1)
-    normalized_brf_2 = normalize_brf(smoothed_brf_2)
-    aligned_brf_1, aligned_brf_2 = align_brfs(normalized_brf_1, normalized_brf_2)
-    show_two_brfs(aligned_brf_1, aligned_brf_2)
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2):
@@ -330,10 +271,10 @@ def correlation_heat_map(brf_list_1, brf_list_2):
     for brf_1 in brf_list_1:
         for brf_2 in brf_list_2:
             # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-            peak_cross_corr_list.append(round(compare_averaged_brfs(brf_1, brf_2), 3))
-        # pcoeff_heatmap.append(pcoeff_list)
+            correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+            max = round(np.amax(correlate), 3)
+            peak_cross_corr_list.append(max)
         cross_corr_heatmap.append(peak_cross_corr_list)
-        # pcoeff_list = []
         peak_cross_corr_list = []
     
     fig, ax = plt.subplots()
@@ -342,6 +283,10 @@ def correlation_heat_map(brf_list_1, brf_list_2):
     ax.set_xticks(np.arange(len(brf_list_1)))
     ax.set_yticks(np.arange(len(brf_list_2)))
     ax.set_xticklabels(brf_name_list_2)
+
+    for label in ax.xaxis.get_ticklabels():
+        label.set_horizontalalignment('right')
+
     ax.set_yticklabels(brf_name_list_1)
     # ax.set_title("Pearson Correlation Heat Map")
     ax.set_title('Averaged Cycle Cross Correlation Heat Map')
@@ -353,17 +298,19 @@ def correlation_heat_map(brf_list_1, brf_list_2):
 
     colorbar = fig.colorbar(cross_corr_heatplot)
     plt.xticks(rotation = 45)
-    fig.tight_layout(pad = 4.0)
+    fig.tight_layout()
     plt.show()
 
 if __name__ == '__main__':
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
 
     correlation_heat_map(brf_list_1, brf_list_2)
-
-    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-
     correlation_heat_map(smoothed_list_1, smoothed_list_2)
+    correlation_heat_map(cycle_list_1, cycle_list_2)
+    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2)
 
     # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
     # brf_name_list_1.reverse()
