@@ -52,7 +52,7 @@ def plot_entire_image(rolling_image):
     height = rolling_image.shape[0]
     width = rolling_image.shape[1]
     for col in range(0, width, 100):
-        plt.plot(savitzky_golay_filter(rolling_image[0:height, col], 61, 3))
+        plt.plot(ss.savgol_filter(rolling_image[0:height, col], 61, 3))
         plt.show()
 
 def show_image(img):
@@ -98,14 +98,6 @@ def moving_average(image_column, window_size):
         average.append(np.sum(image_column[x:x+window_size])/window_size/255)
     return average
 
-#maybe just get rid of this..
-#second or third order polynomial??
-#window_length should be based off of the period length??
-#window_length value is currently arbitrarily determined
-def savitzky_golay_filter(brf, window_length, polyorder):
-    filtered_data = ss.savgol_filter(brf, window_length, polyorder) #array, window_length, order of polynomial to fit samples; win > poly
-    return filtered_data
-
 def crop_brf(brf, start_index, end_index):
     return brf[start_index:end_index]
 
@@ -114,6 +106,10 @@ def align_brfs(brf_1, brf_2):
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
     shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
     return brf_1, shifted_brf_2
+
+def smooth_brf(bulb, path, window_size):
+    # bulb_path = path + '\\' + bulb + ' '
+    pass
 
 def pearson_coeff(brf_1, brf_2):
     # array = np.array([brf_1, brf_2])
@@ -214,8 +210,8 @@ def return_average_periods(bulb_path, path, savgov_window, avg_window):
     brf_1 = process_extract_brf(bulb_path_1)
     brf_2 = process_extract_brf(bulb_path_2)
 
-    smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
-    smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
+    smoothed_brf_1 = ss.savgol_filter(brf_1, savgov_window, 3)
+    smoothed_brf_2 = ss.savgol_filter(brf_2, savgov_window, 3)
 
     averaged_brf_1 = average_periods(smoothed_brf_1, avg_window)
     averaged_brf_2 = average_periods(smoothed_brf_2, avg_window)
@@ -229,8 +225,8 @@ def compare_brfs_same_bulb(bulb_path, path, savgov_window):
     brf_1 = process_extract_brf(bulb_path_1)
     brf_2 = process_extract_brf(bulb_path_2)
 
-    smoothed_brf_1 = savitzky_golay_filter(brf_1, savgov_window, 3)
-    smoothed_brf_2 = savitzky_golay_filter(brf_2, savgov_window, 3)
+    smoothed_brf_1 = ss.savgol_filter(brf_1, savgov_window, 3)
+    smoothed_brf_2 = ss.savgol_filter(brf_2, savgov_window, 3)
     # smoothed_brf_1 = brf_1
     # smoothed_brf_2 = brf_2
 
@@ -242,7 +238,6 @@ def compare_brfs_same_bulb(bulb_path, path, savgov_window):
     correlate = crop_brf(correlate, len(cropped_brf_1), len(correlate) - len(cropped_brf_1))
     return correlate
 
-#NEED TO NORMALIZE FIRST
 def compare_averaged_brfs(brf_1, brf_2):
     brf_1 = normalize_brf(brf_1)
     brf_2 = normalize_brf(brf_2)
@@ -268,8 +263,8 @@ def compare_brfs(bulb_1, path_1, bulb_2, path_2, savgov_window):
     # brf_rolling_1 = crop_brf(brf_extraction(normalized_1), 0, 500)
     # brf_rolling_2 = crop_brf(brf_extraction(normalized_2), 0, 500)
 
-    smoothed_brf_1 = savitzky_golay_filter(brf_rolling_1, savgov_window, 3)
-    smoothed_brf_2 = savitzky_golay_filter(brf_rolling_2, savgov_window, 3)
+    smoothed_brf_1 = ss.savgol_filter(brf_rolling_1, savgov_window, 3)
+    smoothed_brf_2 = ss.savgol_filter(brf_rolling_2, savgov_window, 3)
     # smoothed_brf_1 = brf_rolling_1
     # smoothed_brf_2 = brf_rolling_2
 
@@ -285,8 +280,8 @@ def compare_different_sensitivity_brfs(brf_1, brf_2):
     img_path_2 = path_2 + '\\' + brf_2 + '_0_rolling.jpg'
     brf_1 = brf_extraction(img_from_path(img_path_1))
     brf_2 = brf_extraction(img_from_path(img_path_2))
-    smoothed_brf_1 = savitzky_golay_filter(brf_1, 61, 3)
-    smoothed_brf_2 = savitzky_golay_filter(brf_2, 61, 3)
+    smoothed_brf_1 = ss.savgol_filter(brf_1, 61, 3)
+    smoothed_brf_2 = ss.savgol_filter(brf_2, 61, 3)
     normalized_brf_1 = normalize_brf(smoothed_brf_1)
     normalized_brf_2 = normalize_brf(smoothed_brf_2)
     aligned_brf_1, aligned_brf_2 = align_brfs(normalized_brf_1, normalized_brf_2)
@@ -310,6 +305,8 @@ if __name__ == '__main__':
     sylvania_avg_1, sylvania_avg_2 = return_average_periods(sylvania_CFL_13w, path_3, window_size, avg_window)
     ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
     philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
+
+
 
     brf_list_1 = [ecosmart_avg_1, maxlite_avg_1, sylvania_avg_1, ge_avg_1, philips_avg_1]
     brf_list_1.reverse() #reversing list_1 to have heatmap going from bottom left to top right
