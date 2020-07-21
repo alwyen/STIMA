@@ -170,8 +170,9 @@ def extract_cycles_from_list(brf_list_1, brf_list_2):
     list_2 = []
 
     for i in range(len(brf_list_1)):
-        list_1.append(average_periods(brf_list_1[i], 10))
-        list_2.append(average_periods(brf_list_2[i], 10))
+        # list_1.append(average_periods(brf_list_1[i], 10))
+        # list_2.append(average_periods(brf_list_2[i], 10))
+        cycle_cross_corr(brf_list_1[i], brf_list_2[i])
 
     return list_1, list_2
 
@@ -184,6 +185,14 @@ def normalize_brf_list(brf_list_1, brf_list_2):
         list_2.append(normalize_brf(brf_list_2[i]))
 
     return list_1, list_2
+
+def cycles_from_brf(brf):
+    cycle_list = []
+    peak_indices = ss.find_peaks(brf, distance = 60)[0]
+    for i in range(len(peak_indices)-1):
+        cycle = brf[peak_indices[i]:peak_indices[i+1]]
+        cycle_list.append(cycle)
+    return cycle_list
 
 #using a cheesy method to find the peaks
 def average_periods(brf, num_cycles_avgerages):
@@ -238,22 +247,51 @@ def average_periods(brf, num_cycles_avgerages):
     aligned_cycle_list.append(cycle_list[0]) #append the first cycle in the list
     cycle_len_list.append(len(cycle_list[0]))
 
+    #cross correlation of cycles to align cycles
     for i in range(len(cycle_list)-1):
+        shorter_cycle = None
+        longer_cycle = None
+        if len(cycle_list[i]) > len(cycle_list[i+1]):
+            shorter_cycle = cycle_list[i+1]
+            longer_cycle = cycle_list[i]
+        else:
+            shorter_cycle = cycle_list[i]
+            longer_cycle = cycle_list[i+1]
+        correlated_graph = ss.correlate(shorter_cycle, longer_cycle, mode = 'full')/len(shorter_cycle)
+        print(len(correlated_graph))
+        print(len(shorter_cycle))
+        print(len(longer_cycle))
+        show_plot(correlated_graph)
+        correlated_graph = np.array(correlated_graph[len(cycle_list[i]):(len(correlated_graph)-len(cycle_list[i]))])
+        show_plot(correlated_graph)
+        max = np.amax(correlated_graph)
+        index_max = np.where(correlated_graph == max)
+        plt.plot(correlated_graph)
+        plt.plot(cycle_list[i])
+        plt.plot(cycle_list[i+1])
+        plt.plot(index_max, max)
+        plt.show()
         aligned_brf_1, aligned_brf_2 = align_brfs(cycle_list[i], cycle_list[i+1])
         aligned_cycle_list.append(aligned_brf_2)
         cycle_len_list.append(len(aligned_brf_2))
 
+    #sorts list according to length of cycles; [0] is cycle len, [1] is cycle
     sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list),), key = lambda x: x[0], reverse = True)
 
-    min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets avg_window'th smallest cycle length
+    min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets smallest cycle length in the x number (e.g. 10) of cycles to verage
 
     for i in range(num_cycles_avgerages):
         cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
-    cycle_avg /= min_cycle_len
+    cycle_avg /= num_cycles_avgerages
+    show_plot(cycle_avg)
     # plt.plot(cycle_avg)
     # plt.show()
 
     return cycle_avg
+
+def cycle_cross_corr(brf_1, brf_2):
+    cycle_list_1 = cycles_from_brf(brf_1)
+    cycle_list_2 = cycles_from_brf(brf_2)
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
@@ -301,9 +339,6 @@ if __name__ == '__main__':
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
-    for i in range(len(cycle_list_1)):
-        show_plot(cycle_list_1[i])
-        show_plot(cycle_list_2[i])
     normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
 
     correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
