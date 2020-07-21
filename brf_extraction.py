@@ -155,35 +155,33 @@ def extract_brfs_from_list(master_brf_list):
     return brf_list_1, brf_list_2
 
 def smooth_brfs_from_list(brf_list_1, brf_list_2):
-    list_1 = np.copy(brf_list_1)
-    list_2 = np.copy(brf_list_2)
+    list_1 = []
+    list_2 = []
 
-    for i in range(len(list_1)):
-        list_1[i] = ss.savgol_filter(list_1[i], 61, 3) #window, polynomial order
-        list_2[i] = ss.savgol_filter(list_2[i], 61, 3)
+    for i in range(len(brf_list_1)):
+        list_1.append(ss.savgol_filter(brf_list_1[i], 61, 3)) #window, polynomial order
+        list_2.append(ss.savgol_filter(brf_list_2[i], 61, 3))
 
     return list_1, list_2
 
 #avg_window is the number of cycles I want to average
 def extract_cycles_from_list(brf_list_1, brf_list_2):
-    list_1 = np.copy(brf_list_1)
-    list_2 = np.copy(brf_list_2)
+    list_1 = []
+    list_2 = []
 
-    show_plot(list_1)
-
-    for i in range(len(list_1)):
-        list_1[i] = average_periods(list_1[i], 10)
-        list_2[i] = average_periods(list_2[i], 10)
+    for i in range(len(brf_list_1)):
+        list_1.append(average_periods(brf_list_1[i], 10))
+        list_2.append(average_periods(brf_list_2[i], 10))
 
     return list_1, list_2
 
 def normalize_brf_list(brf_list_1, brf_list_2):
-    list_1 = np.copy(brf_list_1)
-    list_2 = np.copy(brf_list_2)
+    list_1 = []
+    list_2 = []
 
-    for i in range(len(list_1)):
-        list_1[i] = normalize_brf(list_1[i])
-        list_2[i] = normalize_brf(list_2[i])
+    for i in range(len(brf_list_1)):
+        list_1.append(normalize_brf(brf_list_1[i]))
+        list_2.append(normalize_brf(brf_list_2[i]))
 
     return list_1, list_2
 
@@ -247,8 +245,6 @@ def average_periods(brf, num_cycles_avgerages):
 
     sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list),), key = lambda x: x[0], reverse = True)
 
-    print(sorted_max_cycle_len[0])
-
     min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets avg_window'th smallest cycle length
 
     for i in range(num_cycles_avgerages):
@@ -260,7 +256,7 @@ def average_periods(brf, num_cycles_avgerages):
     return cycle_avg
 
 #name for list 2 will be reverse of name for list 1
-def correlation_heat_map(brf_list_1, brf_list_2):
+def correlation_heat_map(brf_list_1, brf_list_2, title):
     peak_cross_corr_list = []
     cross_corr_name_list = []
     cross_corr_heatmap = []
@@ -289,7 +285,7 @@ def correlation_heat_map(brf_list_1, brf_list_2):
 
     ax.set_yticklabels(brf_name_list_1)
     # ax.set_title("Pearson Correlation Heat Map")
-    ax.set_title('Averaged Cycle Cross Correlation Heat Map')
+    ax.set_title(title)
 
     for i in range(len(cross_corr_heatmap)):
         for j in range(len(cross_corr_heatmap[i])):
@@ -305,12 +301,15 @@ if __name__ == '__main__':
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    for i in range(len(cycle_list_1)):
+        show_plot(cycle_list_1[i])
+        show_plot(cycle_list_2[i])
     normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
 
-    correlation_heat_map(brf_list_1, brf_list_2)
-    correlation_heat_map(smoothed_list_1, smoothed_list_2)
-    correlation_heat_map(cycle_list_1, cycle_list_2)
-    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2)
+    correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
+    correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
+    correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
+    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
 
     # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
     # brf_name_list_1.reverse()
