@@ -276,16 +276,13 @@ def average_periods(brf, num_cycles_avgerages):
         cycle_len_list.append(len(aligned_brf_2))
 
     #sorts list according to length of cycles; [0] is cycle len, [1] is cycle
-    sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list),), key = lambda x: x[0], reverse = True)
+    sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list)), key = lambda x: x[0], reverse = True)
 
     min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets smallest cycle length in the x number (e.g. 10) of cycles to verage
 
     for i in range(num_cycles_avgerages):
         cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
     cycle_avg /= num_cycles_avgerages
-    # show_plot(cycle_avg)
-    # plt.plot(cycle_avg)
-    # plt.show()
 
     return cycle_avg
 
@@ -321,8 +318,8 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
         # show_plot(brf_1)
         for brf_2 in brf_list_2:
             # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-            # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
-            correlate = cycle_cross_corr(brf_1, brf_2)
+            correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+            # correlate = cycle_cross_corr(brf_1, brf_2)
             max = round(np.amax(correlate), 3)
             peak_cross_corr_list.append(max)
         cross_corr_heatmap.append(peak_cross_corr_list)
@@ -355,14 +352,14 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
 if __name__ == '__main__':
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
-    # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
+    cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
 
-    # correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
-    # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
-    correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
-    # correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
-    # correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
+    correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
+    correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
+    # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
+    correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
+    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
 
     # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
     # brf_name_list_1.reverse()
