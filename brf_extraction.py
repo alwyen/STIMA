@@ -13,6 +13,7 @@ from signal_alignment import phase_align, chisqr_align
 path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
+ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 
 #make classes man..
 
@@ -335,24 +336,13 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     brf_name_list_1 = np.array(master_brf_list)
     brf_name_list_2 = np.flip(brf_name_list_1)
 
+    #double checked with x/y-axis is correct; seems correct
     for brf_1 in brf_list_1:
-        # show_plot(brf_1)
         for brf_2 in brf_list_2:
             # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-            plt.plot(brf_1)
-            plt.plot(brf_2)
             correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
-            start = len(brf_1)
-            end = len(correlate) - len(brf_1)
-            # correlate = correlate[len(brf_1):(len(correlate)-len(brf_1))]
-            # print(start)
-            # print(end)
-            # print(len(correlate))
-            plt.plot(correlate)
-            plt.show()
             # correlate = cycle_cross_corr(brf_1, brf_2)
             max = round(np.amax(correlate), 3)
-            print(max)
             peak_cross_corr_list.append(max)
         cross_corr_heatmap.append(peak_cross_corr_list)
         peak_cross_corr_list = []
@@ -385,15 +375,17 @@ if __name__ == '__main__':
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
-    cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
     normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
+
 
     # correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
     # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
     correlation_heat_map(norm_smooth_list_1, norm_smooth_list_2, 'Normalized-Smoothed BRF Cross Correlation Heat Map')
     # # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
-    # correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
-    # correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
+    correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
+    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
 
     # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
     # brf_name_list_1.reverse()
