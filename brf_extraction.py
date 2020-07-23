@@ -18,9 +18,8 @@ path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
 # philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
 ecosmart_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\ecosmart_CFL_14w_0_rolling.jpg'
-philips_incandescent = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\philips_incandescent_40w_0_rolling.jpg'
-sylvania_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\sylvania_CFL_13w_0_rolling.jpg'
-#make classes man..
+philips_incandescent = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\philips_incandescent_40w_1_rolling.jpg'
+sylvania_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\sylvania_CFL_13w_1_rolling.jpg'
 
 ecosmart_CFL_14w = 'ecosmart_CFL_14w'
 maxlite_CFL_15w = 'maxlite_CFL_15w'
@@ -169,8 +168,8 @@ def extract_brfs_from_list(master_brf_list):
 
         # brf_1 = normalize_brf(brf_extraction(img_1))
         # brf_2 = normalize_brf(brf_extraction(img_2))
-        brf_1 = normalize_brf(img_1[770:1200,550])
-        brf_2 = normalize_brf(img_2[640:1000,2220])
+        brf_1 = normalize_brf(img_1[740:1230,550])
+        brf_2 = normalize_brf(img_2[590:1050,2220])
 
         brf_list_1.append(brf_1)
         brf_list_2.append(brf_2)
@@ -357,14 +356,17 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
 
     brf_name_list_1 = np.array(master_brf_list)
     brf_name_list_2 = np.flip(brf_name_list_1)
+    brf_list_2 = np.flip(np.array(brf_list_2))
 
     #double checked with x/y-axis is correct; seems correct
     for brf_1 in brf_list_1:
         for brf_2 in brf_list_2:
-            # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-            correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+            # plt.plot(brf_1)
+            # plt.plot(brf_2)
+            # plt.show()
+            max = cross_corr(brf_1, brf_2)
+            # print(max)
             # correlate = cycle_cross_corr(brf_1, brf_2)
-            max = round(np.amax(correlate), 3)
             peak_cross_corr_list.append(max)
         cross_corr_heatmap.append(peak_cross_corr_list)
         peak_cross_corr_list = []
@@ -380,7 +382,6 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
         label.set_horizontalalignment('right')
 
     ax.set_yticklabels(brf_name_list_1)
-    # ax.set_title("Pearson Correlation Heat Map")
     ax.set_title(title)
 
     for i in range(len(cross_corr_heatmap)):
@@ -394,13 +395,15 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     plt.show()
 
 if __name__ == '__main__':
-    # img_1 = img_from_path(sylvania_CFL)
+    # img_1 = img_from_path(ecosmart_CFL)
     # img_2 = img_from_path(philips_incandescent)
-    # img_3 = img_from_path(ecosmart_CFL)
+    # img_3 = img_from_path(sylvania_CFL)
 
     # brf_1 = brf_extraction(img_1)
-    # brf_2 = brf_extraction(img_2)
-    # brf_3 = brf_extraction(img_3)
+    # # brf_2 = brf_extraction(img_2)
+    # # brf_3 = brf_extraction(img_3)
+    # brf_2 = img_2[590:1050,2220]
+    # brf_3 = img_3[590:1050,2220]
 
     # smoothed_1 = ss.savgol_filter(brf_1, 51, 3)
     # smoothed_2 = ss.savgol_filter(brf_2, 51, 3)
@@ -411,11 +414,11 @@ if __name__ == '__main__':
     # normalized_3 = normalize_brf(smoothed_3)
 
     # max_1 = cross_corr(normalized_1, normalized_2)
-    # max_2 = cross_corr(normalized_2, normalized_3)
+    # # max_2 = cross_corr(normalized_2, normalized_3)
     # max_3 = cross_corr(normalized_1, normalized_3)
 
     # print(max_1)
-    # print(max_2)
+    # # print(max_2)
     # print(max_3)
 
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
