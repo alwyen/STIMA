@@ -13,8 +13,12 @@ from signal_alignment import phase_align, chisqr_align
 path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
-ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
-
+# ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
+# philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
+# philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
+ecosmart_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\ecosmart_CFL_14w_0_rolling.jpg'
+philips_incandescent = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\philips_incandescent_40w_0_rolling.jpg'
+sylvania_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\sylvania_CFL_13w_0_rolling.jpg'
 #make classes man..
 
 ecosmart_CFL_14w = 'ecosmart_CFL_14w'
@@ -66,8 +70,11 @@ def show_image(img):
 def brf_extraction(img):
     height = img.shape[0]
     width = img.shape[1]
-    column = img[0:height,int(width/2)]
-    # column = img[0:height,1239]
+    # column = img[0:height,int(width/2)]
+    # column = img[771:1272,1047] #ecosmart_blurred
+    # column = img[768:1270,1059] #philips_uncalibrated
+    # column = img[768:1311,1089] #philips_calibrated
+    column = img[0:height,550] #blurred_1 tests
     return column
 
 def normalize_img(rolling_img, dc_img):
@@ -109,10 +116,6 @@ def align_brfs(brf_1, brf_2):
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
     shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
     return brf_1, shifted_brf_2
-
-def smooth_brf(bulb, path, window_size):
-    # bulb_path = path + '\\' + bulb + ' '
-    pass
 
 def pearson_coeff(brf_1, brf_2):
     # array = np.array([brf_1, brf_2])
@@ -372,6 +375,28 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     plt.show()
 
 if __name__ == '__main__':
+    img_1 = img_from_path(sylvania_CFL)
+    img_2 = img_from_path(philips_incandescent)
+    img_3 = img_from_path(ecosmart_CFL)
+    # img = img_from_path(philips_calibrated)
+    brf_1 = brf_extraction(img_1)
+    brf_2 = brf_extraction(img_2)
+    brf_3 = brf_extraction(img_3)
+    smoothed_1 = ss.savgol_filter(brf_1, 31, 3)
+    smoothed_2 = ss.savgol_filter(brf_2, 31, 3)
+    smoothed_3 = ss.savgol_filter(brf_3, 31, 3)
+    normalized_1 = normalize_brf(smoothed_1)
+    normalized_2 = normalize_brf(smoothed_2)
+    normalized_3 = normalize_brf(smoothed_3)
+    
+    # show_plot(normalized_1)
+    plt.plot(normalized_1)
+    # plt.plot(normalized_2)
+    plt.plot(normalized_3)
+    plt.show()
+    # cycle_list = cycles_from_brf(smoothed, 'normalize')
+
+    '''
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
@@ -386,6 +411,7 @@ if __name__ == '__main__':
     # # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
     correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
     correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
+    '''
 
     # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
     # brf_name_list_1.reverse()
