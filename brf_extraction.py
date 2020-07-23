@@ -13,6 +13,7 @@ from signal_alignment import phase_align, chisqr_align
 path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
+path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
 # philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
@@ -25,6 +26,7 @@ ecosmart_CFL_14w = 'ecosmart_CFL_14w'
 maxlite_CFL_15w = 'maxlite_CFL_15w'
 sylvania_CFL_13w = 'sylvania_CFL_13w'
 ge_incandescant_25w = 'ge_incandescant_25w'
+ge_incandescent_60w = 'ge_incandescent_60w'
 philips_incandescent_40w = 'philips_incandescent_40w'
 feit_led17p5w = 'feit_led17.5w'
 
@@ -74,7 +76,8 @@ def brf_extraction(img):
     # column = img[771:1272,1047] #ecosmart_blurred
     # column = img[768:1270,1059] #philips_uncalibrated
     # column = img[768:1311,1089] #philips_calibrated
-    column = img[0:height,550] #blurred_1 tests
+    # column = img[0:height,550] #blurred_1 tests
+    column = img[770:1200,550] #blurred_1 tests
     return column
 
 def normalize_img(rolling_img, dc_img):
@@ -93,6 +96,13 @@ def normalize_brf(brf):
         brf_points.append((brf[i] - min)/(max - min))
     brf_points = np.array(brf_points)
     return brf_points
+
+def extract_normalized_brf(brf):
+    new_brf = np.array([])
+    cycle_list = cycles_from_brf(brf, 'normalize')
+    for cycle in cycle_list:
+        new_brf = np.concatenate((new_brf, cycle), 0)
+    show_plot(new_brf)
 
 def process_extract_brf(bulb_path):
     img_rolling, img_dc = get_rolling_dc_paths(bulb_path)    
@@ -139,19 +149,28 @@ def pearson_coeff(brf_1, brf_2):
     # print(f"Scipy computed Pearson r: {r} and p-value: {p}")
     return r
 
+def cross_corr(brf_1, brf_2):
+    correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    max = round(np.amax(np.array(correlate)), 3)
+    return max
+
 def extract_brfs_from_list(master_brf_list):
     brf_list_1 = []
     brf_list_2 = []
 
     for bulb in master_brf_list:
-        brf_path_1 = path_3 + '\\' + bulb + '_0_rolling.jpg'
-        brf_path_2 = path_3 + '\\' + bulb + '_1_rolling.jpg'
+        # brf_path_1 = path_3 + '\\' + bulb + '_0_rolling.jpg'
+        # brf_path_2 = path_3 + '\\' + bulb + '_1_rolling.jpg'
+        brf_path_1 = path_4 + '\\' + bulb + '_0_rolling.jpg'
+        brf_path_2 = path_4 + '\\' + bulb + '_1_rolling.jpg'
 
         img_1 = img_from_path(brf_path_1)
         img_2 = img_from_path(brf_path_2)
 
-        brf_1 = normalize_brf(brf_extraction(img_1))
-        brf_2 = normalize_brf(brf_extraction(img_2))
+        # brf_1 = normalize_brf(brf_extraction(img_1))
+        # brf_2 = normalize_brf(brf_extraction(img_2))
+        brf_1 = normalize_brf(img_1[770:1200,550])
+        brf_2 = normalize_brf(img_2[640:1000,2220])
 
         brf_list_1.append(brf_1)
         brf_list_2.append(brf_2)
@@ -163,8 +182,8 @@ def smooth_brfs_from_list(brf_list_1, brf_list_2):
     list_2 = []
 
     for i in range(len(brf_list_1)):
-        list_1.append(ss.savgol_filter(brf_list_1[i], 61, 3)) #window, polynomial order
-        list_2.append(ss.savgol_filter(brf_list_2[i], 61, 3))
+        list_1.append(ss.savgol_filter(brf_list_1[i], 51, 3)) #window, polynomial order
+        list_2.append(ss.savgol_filter(brf_list_2[i], 51, 3))
 
     return list_1, list_2
 
@@ -375,109 +394,41 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     plt.show()
 
 if __name__ == '__main__':
-    img_1 = img_from_path(sylvania_CFL)
-    img_2 = img_from_path(philips_incandescent)
-    img_3 = img_from_path(ecosmart_CFL)
-    # img = img_from_path(philips_calibrated)
-    brf_1 = brf_extraction(img_1)
-    brf_2 = brf_extraction(img_2)
-    brf_3 = brf_extraction(img_3)
-    smoothed_1 = ss.savgol_filter(brf_1, 31, 3)
-    smoothed_2 = ss.savgol_filter(brf_2, 31, 3)
-    smoothed_3 = ss.savgol_filter(brf_3, 31, 3)
-    normalized_1 = normalize_brf(smoothed_1)
-    normalized_2 = normalize_brf(smoothed_2)
-    normalized_3 = normalize_brf(smoothed_3)
-    
-    # show_plot(normalized_1)
-    plt.plot(normalized_1)
-    # plt.plot(normalized_2)
-    plt.plot(normalized_3)
-    plt.show()
-    # cycle_list = cycles_from_brf(smoothed, 'normalize')
+    # img_1 = img_from_path(sylvania_CFL)
+    # img_2 = img_from_path(philips_incandescent)
+    # img_3 = img_from_path(ecosmart_CFL)
 
-    '''
+    # brf_1 = brf_extraction(img_1)
+    # brf_2 = brf_extraction(img_2)
+    # brf_3 = brf_extraction(img_3)
+
+    # smoothed_1 = ss.savgol_filter(brf_1, 51, 3)
+    # smoothed_2 = ss.savgol_filter(brf_2, 51, 3)
+    # smoothed_3 = ss.savgol_filter(brf_3, 51, 3)
+
+    # normalized_1 = normalize_brf(smoothed_1)
+    # normalized_2 = normalize_brf(smoothed_2)
+    # normalized_3 = normalize_brf(smoothed_3)
+
+    # max_1 = cross_corr(normalized_1, normalized_2)
+    # max_2 = cross_corr(normalized_2, normalized_3)
+    # max_3 = cross_corr(normalized_1, normalized_3)
+
+    # print(max_1)
+    # print(max_2)
+    # print(max_3)
+
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
-    cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
-    normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
+    # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
+    # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
 
 
-    # correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
-    # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
-    correlation_heat_map(norm_smooth_list_1, norm_smooth_list_2, 'Normalized-Smoothed BRF Cross Correlation Heat Map')
+    correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
+    correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
+    # correlation_heat_map(norm_smooth_list_1, norm_smooth_list_2, 'Normalized-Smoothed BRF Cross Correlation Heat Map')
     # # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
-    correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
-    correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
-    '''
-
-    # brf_name_list_1 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
-    # brf_name_list_1.reverse()
-    # brf_name_list_2 = ['ecosmart_CFL', 'maxlite_CFL', 'sylvania_CFL', 'ge_incandescent', 'philips_incandescent']
-
-    # #I think you need to go back to filtering - losing information in signal?
-    # # compare_different_sensitivity_brfs(ecosmart_CFL_14w, ecosmart_CFL_14w)
-    # window_size = 61
-    # avg_window = 10
-    # pcoeff_list = []
-    # pcoeff_name_list = []
-    # peak_cross_corr_list = []
-    # cross_corr_name_list = []
-
-    # pcoeff_heatmap = []
-    # cross_corr_heatmap = []
-    
-    # ecosmart_avg_1, ecosmart_avg_2 = return_average_periods(ecosmart_CFL_14w, path_3, window_size, avg_window)
-    # maxlite_avg_1,maxlite_avg_2 = return_average_periods(maxlite_CFL_15w, path_3,  window_size, avg_window)
-    # sylvania_avg_1, sylvania_avg_2 = return_average_periods(sylvania_CFL_13w, path_3, window_size, avg_window)
-    # ge_avg_1, ge_avg_2 = return_average_periods(ge_incandescant_25w, path_2, window_size, avg_window)
-    # philips_avg_1, philips_avg_2 = return_average_periods(philips_incandescent_40w, path_2, window_size, avg_window)
-
-    # brf_list_1 = [ecosmart_avg_1, maxlite_avg_1, sylvania_avg_1, ge_avg_1, philips_avg_1]
-    # brf_list_1.reverse() #reversing list_1 to have heatmap going from bottom left to top right
-    # brf_list_2 = [ecosmart_avg_2, maxlite_avg_2, sylvania_avg_2, ge_avg_2, philips_avg_2]
-
-    # for brf_1 in brf_list_1:
-    #     for brf_2 in brf_list_2:
-    #         # pcoeff_list.append(round(pearson_coeff(brf_1, brf_2), 3))
-    #         peak_cross_corr_list.append(round(compare_averaged_brfs(brf_1, brf_2), 3))
-    #     # pcoeff_heatmap.append(pcoeff_list)
-    #     cross_corr_heatmap.append(peak_cross_corr_list)
-    #     # pcoeff_list = []
-    #     peak_cross_corr_list = []
-    
-    # fig, ax = plt.subplots()
-    # # pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
-    # cross_corr_heatplot = ax.imshow(cross_corr_heatmap, cmap = "Blues")
-    # ax.set_xticks(np.arange(len(brf_list_1)))
-    # ax.set_yticks(np.arange(len(brf_list_2)))
-    # ax.set_xticklabels(brf_name_list_2)
-    # ax.set_yticklabels(brf_name_list_1)
-    # # ax.set_title("Pearson Correlation Heat Map")
-    # ax.set_title('Averaged Cycle Cross Correlation Heat Map')
-
-    # for i in range(len(pcoeff_heatmap)):
-    #     for j in range(len(pcoeff_heatmap[i])):
-    #         text = ax.text(j, i, pcoeff_heatmap[i][j],
-    #                     ha="center", va="center", color="black")
-
-    # for i in range(len(cross_corr_heatmap)):
-    #     for j in range(len(cross_corr_heatmap[i])):
-    #         text = ax.text(j, i, cross_corr_heatmap[i][j],
-    #                     ha="center", va="center", color="black")
-
-    # colorbar = fig.colorbar(cross_corr_heatplot)
-    # plt.xticks(rotation = 45)
-    # fig.tight_layout(pad = 4.0)
-    # plt.show()
-
-    # fig = plt.figure()
-    # colorbar = fig.colorbar(plt)
-    # plt.imshow(pcoeff_heatmap, cmap = 'Greens')
-    # ticks = np.arange(len(brf_list_1))
-    # plt.xticks(ticks, brf_name_list, rotation = 45)
-    # plt.yticks(ticks, brf_name_list)
-    # plt.tight_layout()
-    # plt.show()
+    # correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
+    # correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
