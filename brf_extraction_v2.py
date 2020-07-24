@@ -86,6 +86,22 @@ def normalize_brf(brf):
     brf_points = np.array(brf_points)
     return brf_points
 
+def show_peaks_with_brf(brf):
+    peak_indices = ss.find_peaks(brf, distance = 60)[0]
+    peak_values = brf[peak_indices]
+    plt.plot(peak_indices, peak_values)
+    plt.plot(brf)
+    plt.show()
+
+def cycles_from_brf(brf, option): #gets cycles from ONE BRF
+    cycle_list = []
+    peak_indices = ss.find_peaks(brf, distance = 60)[0]
+    for i in range(len(peak_indices)-1):
+        cycle = brf[peak_indices[i]:peak_indices[i+1]]
+        if option == 'normalize': cycle = normalize_brf(cycle)
+        cycle_list.append(cycle)
+    return cycle_list
+
 def extract_normalized_brf(brf):
     new_brf = np.array([])
     cycle_list = cycles_from_brf(brf, 'normalize')
@@ -223,46 +239,50 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     plt.show()
 
 if __name__ == '__main__':
-    # img_1 = img_from_path(ecosmart_CFL)
-    # img_2 = img_from_path(philips_incandescent)
-    # img_3 = img_from_path(sylvania_CFL)
+    img_1 = img_from_path(ecosmart_CFL)
+    img_2 = img_from_path(philips_incandescent)
+    img_3 = img_from_path(sylvania_CFL)
 
-    # brf_1 = brf_extraction(img_1)
-    # # brf_2 = brf_extraction(img_2)
-    # # brf_3 = brf_extraction(img_3)
-    # brf_2 = img_2[590:1050,2220]
-    # brf_3 = img_3[590:1050,2220]
+    brf_1 = brf_extraction(img_1)
+    # brf_2 = brf_extraction(img_2)
+    # brf_3 = brf_extraction(img_3)
+    brf_2 = img_2[590:1050,2220]
+    brf_3 = img_3[590:1050,2220]
 
-    # smoothed_1 = ss.savgol_filter(brf_1, 51, 3)
-    # smoothed_2 = ss.savgol_filter(brf_2, 51, 3)
-    # smoothed_3 = ss.savgol_filter(brf_3, 51, 3)
+    smoothed_1 = ss.savgol_filter(brf_1, 51, 3)
+    smoothed_2 = ss.savgol_filter(brf_2, 51, 3)
+    smoothed_3 = ss.savgol_filter(brf_3, 51, 3)
 
-    # normalized_1 = normalize_brf(smoothed_1)
-    # normalized_2 = normalize_brf(smoothed_2)
-    # normalized_3 = normalize_brf(smoothed_3)
+    normalized_1 = normalize_brf(smoothed_1)
+    normalized_2 = normalize_brf(smoothed_2)
+    normalized_3 = normalize_brf(smoothed_3)
 
-    # max_1 = cross_corr(normalized_1, normalized_2)
-    # # max_1 = cross_corr(normalized_2, normalized_1)
-    # # max_2 = cross_corr(normalized_2, normalized_3)
-    # max_3 = cross_corr(normalized_1, normalized_3)
-    # # max_3 = cross_corr(normalized_3, normalized_1)
+    show_peaks_with_brf(normalized_1)
+    show_peaks_with_brf(normalized_2)
+    show_peaks_with_brf(normalized_3)
 
-    # print(max_1)
-    # # print(max_2)
-    # print(max_3)
+    max_1 = cross_corr(normalized_1, normalized_2)
+    # max_1 = cross_corr(normalized_2, normalized_1)
+    # max_2 = cross_corr(normalized_2, normalized_3)
+    max_3 = cross_corr(normalized_1, normalized_3)
+    # max_3 = cross_corr(normalized_3, normalized_1)
 
-    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
+    print(max_1)
+    # print(max_2)
+    print(max_3)
 
-    # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
-    # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
-    # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
-    # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
+    # brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    # smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
 
-    correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
-    # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
-    correlation_heat_map(norm_smooth_list_1, norm_smooth_list_2, 'Normalized-Smoothed BRF Cross Correlation Heat Map')
+    # # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    # # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
+    # # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
+    # # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
+
+    # correlation_heat_map(brf_list_1, brf_list_2, 'Raw BRF Cross Correlation Heat Map')
+    # # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Smoothed BRF Cross Correlation Heat Map')
+    # correlation_heat_map(norm_smooth_list_1, norm_smooth_list_2, 'Normalized-Smoothed BRF Cross Correlation Heat Map')
     # # correlation_heat_map(smoothed_list_1, smoothed_list_2, 'Cycle Cross Corrlation Heat Map') #??
     # correlation_heat_map(cycle_list_1, cycle_list_2, 'Averaged Cycle Cross Correlation Heat Map')
     # correlation_heat_map(normalized_cycle_list_1, normalized_cycle_list_2, 'Normalized-Averaged Cycle Cross Correlation Heat Map')
