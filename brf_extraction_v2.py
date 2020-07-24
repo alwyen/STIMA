@@ -6,9 +6,6 @@ from scipy.ndimage import shift
 import scipy.signal as ss
 from scipy.stats.stats import pearsonr
 import pandas as pd
-from dtw import dtw, accelerated_dtw
-
-from signal_alignment import phase_align, chisqr_align
 
 path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
@@ -79,13 +76,6 @@ def brf_extraction(img):
     column = img[770:1200,550] #blurred_1 tests
     return column
 
-def normalize_img(rolling_img, dc_img):
-    normalized_img = np.divide(rolling_img, dc_img)
-    height = normalized_img.shape[0]
-    width = normalized_img.shape[1]
-    normalized_img = normalized_img/(np.sum(normalized_img)/width/height)
-    return normalized_img
-
 def normalize_brf(brf):
     brf_points = []
     min = np.amin(brf)
@@ -103,49 +93,10 @@ def extract_normalized_brf(brf):
         new_brf = np.concatenate((new_brf, cycle), 0)
     show_plot(new_brf)
 
-def process_extract_brf(bulb_path):
-    img_rolling, img_dc = get_rolling_dc_paths(bulb_path)    
-    img_rolling = img_from_path(img_rolling)
-    # img_dc = img_from_path(img_dc)
-    brf_rolling = brf_extraction(img_rolling)
-    normalized_brf = normalize_brf(brf_rolling)
-    return normalized_brf
-
-def moving_average(image_column, window_size):
-    average = []
-    for x in range(len(image_column)-window_size):
-        average.append(np.sum(image_column[x:x+window_size])/window_size/255)
-    return average
-
-def crop_brf(brf, start_index, end_index):
-    return brf[start_index:end_index]
-
-def align_brfs(brf_1, brf_2):
-    #shfit amount corresponds to second argument (brf_2)
-    shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
-    shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
-    return brf_1, shifted_brf_2
-
 def pearson_coeff(brf_1, brf_2):
-    # array = np.array([brf_1, brf_2])
-    # array = array.reshape(len(brf_1), len(array))
-    # df = pd.DataFrame(array)
-
-    # overall_pearson_r = df.corr(method = 'pearson').iloc[0,1]
-    # print(f"Pandas computed Pearson r: {overall_pearson_r}")
-    # # out: Pandas computed Pearson r: 0.2058774513561943
-    # print(len(brf_1))
-    # print(len(brf_2))
-
-
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
     elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
-
-    # print(len(brf_1))
-    # print(len(brf_2))
-
     r, p = pearsonr(brf_1, brf_2)
-    # print(f"Scipy computed Pearson r: {r} and p-value: {p}")
     return r
 
 def cross_corr(brf_1, brf_2):
@@ -220,15 +171,6 @@ def normalize_smoothed_brf_list(brf_list_1, brf_list_2):
         normalized_2 = np.array([])
     return list_1, list_2
 
-#avg_window is the number of cycles I want to average
-def extract_cycles_from_list(brf_list_1, brf_list_2):
-    list_1 = []
-    list_2 = []
-    for i in range(len(brf_list_1)):
-        list_1.append(average_periods(brf_list_1[i], 10))
-        list_2.append(average_periods(brf_list_2[i], 10))
-    return list_1, list_2
-
 def normalize_brf_list(brf_list_1, brf_list_2):
     list_1 = []
     list_2 = []
@@ -236,127 +178,6 @@ def normalize_brf_list(brf_list_1, brf_list_2):
         list_1.append(normalize_brf(brf_list_1[i]))
         list_2.append(normalize_brf(brf_list_2[i]))
     return list_1, list_2
-
-def cycles_from_brf(brf, option): #gets cycles from ONE BRF
-    cycle_list = []
-    peak_indices = ss.find_peaks(brf, distance = 60)[0]
-    for i in range(len(peak_indices)-1):
-        cycle = brf[peak_indices[i]:peak_indices[i+1]]
-        if option == 'normalize': cycle = normalize_brf(cycle)
-        cycle_list.append(cycle)
-    return cycle_list
-
-#using a cheesy method to find the peaks
-def average_periods(brf, num_cycles_avgerages):
-    min_cycle_len = 9999
-    cycle_list = []
-    cycle_len_list = []
-    aligned_cycle_list = []
-    cycle_avg = 0
-
-    '''
-    filtering for peaks doesn't entirely work..
-    '''
-
-    # avg_dist_bt_peaks = 0
-    # not_finished = True
-
-    # #first filter for initial false positive peaks
-    # peak_indice_approximations = ss.find_peaks(brf)[0] #need to know approximate period distance; maybe a problem
-    # peak_indice_approximation_values = brf[peak_indice_approximations]
-    # interp_model = interpolate.interp1d(peak_indice_approximations, peak_indice_approximation_values, fill_value='extrapolate')
-    # interpolated_brf = np.zeros(len(brf))
-    # interpolated_brf[peak_indice_approximations] = peak_indice_approximation_values
-    # filtered_peak_brf = interp_model(np.arange(0, len(brf), 1))
-    # peak_indices = ss.find_peaks(filtered_peak_brf)[0]
-
-    # #find average distance between peaks
-    # for i in range(len(peak_indices)-1):
-    #     avg_dist_bt_peaks += peak_indices[i+1] - peak_indices[i]
-    # avg_dist_bt_peaks /= (len(peak_indices)-1)
-    # print(avg_dist_bt_peaks)
-    # #remove false positives between peaks
-    # while not_finished:
-    #     # print(len(peak_indices)-1)
-    #     for i in range(len(peak_indices)-1):
-    #         diff = peak_indices[i+1]-peak_indices[i]
-    #         # print(diff)
-    #         if diff < avg_dist_bt_peaks:
-    #             index = np.where(peak_indices == peak_indices[i+1])
-    #             peak_indices = np.delete(peak_indices, index[0])
-    #             # peak_indices.remove(peak_indices[i+1])
-    #             break
-    #         if i == (len(peak_indices)-2):
-    #             not_finished = False
-
-    peak_indices = ss.find_peaks(brf, distance = 60)[0]
-    # peak_values = brf[peak_indices]
-
-    for i in range(len(peak_indices)-1):
-        cycle = brf[peak_indices[i]:peak_indices[i+1]]
-        cycle_list.append(cycle)
-
-    aligned_cycle_list.append(cycle_list[0]) #append the first cycle in the list
-    cycle_len_list.append(len(cycle_list[0]))
-
-    #cross correlation of cycles to align cycles
-    for i in range(len(cycle_list)-1):
-        # shorter_cycle = None
-        # longer_cycle = None
-        # if len(cycle_list[i]) > len(cycle_list[i+1]):
-        #     shorter_cycle = cycle_list[i+1]
-        #     longer_cycle = cycle_list[i]
-        # else:
-        #     shorter_cycle = cycle_list[i]
-        #     longer_cycle = cycle_list[i+1]
-        # correlated_graph = ss.correlate(shorter_cycle, longer_cycle, mode = 'full')/len(shorter_cycle)
-        # print(len(correlated_graph))
-        # print(len(shorter_cycle))
-        # print(len(longer_cycle))
-        # show_plot(correlated_graph)
-        # correlated_graph = np.array(correlated_graph[len(cycle_list[i]):(len(correlated_graph)-len(cycle_list[i]))])
-        # show_plot(correlated_graph)
-        # max = np.amax(correlated_graph)
-        # index_max = np.where(correlated_graph == max)
-        # plt.plot(correlated_graph)
-        # plt.plot(cycle_list[i])
-        # plt.plot(cycle_list[i+1])
-        # plt.plot(index_max, max)
-        # plt.show()
-
-        aligned_brf_1, aligned_brf_2 = align_brfs(cycle_list[i], cycle_list[i+1])
-        aligned_cycle_list.append(aligned_brf_2)
-        cycle_len_list.append(len(aligned_brf_2))
-
-    #sorts list according to length of cycles; [0] is cycle len, [1] is cycle
-    sorted_max_cycle_len = sorted(list(zip(cycle_len_list,aligned_cycle_list)), key = lambda x: x[0], reverse = True)
-
-    min_cycle_len = sorted_max_cycle_len[num_cycles_avgerages][0] #gets smallest cycle length in the x number (e.g. 10) of cycles to verage
-
-    for i in range(num_cycles_avgerages):
-        cycle_avg += sorted_max_cycle_len[i][1][0:min_cycle_len] #truncates all cycle lengths to minimum cycle length size
-    cycle_avg /= num_cycles_avgerages
-
-    return cycle_avg
-
-#make another method that doesn't normalize
-#uses smoothed BRFs
-def cycle_cross_corr(brf_1, brf_2):
-    xcorr_avgs = []
-    new_brf = np.array([])
-    cycle_list_1 = cycles_from_brf(brf_1, 'normalize')
-    cycle_list_2 = cycles_from_brf(brf_2, 'normalize')
-    for cycle in cycle_list_2:
-        new_brf = np.concatenate((new_brf, cycle), 0)
-    for cycle in cycle_list_1:
-        corr = ss.correlate(cycle, new_brf, mode = 'full')/len(cycle)
-        corr = corr[len(cycle):len(corr)-len(cycle)]
-        peak_indices = ss.find_peaks(corr, distance = 50)[0]
-        peak_values = corr[peak_indices]
-        peak_avg = np.sum(peak_values)/len(peak_values)
-        xcorr_avgs.append(peak_avg)
-    corr_coeff = np.sum(np.array(xcorr_avgs))/len(xcorr_avgs)
-    return corr_coeff
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
