@@ -86,6 +86,13 @@ def normalize_brf(brf):
     brf_points = np.array(brf_points)
     return brf_points
 
+def map(brf, in_min, in_max, out_min, out_max):
+    new_brf = []
+    for val in brf:
+        mapped = (val - in_min)*(out_max - out_min)/(in_max - in_min) + out_min
+        new_brf.append(mapped)
+    return new_brf
+
 def show_peaks_with_brf(brf):
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     peak_values = brf[peak_indices]
@@ -115,12 +122,27 @@ def normalize_half_cycles(brf):
         half_cycles.append(half_cycle)
     return half_cycles
 
+#first figure out how many cycles 
+def remove_sin(norm_brf):
+    norm_brf = np.array(norm_brf)
+    min = np.amin(norm_brf)
+    max = np.amax(norm_brf)
+    first = int(round(norm_brf[0]))
+    last = int(round(norm_brf[len(norm_brf)-1]))
+    brf = map(norm_brf, min, max, -1, 1)
+    show_plot(brf)
+    # plt.plot(brf)
+    # x = np.arrange
+    # plt.plot(np.sin())
+    plt.show()
+    print(f'First: {first}\nLast: {last}')
+
 def extract_normalized_brf(brf):
     new_brf = np.array([])
-    # cycle_list = cycles_from_brf(brf, 'normalize')
     cycle_list = normalize_half_cycles(brf)
     for cycle in cycle_list:
         new_brf = np.concatenate((new_brf, cycle), 0)
+    remove_sin(new_brf)
     show_plot(new_brf)
 
 def pearson_coeff(brf_1, brf_2):
