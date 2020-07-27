@@ -89,7 +89,7 @@ def normalize_brf(brf):
 def show_peaks_with_brf(brf):
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     peak_values = brf[peak_indices]
-    plt.plot(peak_indices, peak_values)
+    plt.plot(peak_indices, peak_values, 'x')
     plt.plot(brf)
     plt.show()
 
@@ -102,9 +102,23 @@ def cycles_from_brf(brf, option): #gets cycles from ONE BRF
         cycle_list.append(cycle)
     return cycle_list
 
+def normalize_half_cycles(brf):
+    half_cycles = []
+    peak_indices = ss.find_peaks(brf, distance = 60)[0]
+    nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
+    extrema_indices = np.concatenate((np.array(peak_indices), np.array(nadir_indices)), 0)
+    extrema_indices = sorted(extrema_indices)
+    extrema_values = brf[extrema_indices]
+    for i in range(len(extrema_indices)-1):
+        half_cycle = brf[extrema_indices[i]:extrema_indices[i+1]]
+        half_cycle = normalize_brf(half_cycle)
+        half_cycles.append(half_cycle)
+    return half_cycles
+
 def extract_normalized_brf(brf):
     new_brf = np.array([])
-    cycle_list = cycles_from_brf(brf, 'normalize')
+    # cycle_list = cycles_from_brf(brf, 'normalize')
+    cycle_list = normalize_half_cycles(brf)
     for cycle in cycle_list:
         new_brf = np.concatenate((new_brf, cycle), 0)
     show_plot(new_brf)
@@ -257,9 +271,9 @@ if __name__ == '__main__':
     normalized_2 = normalize_brf(smoothed_2)
     normalized_3 = normalize_brf(smoothed_3)
 
-    show_peaks_with_brf(normalized_1)
-    show_peaks_with_brf(normalized_2)
-    show_peaks_with_brf(normalized_3)
+    extract_normalized_brf(normalized_1)
+    extract_normalized_brf(normalized_2)
+    extract_normalized_brf(normalized_3)
 
     max_1 = cross_corr(normalized_1, normalized_2)
     # max_1 = cross_corr(normalized_2, normalized_1)
