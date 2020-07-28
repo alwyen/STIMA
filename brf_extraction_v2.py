@@ -124,18 +124,49 @@ def normalize_half_cycles(brf):
 
 #first figure out how many cycles 
 def remove_sin(norm_brf):
+    fitted_sinusoid = np.array([]) #concatenate sinusoids to fit brf
     norm_brf = np.array(norm_brf)
+    
     min = np.amin(norm_brf)
     max = np.amax(norm_brf)
-    first = int(round(norm_brf[0]))
-    last = int(round(norm_brf[len(norm_brf)-1]))
+    
+    value_first = int(round(norm_brf[0]))
+    value_last = int(round(norm_brf[len(norm_brf)-1]))
+    
     brf = map(norm_brf, min, max, -1, 1)
-    show_plot(brf)
-    # plt.plot(brf)
+    brf = np.array(brf)
+    brf_temp = np.copy(brf)
+
+    start = np.pi/2
+    stop = -np.pi/2*3
+
+    if value_first == 0: #initial values need to be flipped if starting at 0
+        brf_temp = -brf_temp
+        start = -start
+        stop = -stop
+
+    indices = ss.find_peaks(brf_temp, distance = 60)[0]
+    x = np.linspace(start, stop, indices[0]+1) #peak_indices[0] + 1 b/c brf starts at 0?
+    fitted_sinusoid = np.sin(x)
+    for i in range(len(indices)-1):
+        x = np.linspace(start, stop, indices[i+1]-indices[i])
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, np.sin(x)), 0)
+    if value_first != value_last:
+        x = np.linspace(start, stop/3, (len(brf)-1) - indices[len(indices)-1])
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, np.sin(x)), 0)
+
+    if len(brf) != len(fitted_sinusoid): #TEMPORARY FIX
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, [value_last]), 0)
+    
+    new_brf = np.subtract(brf, fitted_sinusoid)
+    # plt.plot(brf, label = 'original')
+    # plt.plot(fitted_sinusoid, label = 'fitted')
+    plt.plot(new_brf, label = 'subtracted')
+    
     # x = np.arrange
     # plt.plot(np.sin())
     plt.show()
-    print(f'First: {first}\nLast: {last}')
+    print(f'First: {value_first}\nLast: {value_last}')
 
 def extract_normalized_brf(brf):
     new_brf = np.array([])
