@@ -112,13 +112,13 @@ def cycles_from_brf(brf, option): #gets cycles from ONE BRF
         cycle_list.append(cycle)
     return cycle_list
 
-def normalize_half_cycles(brf):
+def normalize_half_cycles(brf): #extracts and normalizes each half cycle
     half_cycles = []
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
     extrema_indices = np.concatenate((np.array(peak_indices), np.array(nadir_indices)), 0)
     extrema_indices = sorted(extrema_indices)
-    extrema_values = brf[extrema_indices]
+    # extrema_values = brf[extrema_indices]
     for i in range(len(extrema_indices)-1):
         half_cycle = brf[extrema_indices[i]:extrema_indices[i+1]]
         half_cycle = normalize_brf(half_cycle)
@@ -138,7 +138,6 @@ def remove_sin(norm_brf, name):
     
     brf = map(norm_brf, min, max, -1, 1)
     brf = np.array(brf)
-    brf_temp = np.copy(brf)
 
     start = np.pi/2
     stop = -np.pi/2
@@ -166,6 +165,8 @@ def remove_sin(norm_brf, name):
 
     new_brf = np.subtract(brf, fitted_sinusoid)
 
+    return fitted_sinusoid
+
     fig, ax = plt.subplots(2,1)
     # fig.tight_layout(pad = 4.0)
     ax[0].plot(brf, label = 'Original BRF')
@@ -191,10 +192,11 @@ def remove_sin(norm_brf, name):
 
 def extract_normalized_brf(brf, name):
     new_brf = np.array([])
-    cycle_list = normalize_half_cycles(brf)
+    cycle_list = normalize_half_cycles(brf) #extracts and normalizes each half cycle
     for cycle in cycle_list:
         new_brf = np.concatenate((new_brf, cycle), 0)
-    remove_sin(new_brf, name)
+    fitted = remove_sin(new_brf, name)
+    return fitted
 
 def pearson_coeff(brf_1, brf_2):
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
@@ -225,6 +227,11 @@ def extract_brfs_from_list(master_brf_list):
         brf_1 = img_1[740:1230,550]
         brf_2 = img_2[590:1050,2220]
 
+        # print(brf_path_1)
+        # show_plot(brf_1)
+        # print(brf_path_2)
+        # show_plot(brf_2)
+
         brf_list_1.append(brf_1)
         brf_list_2.append(brf_2)
     
@@ -245,8 +252,12 @@ def process_brfs_from_list(brf_list_1, brf_list_2): #remove sin from each BRF
     list_2 = []
 
     for i in range(len(brf_list_1)):
-        extract_normalized_brf(brf_list_1[i], master_brf_list[i])
-        extract_normalized_brf(brf_list_2[i], master_brf_list[i])
+        fitted_1 = extract_normalized_brf(brf_list_1[i], master_brf_list[i])
+        fitted_2 = extract_normalized_brf(brf_list_2[i], master_brf_list[i])
+        list_1.append(fitted_1)
+        list_2.append(fitted_2)
+    
+    return list_1, list_2
 
 def smooth_brfs_from_list(brf_list_1, brf_list_2):
     list_1 = []
@@ -255,6 +266,8 @@ def smooth_brfs_from_list(brf_list_1, brf_list_2):
     for i in range(len(brf_list_1)):
         smoothed_1 = ss.savgol_filter(brf_list_1[i], savgol_window, 3)
         smoothed_2 = ss.savgol_filter(brf_list_2[i], savgol_window, 3)
+        # show_plot(smoothed_1)
+        # show_plot(smoothed_2)
         list_1.append(smoothed_1) #window, polynomial order
         list_2.append(smoothed_2)
 
@@ -337,44 +350,51 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
 
 if __name__ == '__main__':
     #something is VERY wrong with ge_incandescent_60w; can't get the image
-    img_1 = img_from_path(ecosmart_CFL)
-    img_2 = img_from_path(philips_incandescent)
-    img_3 = img_from_path(sylvania_CFL)
+    # img_1 = img_from_path(ecosmart_CFL)
+    # img_2 = img_from_path(philips_incandescent)
+    # img_3 = img_from_path(sylvania_CFL)
 
-    brf_1 = brf_extraction(img_1)
-    # brf_2 = brf_extraction(img_2)
-    # brf_3 = brf_extraction(img_3)
-    brf_2 = img_2[590:1050,2220]
-    brf_3 = img_3[590:1050,2220]
+    # brf_1 = brf_extraction(img_1)
+    # # brf_2 = brf_extraction(img_2)
+    # # brf_3 = brf_extraction(img_3)
+    # brf_2 = img_2[590:1050,2220]
+    # brf_3 = img_3[590:1050,2220]
 
-    smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
-    smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
-    smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
+    # smoothed_1 = ss.savgol_dfilter(brf_1, savgol_window, 3)
+    # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
+    # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
-    normalized_1 = normalize_brf(smoothed_1)
-    normalized_2 = normalize_brf(smoothed_2)
-    normalized_3 = normalize_brf(smoothed_3)
+    # normalized_1 = normalize_brf(smoothed_1)
+    # normalized_2 = normalize_brf(smoothed_2)
+    # normalized_3 = normalize_brf(smoothed_3)
 
-    # extract_normalized_brf(normalized_1, 'Ecosmart CFL 14W')
-    # extract_normalized_brf(normalized_2, 'Philips Incandescent 40W')
-    # extract_normalized_brf(normalized_3, 'Sylvania CFL 13W')
+    # # extract_normalized_brf(normalized_1, 'Ecosmart CFL 14W')
+    # # extract_normalized_brf(normalized_2, 'Philips Incandescent 40W')
+    # # extract_normalized_brf(normalized_3, 'Sylvania CFL 13W')
 
-    # max_1 = cross_corr(normalized_1, normalized_1)
-    # max_2 = cross_corr(normalized_1, normalized_2)
-    # max_3 = cross_corr(normalized_2, normalized_2)
-    max_1 = cross_corr(normalized_1, normalized_2)
-    # max_1 = cross_corr(normalized_2, normalized_1)
-    # max_2 = cross_corr(normalized_2, normalized_3)
-    max_3 = cross_corr(normalized_1, normalized_3)
-    # max_3 = cross_corr(normalized_3, normalized_1)
+    # # max_1 = cross_corr(normalized_1, normalized_1)
+    # # max_2 = cross_corr(normalized_1, normalized_2)
+    # # max_3 = cross_corr(normalized_2, normalized_2)
+    # max_1 = cross_corr(normalized_1, normalized_2)
+    # # max_1 = cross_corr(normalized_2, normalized_1)
+    # # max_2 = cross_corr(normalized_2, normalized_3)
+    # max_3 = cross_corr(normalized_1, normalized_3)
+    # # max_3 = cross_corr(normalized_3, normalized_1)
 
-    print(max_1)
-    # print(max_2)
-    print(max_3)
+    # print(max_1)
+    # # print(max_2)
+    # print(max_3)
 
-    # brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    # smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
+    fitted_1, fitted_2 = process_brfs_from_list(smoothed_list_1, smoothed_list_2)
+
+    for i in range(len(brf_list_1)):
+        plt.plot(brf_list_1[i])
+        plt.plot(fitted_1[i])
+        plt.show()
+
     # process_brfs_from_list(norm_smooth_list_1, norm_smooth_list_2)
 
     # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
