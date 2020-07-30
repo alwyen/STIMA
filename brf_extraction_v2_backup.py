@@ -119,6 +119,7 @@ def return_extrema(brf):
     peak_indices = np.array(ss.find_peaks(brf, distance = 60)[0])
     nadir_indices = np.array(ss.find_peaks(-brf, distance = 60)[0])
     extrema_indices = sorted(np.concatenate((peak_indices, nadir_indices), 0))
+    extrema_indices = extrema_indices
     extrema_values = brf[extrema_indices]
     return extrema_indices, extrema_values
 
@@ -208,6 +209,35 @@ def remove_sin(norm_brf, name):
     # plt.plot(np.sin())
     # plt.show()
     # print(f'First: {value_first}\nLast: {value_last}')
+
+def fit_sinusoid(normalized_smoothed_brf):
+    fitted_sinusoid = np.array([])
+
+    extrema_indices, extrema_values = return_extrema(normalized_smoothed_brf)
+
+    value_first = int(round(normalized_smoothed_brf[0]))
+    value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
+
+    for i in range(0, len(extrema_indices), 2):
+        #WHY IS HALF_CYCLE A NUMPY FUCKING ARRAY
+        half_cycle = list(normalized_smoothed_brf[extrema_indices[i]:extrema_indices[i+1]])
+        show_plot(half_cycle)
+        print(half_cycle)
+        zero_crossing = half_cycle.index(0)
+        print(zero_crossing)
+        crossing_value = half_cycle[zero_crossing]
+        plt.plot(zero_crossing, crossing_value, 'x')
+
+    plt.plot(normalized_smoothed_brf)
+    plt.show()
+
+    #if start at nadir, find zero crossing between nadir and peak; skip by 2 ==> (range(len(brf), 2))
+    #if start at peak, find zero crossing b/t peak and nadir
+    #REGARDLESS
+    #once have new list of zero crossings, concatenate sin waves in between zero crossings
+    #attempt to fit sin waves before initial zero crossing and after last zero crossing
+    #see starting and end values
+
 
 def extract_normalized_brf(brf, name):
     new_brf = np.array([])
@@ -383,10 +413,12 @@ if __name__ == '__main__':
     # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
     # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
-
-    normalized_1 = normalize_brf(smoothed_1)
+    normalized_1 = map(normalize_brf(smoothed_1), 0, 1, -1, 1)
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
+
+    fit_sinusoid(normalized_1)
+
 
     extrema_indices, extrema_values = return_extrema(smoothed_1)
 
