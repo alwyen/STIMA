@@ -81,11 +81,13 @@ def brf_extraction(img):
 
 def normalize_brf(brf):
     brf_points = []
-    min = int(np.amin(brf))
-    max = int(np.amax(brf))
+    # min = int(np.amin(brf))
+    # max = int(np.amax(brf))
+    min = np.amin(brf)
+    max = np.amax(brf)
     #FIND A BETTER WAY TO DO THIS (USING NP ARRAY)
     for i in range(len(brf)):
-        brf_points.append((int(brf[i]) - min)/(max - min))
+        brf_points.append((brf[i] - min)/(max - min))
     brf_points = np.array(brf_points)
     return brf_points
 
@@ -137,9 +139,11 @@ def normalize_half_cycles(brf): #extracts and normalizes each half cycle
     nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
     extrema_indices = np.concatenate((np.array(peak_indices), np.array(nadir_indices)), 0)
     extrema_indices = sorted(extrema_indices)
+
     # extrema_values = brf[extrema_indices]
     for i in range(len(extrema_indices)-1):
         half_cycle = brf[extrema_indices[i]:extrema_indices[i+1]]
+        show_plot(half_cycle)
         half_cycle = normalize_brf(half_cycle)
         half_cycles.append(half_cycle)
     return half_cycles
@@ -210,10 +214,12 @@ def remove_sin(norm_brf, name):
     # print(f'First: {value_first}\nLast: {value_last}')
 
 def extract_normalized_brf(brf, name):
+    show_plot(brf)
     new_brf = np.array([])
     cycle_list = normalize_half_cycles(brf) #extracts and normalizes each half cycle
     for cycle in cycle_list:
         new_brf = np.concatenate((new_brf, cycle), 0)
+    show_plot(new_brf)
     fitted = remove_sin(new_brf, name)
     return fitted
 
@@ -324,6 +330,27 @@ def normalize_brf_list(brf_list_1, brf_list_2):
         list_2.append(normalize_brf(brf_list_2[i]))
     return list_1, list_2
 
+def fit_raw_brf(smoothed_1):
+    extrema_indices, extrema_values = return_extrema(smoothed_1)
+
+    norm_raw_brf_1 = np.array([])
+    for i in range(len(extrema_indices)-1):
+        temp = brf_1[extrema_indices[i]:extrema_indices[i+1]]
+        norm_temp = normalize(temp, temp[0], temp[len(temp)-1])
+        norm_raw_brf_1 = np.concatenate((norm_raw_brf_1, norm_temp), 0)        
+
+    brf_cropped_1 = brf_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
+    normalized_cropped_1 = normalize_brf(brf_cropped_1)
+    norm_raw_brf_1 = map(norm_raw_brf_1, 0, 1, -1, 1)
+
+    fitted_1 = extract_normalized_brf(smoothed_1, 'name')
+    
+    plt.plot(norm_raw_brf_1)
+    plt.plot(fitted_1)
+    plt.show()
+
+
+
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
     peak_cross_corr_list = []
@@ -388,23 +415,7 @@ if __name__ == '__main__':
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
 
-    extrema_indices, extrema_values = return_extrema(smoothed_1)
-
-    norm_raw_brf_1 = np.array([])
-    for i in range(len(extrema_indices)-1):
-        temp = brf_1[extrema_indices[i]:extrema_indices[i+1]]
-        norm_temp = normalize(temp, temp[0], temp[len(temp)-1])
-        norm_raw_brf_1 = np.concatenate((norm_raw_brf_1, norm_temp), 0)        
-
-    brf_cropped_1 = brf_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
-    normalized_cropped_1 = normalize_brf(brf_cropped_1)
-    norm_raw_brf_1 = map(norm_raw_brf_1, 0, 1, -1, 1)
-
-    fitted_1 = extract_normalized_brf(smoothed_1, 'name')
-
-    plt.plot(norm_raw_brf_1)
-    plt.plot(fitted_1)
-    plt.show()
+    fit_raw_brf(smoothed_1)
 
     # fig, ax = plt.subplots(3,1)
     # # fig.tight_layout(pad = 4.0)
