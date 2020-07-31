@@ -349,7 +349,33 @@ def fit_raw_brf(smoothed_1):
     plt.plot(fitted_1)
     plt.show()
 
+def fit_sinusoid(normalized_smoothed_brf):
+    fitted_sinusoid = np.array([])
 
+    extrema_indices, extrema_values = return_extrema(normalized_smoothed_brf)
+
+    value_first = int(round(normalized_smoothed_brf[0]))
+    value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
+
+    for i in range(0, len(extrema_indices), 2):
+        #WHY IS HALF_CYCLE A NUMPY FUCKING ARRAY
+        half_cycle = list(normalized_smoothed_brf[extrema_indices[i]:extrema_indices[i+1]])
+        show_plot(half_cycle)
+        print(half_cycle)
+        zero_crossing = half_cycle.index(0)
+        print(zero_crossing)
+        crossing_value = half_cycle[zero_crossing]
+        plt.plot(zero_crossing, crossing_value, 'x')
+
+    plt.plot(normalized_smoothed_brf)
+    plt.show()
+
+    #if start at nadir, find zero crossing between nadir and peak; skip by 2 ==> (range(len(brf), 2))
+    #if start at peak, find zero crossing b/t peak and nadir
+    #REGARDLESS
+    #once have new list of zero crossings, concatenate sin waves in between zero crossings
+    #attempt to fit sin waves before initial zero crossing and after last zero crossing
+    #see starting and end values
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
