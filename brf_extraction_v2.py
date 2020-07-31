@@ -103,8 +103,11 @@ def normalize(brf, start, end):
         brf_points = np.concatenate((brf_points, [normalized]), 0)
     return brf_points
 
-def map(brf, in_min, in_max, out_min, out_max):
+def map(brf, out_min, out_max):
     new_brf = []
+    brf = np.array(brf)
+    in_min = np.amin(brf)
+    in_max = np.amax(brf)
     for val in brf:
         mapped = (val - in_min)*(out_max - out_min)/(in_max - in_min) + out_min
         new_brf.append(mapped)
@@ -121,8 +124,8 @@ def return_extrema(brf):
     peak_indices = np.array(ss.find_peaks(brf, distance = 60)[0])
     nadir_indices = np.array(ss.find_peaks(-brf, distance = 60)[0])
     extrema_indices = sorted(np.concatenate((peak_indices, nadir_indices), 0))
-    extrema_values = brf[extrema_indices]
-    return extrema_indices, extrema_values
+    # extrema_values = brf[extrema_indices]
+    return extrema_indices
 
 def cycles_from_brf(brf, option): #gets cycles from ONE BRF
     cycle_list = []
@@ -143,23 +146,19 @@ def normalize_half_cycles(brf): #extracts and normalizes each half cycle
     # extrema_values = brf[extrema_indices]
     for i in range(len(extrema_indices)-1):
         half_cycle = brf[extrema_indices[i]:extrema_indices[i+1]]
-        show_plot(half_cycle)
         half_cycle = normalize_brf(half_cycle)
         half_cycles.append(half_cycle)
     return half_cycles
 
-#first figure out how many cycles 
+#constructs a fitted sinusoid to the normalized brf
 def remove_sin(norm_brf, name):
     fitted_sinusoid = np.array([]) #concatenate sinusoids to fit brf
     norm_brf = np.array(norm_brf)
     
-    min = np.amin(norm_brf)
-    max = np.amax(norm_brf)
-    
     value_first = int(round(norm_brf[0]))
     value_last = int(round(norm_brf[len(norm_brf)-1]))
     
-    brf = map(norm_brf, min, max, -1, 1)
+    brf = map(norm_brf, -1, 1) #mapping to between -1 and 1 to fit a sin wave
     brf = np.array(brf)
 
     start = np.pi/2
@@ -213,15 +212,20 @@ def remove_sin(norm_brf, name):
     # plt.show()
     # print(f'First: {value_first}\nLast: {value_last}')
 
-def extract_normalized_brf(brf, name):
-    show_plot(brf)
+def fit_biased_sin(smoothed_brf, name):
     new_brf = np.array([])
-    cycle_list = normalize_half_cycles(brf) #extracts and normalizes each half cycle
+    cycle_list = normalize_half_cycles(smoothed_brf) #extracts and normalizes each half cycle
     for cycle in cycle_list:
         new_brf = np.concatenate((new_brf, cycle), 0)
-    show_plot(new_brf)
     fitted = remove_sin(new_brf, name)
     return fitted
+
+def extract_normalized_brf(smoothed_brf):
+    new_brf = np.array([])
+    cycle_list = normalize_half_cycles(smoothed_brf) #extracts and normalizes each half cycle
+    for cycle in cycle_list:
+        new_brf = np.concatenate((new_brf, cycle), 0)
+    return new_brf
 
 def pearson_coeff(brf_1, brf_2):
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
@@ -277,8 +281,8 @@ def process_brfs_from_list(brf_list_1, brf_list_2): #remove sin from each BRF
     list_2 = []
 
     for i in range(len(brf_list_1)):
-        fitted_1 = extract_normalized_brf(brf_list_1[i], master_brf_list[i])
-        fitted_2 = extract_normalized_brf(brf_list_2[i], master_brf_list[i])
+        fitted_1 = fit_biased_sin(brf_list_1[i], master_brf_list[i])
+        fitted_2 = fit_biased_sin(brf_list_2[i], master_brf_list[i])
         list_1.append(fitted_1)
         list_2.append(fitted_2)
     
@@ -331,7 +335,7 @@ def normalize_brf_list(brf_list_1, brf_list_2):
     return list_1, list_2
 
 def fit_raw_brf(smoothed_1):
-    extrema_indices, extrema_values = return_extrema(smoothed_1)
+    extrema_indices = return_extrema(smoothed_1)
 
     norm_raw_brf_1 = np.array([])
     for i in range(len(extrema_indices)-1):
@@ -341,9 +345,9 @@ def fit_raw_brf(smoothed_1):
 
     brf_cropped_1 = brf_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
     normalized_cropped_1 = normalize_brf(brf_cropped_1)
-    norm_raw_brf_1 = map(norm_raw_brf_1, 0, 1, -1, 1)
+    norm_raw_brf_1 = map(norm_raw_brf_1, -1, 1)
 
-    fitted_1 = extract_normalized_brf(smoothed_1, 'name')
+    fitted_1 = fit_biased_sin(smoothed_1, 'name')
     
     plt.plot(norm_raw_brf_1)
     plt.plot(fitted_1)
@@ -352,14 +356,13 @@ def fit_raw_brf(smoothed_1):
 def fit_sinusoid(normalized_smoothed_brf):
     fitted_sinusoid = np.array([])
 
-    extrema_indices, extrema_values = return_extrema(normalized_smoothed_brf)
+    extrema_indices = return_extrema(normalized_smoothed_brf)
 
     value_first = int(round(normalized_smoothed_brf[0]))
     value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
 
     for i in range(0, len(extrema_indices), 2):
-        #WHY IS HALF_CYCLE A NUMPY FUCKING ARRAY
-        half_cycle = list(normalized_smoothed_brf[extrema_indices[i]:extrema_indices[i+1]])
+        half_cycle = normalized_smoothed_brf[extrema_indices[i]:extrema_indices[i+1]]
         show_plot(half_cycle)
         print(half_cycle)
         zero_crossing = half_cycle.index(0)
@@ -436,8 +439,12 @@ if __name__ == '__main__':
     # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
     # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
+    norm_smoothed_1 = extract_normalized_brf(smoothed_1)
+    norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
+    show_plot(norm_smoothed_1)
 
-    normalized_1 = normalize_brf(smoothed_1)
+    fit_sinusoid(norm_smoothed_1)
+    # normalized_1 = normalize_brf(smoothed_1)
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
 
