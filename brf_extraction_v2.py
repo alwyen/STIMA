@@ -42,6 +42,14 @@ def align_brfs(brf_1, brf_2):
     shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
     return brf_1, shifted_brf_2
 
+def truncate_longer(brf_1, brf_2):
+    if len(brf_1) > len(brf_2):
+        brf_1 = brf_1[0:len(brf_2)]
+    else:
+        brf_2 = brf_2[0:len(brf_1)]
+    
+    return brf_1, brf_2
+
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
@@ -455,13 +463,35 @@ def align_sinusoid(normalized_smoothed_brf):
     indices = ss.find_peaks(brf_peak_finding, distance = 60)[0]
     
     for i in range(len(indices)-1): #this step is to find the average period length
-        avg_dist_bt_peaks += indices[i+1] - indices[i]
+        dist = indices[i+1] - indices[i]
+        avg_dist_bt_peaks += dist
     
     avg_dist_bt_peaks = int(round(avg_dist_bt_peaks/(len(indices)-1)))
-    print(avg_dist_bt_peaks)
 
-    # for i in range(len(indices)):
-    #     x = np.linspace(start, end, ) #HOW TO CHOOSE LENGTH OF SIN WAVE
+    for i in range(len(indices)):
+        x = np.linspace(start, end, avg_dist_bt_peaks)
+        sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
+    
+    if value_last != value_first:
+        x = np.linspace(start, end/3, int(round(avg_dist_bt_peaks/2)))
+        sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
+
+    wave_1, wave_2 = truncate_longer(brf, sinusoid)
+
+    show_two_brfs(wave_1, wave_2)
+
+    sub_1 = np.subtract(wave_1, wave_2)
+    show_plot(sub_1)
+
+    brf, aligned_sin = align_brfs(brf, sinusoid)
+
+    brf, aligned_sin = truncate_longer(brf, aligned_sin)
+
+    sub_2 = np.subtract(brf, aligned_sin)
+    show_plot(sub_2)
+
+def test_cross_corr(): #using two sinusoids
+    pass
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
@@ -572,19 +602,11 @@ if __name__ == '__main__':
     # # print(max_2)
     # print(max_3)
 
-    # brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    # smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    # # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
-    # fitted_1, fitted_2 = process_brfs_from_list(smoothed_list_1, smoothed_list_2)
+    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
 
-    # for i in range(len(brf_list_1)):
-    #     plt.plot(brf_list_1[i])
-    #     plt.plot(fitted_1[i])
-    #     plt.show()
-
-    # process_brfs_from_list(norm_smooth_list_1, norm_smooth_list_2)
-
-    # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
     # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
