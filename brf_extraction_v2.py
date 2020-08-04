@@ -7,6 +7,8 @@ import scipy.signal as ss
 from scipy.stats.stats import pearsonr
 import pandas as pd
 
+from signal_alignment import phase_align
+
 path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
@@ -33,6 +35,17 @@ height = 576
 width = 1024
 
 savgol_window = 21
+
+def align_brfs(brf_1, brf_2):
+    #shfit amount corresponds to second argument (brf_2)
+    shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
+    shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
+    return brf_1, shifted_brf_2
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
 
 def get_rolling_dc_paths(img_path):
     rolling = img_path + '_rolling.jpg'
@@ -353,24 +366,62 @@ def fit_raw_brf(smoothed_1):
     plt.plot(fitted_1)
     plt.show()
 
-def fit_sinusoid(normalized_smoothed_brf):
+#figure out what's best to input into this method
+def fit_sinusoid(smoothed_brf): #input BRF needs to be smoothed ONLY; need to get extrema points
+    #want extrema points for all in norm_smoothed brf
+    all_extrema_points = np.array([]) #includes beginning and ending points
+
+    zero_crossing_indices = np.array([])
+
+    norm_smoothed = extract_normalized_brf(smoothed_brf)
+    norm_smoothed = np.array(map(norm_smoothed, -1, 1))
+
     fitted_sinusoid = np.array([])
 
-    extrema_indices = return_extrema(normalized_smoothed_brf)
+    #difference between all_extrema_points and extrema_indices: extrema_indices does not contain beginning and end points
+    all_extrema_points = np.concatenate((all_extrema_points, [0]), 0)
+    extrema_indices = return_extrema(norm_smoothed)
+    all_extrema_points = np.concatenate((all_extrema_points, extrema_indices), 0)
+    all_extrema_points = np.concatenate((all_extrema_points, [len(norm_smoothed)-1]), 0).astype(int)
 
-    value_first = int(round(normalized_smoothed_brf[0]))
-    value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
+    value_first = int(round(norm_smoothed[0]))
+    value_last = int(round(norm_smoothed[len(norm_smoothed)-1]))
+    # print(f'First: {value_first}\nLast: {value_last}')
 
-    for i in range(0, len(extrema_indices), 2):
-        half_cycle = normalized_smoothed_brf[extrema_indices[i]:extrema_indices[i+1]]
-        show_plot(half_cycle)
-        print(half_cycle)
-        zero_crossing = half_cycle.index(0)
-        print(zero_crossing)
-        crossing_value = half_cycle[zero_crossing]
-        plt.plot(zero_crossing, crossing_value, 'x')
+    start = np.pi
+    end = -np.pi
 
-    plt.plot(normalized_smoothed_brf)
+    show_plot(norm_smoothed)
+
+    for i in range(0, len(all_extrema_points), 2):
+        half_cycle = np.array(norm_smoothed[all_extrema_points[i]:all_extrema_points[i+1]])
+        zero_crossing_indices = np.concatenate((zero_crossing_indices, np.where(half_cycle == find_nearest(half_cycle, 0))[0] + all_extrema_points[i]), 0)
+
+    zero_crossing_indices = zero_crossing_indices.astype(int)
+    # crossing_values = norm_smoothed[zero_crossing_indices]
+
+    #start with quarter wave first
+    if value_first == -1:
+        x = np.linspace(-np.pi/2, 0, zero_crossing_indices[0])
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, np.sin(x)), 0)
+    else:
+        start = -np.pi
+        end = np.pi
+        x = np.linspace(np.pi/2, np.pi, zero_crossing_indices[0])
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, np.sin(x)), 0)
+
+    for i in range(len(zero_crossing_indices)-1):
+        sin_length = zero_crossing_indices[i+1] - zero_crossing_indices[i]
+        x = np.linspace(start, end, sin_length)
+        # x = x[1:len(x)-1]
+        fitted_sinusoid = np.concatenate((fitted_sinusoid, np.sin(x)), 0)
+
+    #need to figure out how to piece end together
+    #--> depends on start and end (quarter wave for 3/4 wave)
+
+    # plt.plot(zero_crossing_indices, crossing_values, 'x')
+    plt.plot(fitted_sinusoid)
+    plt.plot(norm_smoothed)
     plt.show()
 
     #if start at nadir, find zero crossing between nadir and peak; skip by 2 ==> (range(len(brf), 2))
@@ -379,6 +430,38 @@ def fit_sinusoid(normalized_smoothed_brf):
     #once have new list of zero crossings, concatenate sin waves in between zero crossings
     #attempt to fit sin waves before initial zero crossing and after last zero crossing
     #see starting and end values
+
+#creates an unbiased sinusoid and aligns that with the normalized, smoothed BRF
+def align_sinusoid(normalized_smoothed_brf):
+    sinusoid = np.array([])
+    brf = np.array(map(normalized_smoothed_brf, -1, 1))
+    brf_peak_finding = brf
+
+    avg_dist_bt_peaks = 0
+
+    value_first = int(round(normalized_smoothed_brf[0]))
+    value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
+    
+    #set these values if initial value starts at 1
+    start = np.pi/2
+    end = -np.pi/2*3
+
+    #change if initial value is at low
+    if value_first == -1:
+        brf_peak_finding = -brf
+        start = -start
+        end = -end
+
+    indices = ss.find_peaks(brf_peak_finding, distance = 60)[0]
+    
+    for i in range(len(indices)-1): #this step is to find the average period length
+        avg_dist_bt_peaks += indices[i+1] - indices[i]
+    
+    avg_dist_bt_peaks = int(round(avg_dist_bt_peaks/(len(indices)-1)))
+    print(avg_dist_bt_peaks)
+
+    # for i in range(len(indices)):
+    #     x = np.linspace(start, end, ) #HOW TO CHOOSE LENGTH OF SIN WAVE
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
@@ -443,10 +526,12 @@ if __name__ == '__main__':
     norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
     show_plot(norm_smoothed_1)
 
-    fit_sinusoid(norm_smoothed_1)
+    # fit_sinusoid(smoothed_1)
     # normalized_1 = normalize_brf(smoothed_1)
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
+
+    align_sinusoid(norm_smoothed_1)
 
     fit_raw_brf(smoothed_1)
 
