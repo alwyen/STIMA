@@ -19,7 +19,7 @@ path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
 ecosmart_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\ecosmart_CFL_14w_0_rolling.jpg'
 philips_incandescent = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\philips_incandescent_40w_1_rolling.jpg'
 sylvania_CFL = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\sylvania_CFL_13w_1_rolling.jpg'
-ge_incandescant = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\ge_incandescant_60w_0_rolling.jpg'
+ge_incandescant = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1\ge_incandescant_25w_0_rolling.jpg'
 
 ecosmart_CFL_14w = 'ecosmart_CFL_14w'
 maxlite_CFL_15w = 'maxlite_CFL_15w'
@@ -329,18 +329,8 @@ def normalize_smoothed_brf_list(brf_list_1, brf_list_2):
     normalized_1 = np.array([])
     normalized_2 = np.array([])
     for i in range(len(brf_list_1)):
-        cycle_list_1 = cycles_from_brf(brf_list_1[i], 'normalize')
-        cycle_list_2 = cycles_from_brf(brf_list_2[i], 'normalize')
-        #reconstruct each BRF
-        if len(cycle_list_1) == len(cycle_list_2):
-            for j in range(len(cycle_list_1)): #same length arrays so okay
-                normalized_1 = np.concatenate((normalized_1,cycle_list_1[j]), 0)
-                normalized_2 = np.concatenate((normalized_2,cycle_list_2[j]), 0)
-        else: #do each cycle list individually
-            for cycle in cycle_list_1:
-                normalized_1 = np.concatenate((normalized_1, cycle), 0)
-            for cycle in cycle_list_2:
-                normalized_2 = np.concatenate((normalized_2, cycle), 0)
+        normalized_1 = map(extract_normalized_brf(brf_list_1[i]), -1, 1)
+        normalized_2 = map(extract_normalized_brf(brf_list_2[i]), -1, 1)
         list_1.append(normalized_1) #appends new normalized BRFs
         list_2.append(normalized_2)
         normalized_1 = np.array([]) #reset arrays
@@ -483,12 +473,12 @@ def align_sinusoid(normalized_smoothed_brf):
     sub_1 = np.subtract(wave_1, wave_2)
     show_plot(sub_1)
 
-    brf, aligned_sin = align_brfs(brf, sinusoid)
+    # brf, aligned_sin = align_brfs(brf, sinusoid)
 
-    brf, aligned_sin = truncate_longer(brf, aligned_sin)
+    # brf, aligned_sin = truncate_longer(brf, aligned_sin)
 
-    sub_2 = np.subtract(brf, aligned_sin)
-    show_plot(sub_2)
+    # sub_2 = np.subtract(brf, aligned_sin)
+    # show_plot(sub_2)
 
 def test_cross_corr(): #using two sinusoids
     pass
@@ -607,6 +597,16 @@ if __name__ == '__main__':
     # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
 
     norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    for i in range(len(norm_smooth_list_1)):
+        print(master_brf_list[i] + ' 0')
+        show_plot(norm_smooth_list_1[i])
+        align_sinusoid(norm_smooth_list_1[i])
+
+        print(master_brf_list[i] + ' 1')
+        show_plot(norm_smooth_list_2[i])
+        align_sinusoid(norm_smooth_list_2[i])
+
+
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
     # normalized_cycle_list_1, normalized_cycle_list_2 = normalize_brf_list(cycle_list_1, cycle_list_2)
