@@ -495,14 +495,22 @@ def align_nadirs(normalized_smoothed_brf):
     value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
 
     nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
+    # nadir_values = brf[nadir_indices]
 
     if value_first == 1:
         x = np.linspace(np.pi/2, -np.pi/2, nadir_indices[0]+1)
         sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
+    else:
+        x = np.linspace(-np.pi/2, np.pi/2*3, nadir_indices[0]+1)
+        sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
 
     for i in range(len(nadir_indices)-1):
         x = np.linspace(-np.pi/2, np.pi/2*3, nadir_indices[i+1]-nadir_indices[i])
-        sinusoid = np.concatenate((sinusoid, np.sin(x)))
+        sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
+        plt.plot(brf)
+        plt.plot(sinusoid)
+        plt.plot(nadir_indices, nadir_values, 'x')
+        plt.show()
 
     if value_last == 1:
         x = np.linspace(-np.pi/2, np.pi/2, len(brf)-nadir_indices[len(nadir_indices)-1])
