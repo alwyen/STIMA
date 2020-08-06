@@ -6,6 +6,8 @@ from scipy.ndimage import shift
 import scipy.signal as ss
 from scipy.stats.stats import pearsonr
 import pandas as pd
+import os.path
+from os import path
 
 from signal_alignment import phase_align
 
@@ -13,6 +15,10 @@ path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
 path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
+# sylv_sub_test = 'sylvania_6'
+# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_sub_test + '.jpg'
+phil_sub_test = 'philips_4'
+subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_sub_test + '.jpg'
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
 # philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
@@ -47,7 +53,6 @@ def truncate_longer(brf_1, brf_2):
         brf_1 = brf_1[0:len(brf_2)]
     else:
         brf_2 = brf_2[0:len(brf_1)]
-    
     return brf_1, brf_2
 
 def find_nearest(array, value):
@@ -66,7 +71,7 @@ def img_from_path(img_path):
     return img
 
 def show_plot(array):
-    plt.figure(figsize = (10, 2))
+    plt.figure(figsize = (10, 1))
     plt.plot(array)
     plt.show()
 
@@ -430,7 +435,7 @@ def fit_sinusoid(smoothed_brf): #input BRF needs to be smoothed ONLY; need to ge
     #see starting and end values
 
 #creates an unbiased sinusoid and aligns that with the normalized, smoothed BRF
-def align_sinusoid(normalized_smoothed_brf):
+def align_sinusoid(normalized_smoothed_brf, name):
     sinusoid = np.array([])
     brf = np.array(map(normalized_smoothed_brf, -1, 1))
     brf_peak_finding = brf
@@ -471,7 +476,9 @@ def align_sinusoid(normalized_smoothed_brf):
     show_two_brfs(wave_1, wave_2)
 
     sub_1 = np.subtract(wave_1, wave_2)
-    show_plot(sub_1)
+    plt.plot(sub_1)
+    plt.title(name)
+    plt.show()
 
     # brf, aligned_sin = align_brfs(brf, sinusoid)
 
@@ -479,6 +486,35 @@ def align_sinusoid(normalized_smoothed_brf):
 
     # sub_2 = np.subtract(brf, aligned_sin)
     # show_plot(sub_2)
+
+def align_nadirs(normalized_smoothed_brf):
+    sinusoid = np.array([])
+    brf = np.array(map(normalized_smoothed_brf, -1, 1))
+
+    value_first = int(round(normalized_smoothed_brf[0]))
+    value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
+
+    nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
+
+    if value_first == 1:
+        x = np.linspace(np.pi/2, -np.pi/2, nadir_indices[0]+1)
+        sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
+
+    for i in range(len(nadir_indices)-1):
+        x = np.linspace(-np.pi/2, np.pi/2*3, nadir_indices[i+1]-nadir_indices[i])
+        sinusoid = np.concatenate((sinusoid, np.sin(x)))
+
+    if value_last == 1:
+        x = np.linspace(-np.pi/2, np.pi/2, len(brf)-nadir_indices[len(nadir_indices)-1])
+        sinusoid = np.concatenate((sinusoid, np.sin(x)))
+
+    wave_1, wave_2 = truncate_longer(brf, sinusoid)
+
+    show_two_brfs(wave_1, wave_2)
+
+    subtracted_wave = np.subtract(wave_1, wave_2)
+
+    show_plot(subtracted_wave)
 
 def test_cross_corr(): #using two sinusoids
     pass
@@ -527,18 +563,22 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     plt.show()
 
 if __name__ == '__main__':
-    #something is VERY wrong with ge_incandescent_60w; can't get the image
-    img_1 = img_from_path(ecosmart_CFL)
+
+    # img_1 = img_from_path(ecosmart_CFL)
+    img_1 = img_from_path(subtr_path)
     # img_2 = img_from_path(philips_incandescent)
     # img_3 = img_from_path(sylvania_CFL)
 
-    brf_1 = brf_extraction(img_1)
+    # brf_1 = brf_extraction(img_1)
+    brf_1 = img_1[708:1272,960]
+    show_plot(brf_1)
     # # brf_2 = brf_extraction(img_2)
     # # brf_3 = brf_extraction(img_3)
     # brf_2 = img_2[590:1050,2220]
     # brf_3 = img_3[590:1050,2220]
 
     smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
+    show_plot(smoothed_1)
     # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
     # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
@@ -551,9 +591,10 @@ if __name__ == '__main__':
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
 
-    align_sinusoid(norm_smoothed_1)
+    align_nadirs(norm_smoothed_1)
+    # align_sinusoid(norm_smoothed_1, sylv_sub_test)
 
-    fit_raw_brf(smoothed_1)
+    # fit_raw_brf(smoothed_1)
 
     # fig, ax = plt.subplots(3,1)
     # # fig.tight_layout(pad = 4.0)
@@ -592,19 +633,19 @@ if __name__ == '__main__':
     # # print(max_2)
     # print(max_3)
 
-    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    # brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    # smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
     # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
 
-    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
-    for i in range(len(norm_smooth_list_1)):
-        print(master_brf_list[i] + ' 0')
-        show_plot(norm_smooth_list_1[i])
-        align_sinusoid(norm_smooth_list_1[i])
+    # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    # for i in range(len(norm_smooth_list_1)):
+    #     print(master_brf_list[i] + ' 0')
+    #     show_plot(norm_smooth_list_1[i])
+    #     align_sinusoid(norm_smooth_list_1[i])
 
-        print(master_brf_list[i] + ' 1')
-        show_plot(norm_smooth_list_2[i])
-        align_sinusoid(norm_smooth_list_2[i])
+    #     print(master_brf_list[i] + ' 1')
+    #     show_plot(norm_smooth_list_2[i])
+    #     align_sinusoid(norm_smooth_list_2[i])
 
 
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
