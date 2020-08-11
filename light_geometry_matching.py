@@ -11,45 +11,42 @@ img2_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\Shape Matching Ima
 
 video_path_1 = r'C:\Users\alexy\Downloads\20200701_135609 (online-video-cutter.com).mp4'
 
-# img1_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_1.jpg'
-# img2_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_2.jpg'
-# img3_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_test_img.jpg'
-# img4_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_3.jpg'
-# img5_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_4.jpg'
-# img6_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_5.jpg'
-# img7_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\zernike_test\compare_gray_6.jpg'
 width = 640
 height = 360
 shape_weight = 30000
 threshold = 230
 line_thickness = 1
 
+#class for zernike moments - takes in radius and degree value
 class ZernikeMoments:
     def __init__(self, radius, degree):
-        self.radius = radius
-        self.degree = degree
+        self.radius = radius #radius of size of object
+        self.degree = degree #mahotas documentation does not mention radial or azuazimuthal degree 
     def describe(self, image):
         return mahotas.features.zernike_moments(image, self.radius, degree = self.degree)
 
+#returns the distance between two points in an image
 def point_dist(pt_1, pt_2):
     return math.sqrt((pt_1[0] - pt_2[0])**2 + (pt_1[1] - pt_2[1])**2)
 
+#show the image with cv2
 def show_image(img):
     cv2.imshow('img', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+#retrieve image from the image path
 def img_from_path(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     img = cv2.resize(img, (width, height))
     return img
 
+#save image
 def save_image(name, img):
     cv2.imwrite(name, img)
 
-def extract_images_from_video(video_path):
-    rate = 0.375 #seconds
-    # rate = 1.5 #seconds
+#extracts images from a video every rate amount of seconds
+def extract_images_from_video(video_path, rate):
     video = cv2.VideoCapture(video_path)
     fps = video.get(cv2.CAP_PROP_FPS)
     new_framerate = round(fps*rate)
@@ -64,30 +61,24 @@ def extract_images_from_video(video_path):
         if count%new_framerate == 0:
             frame_list.append(frame)
             show_image(frame)
-            # cv2.imshow('frame#: ' + str(count), frame)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            count += 1
-
-        count += 1
 
     return frame_list
 
+#binarize image, then erode (remove noise) and dilate (inflate blobs)
 def process_image(img):
     img[img < threshold] = 0
     img[img > threshold] = 255
-    # show_image(img)
     img = cv2.erode(img, None, iterations = 1)
-    # show_image(img)
     img = cv2.dilate(img, None, iterations = 2)
-    # show_image(img)
     return img
 
+#gets the lines of the geometric shape only
 def filter_shape_only(img):
     img[img > threshold] = 0
     img[img > 20] = 255
     return img
 
+#draws the centers of each blob (as a black dot)
 def draw_centers(center_list, img):
     img_copy = np.copy(img)
     for center in center_list:
@@ -96,6 +87,7 @@ def draw_centers(center_list, img):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+#draw a circle around a center point
 def draw_circle(img, center_pt):
     cv2.circle(img, center_pt, 1, 255, 1)
 
@@ -300,7 +292,7 @@ def euclid_dst_zernike():
 if __name__ == '__main__':
     # geometry_matching(img1_path, img2_path)
 
-    frames = extract_images_from_video(video_path_1)
+    frames = extract_images_from_video(video_path_1, 0.375)
 
     # img1 = img_from_path(img1_path)
     # img2 = img_from_path(img2_path)

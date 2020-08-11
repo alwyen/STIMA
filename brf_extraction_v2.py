@@ -15,10 +15,10 @@ path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
 path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
-# sylv_sub_test = 'sylvania_6'
-# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_sub_test + '.jpg'
-phil_sub_test = 'philips_4'
-subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_sub_test + '.jpg'
+sylv_sub_test = 'sylvania_1'
+subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_sub_test + '.jpg'
+# phil_sub_test = 'philips_4'
+# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_sub_test + '.jpg'
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
 # philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
@@ -40,7 +40,7 @@ master_brf_list = np.array([ecosmart_CFL_14w, maxlite_CFL_15w, sylvania_CFL_13w,
 height = 576
 width = 1024
 
-savgol_window = 21
+savgol_window = 31
 
 def align_brfs(brf_1, brf_2):
     #shfit amount corresponds to second argument (brf_2)
@@ -498,7 +498,7 @@ def align_nadirs(normalized_smoothed_brf):
     # nadir_values = brf[nadir_indices]
 
     if value_first == 1:
-        x = np.linspace(np.pi/2, -np.pi/2, nadir_indices[0]+1)
+        x = np.linspace(np.pi/2, -np.pi/2, nadir_indices[0]+1) #this should not be +1?? DOUBLE CHECK
         sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
     else:
         x = np.linspace(-np.pi/2, np.pi/2*3, nadir_indices[0]+1)
@@ -507,10 +507,6 @@ def align_nadirs(normalized_smoothed_brf):
     for i in range(len(nadir_indices)-1):
         x = np.linspace(-np.pi/2, np.pi/2*3, nadir_indices[i+1]-nadir_indices[i])
         sinusoid = np.concatenate((sinusoid, np.sin(x)), 0)
-        plt.plot(brf)
-        plt.plot(sinusoid)
-        plt.plot(nadir_indices, nadir_values, 'x')
-        plt.show()
 
     if value_last == 1:
         x = np.linspace(-np.pi/2, np.pi/2, len(brf)-nadir_indices[len(nadir_indices)-1])
@@ -524,8 +520,27 @@ def align_nadirs(normalized_smoothed_brf):
 
     show_plot(subtracted_wave)
 
-def test_cross_corr(): #using two sinusoids
-    pass
+def test_cross_corr(num_periods_1, num_periods_2): #using two sinusoids
+    sinusoid_1 = np.array([])
+    sinusoid_2 = np.array([])
+
+    for i in range(num_periods_1):
+        x = np.linspace(np.pi, -np.pi, 200)
+        sinusoid_1 = np.concatenate((sinusoid_1, np.sin(x)), 0)
+        np.delete(sinusoid_1, -1)
+
+    for i in range(num_periods_2):
+        x = np.linspace(np.pi, -np.pi, 200)
+        sinusoid_2 = np.concatenate((sinusoid_2, np.sin(x)), 0)
+        np.delete(sinusoid_2, -1)
+
+    show_plot(sinusoid_1)
+    show_plot(sinusoid_2)
+
+    correlate = ss.correlate(sinusoid_2, sinusoid_1, mode = 'full')/len(sinusoid_1)
+
+    show_plot(correlate)
+
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
@@ -572,13 +587,15 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
 
 if __name__ == '__main__':
 
+    test_cross_corr(2, 10)
+
     # img_1 = img_from_path(ecosmart_CFL)
     img_1 = img_from_path(subtr_path)
     # img_2 = img_from_path(philips_incandescent)
     # img_3 = img_from_path(sylvania_CFL)
 
     # brf_1 = brf_extraction(img_1)
-    brf_1 = img_1[708:1272,960]
+    brf_1 = img_1[654:1224,831]
     show_plot(brf_1)
     # # brf_2 = brf_extraction(img_2)
     # # brf_3 = brf_extraction(img_3)
