@@ -92,6 +92,7 @@ def draw_circle(img, center_pt):
     cv2.circle(img, center_pt, 1, 255, 1)
 
 #type: 'previous' or 'current' image analyzed
+#gets the centers of all blobs in an image; 'previous'/'current' used for lagging or leading image
 def centroid(img, img_type):
     center_list = []
 
@@ -124,6 +125,7 @@ def centroid(img, img_type):
     return center_list
 
 #shape[0] => row, shape[1] => col
+#gets the center of mass of an image and returns the cm coordinates
 def center_of_mass(img_shape):
     sum_row = 0
     sum_col = 0
@@ -137,6 +139,7 @@ def center_of_mass(img_shape):
     c_col = int(round(sum_col/sum_row_col))
     return (c_row, c_col)
 
+#create an outline of the geometric shape
 def outline_shape(img_shape):
     outline = np.zeros(img_shape.shape, dtype = 'uint8')
     cnts = cv2.findContours(img_shape.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -145,6 +148,7 @@ def outline_shape(img_shape):
     cv2.drawContours(outline, [cnts], -1, 255, -1)
     return outline
 
+# draws a circle around the center of the blob
 def show_centers(img, center_list):
     copy_image = np.copy(img)
     for pt in center_list:

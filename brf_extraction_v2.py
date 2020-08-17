@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.ndimage import shift
 import scipy.signal as ss
+from scipy.fftpack import fft
 from scipy.stats.stats import pearsonr
 import pandas as pd
 import os.path
@@ -15,10 +16,13 @@ path_1 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\1'
 path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
 path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
-sylv_sub_test = 'sylvania_1'
-subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_sub_test + '.jpg'
-# phil_sub_test = 'philips_4'
-# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_sub_test + '.jpg'
+
+# sylv_file_num = 'sylvania_4'
+# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_file_num + '.jpg'
+brf_save_load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\csv_brf'
+phil_file_num = 'philips_0'
+subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_file_num + '.jpg'
+
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
 # philips_calibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_calibrated.jpg'
@@ -41,6 +45,9 @@ height = 576
 width = 1024
 
 savgol_window = 31
+
+def crop_brf(brf_img):
+    return brf_img[684:1269,1227]
 
 def align_brfs(brf_1, brf_2):
     #shfit amount corresponds to second argument (brf_2)
@@ -427,13 +434,6 @@ def fit_sinusoid(smoothed_brf): #input BRF needs to be smoothed ONLY; need to ge
     plt.plot(norm_smoothed)
     plt.show()
 
-    #if start at nadir, find zero crossing between nadir and peak; skip by 2 ==> (range(len(brf), 2))
-    #if start at peak, find zero crossing b/t peak and nadir
-    #REGARDLESS
-    #once have new list of zero crossings, concatenate sin waves in between zero crossings
-    #attempt to fit sin waves before initial zero crossing and after last zero crossing
-    #see starting and end values
-
 #creates an unbiased sinusoid and aligns that with the normalized, smoothed BRF
 def align_sinusoid(normalized_smoothed_brf, name):
     sinusoid = np.array([])
@@ -541,7 +541,6 @@ def test_cross_corr(num_periods_1, num_periods_2): #using two sinusoids
 
     show_plot(correlate)
 
-
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
     peak_cross_corr_list = []
@@ -585,38 +584,55 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     fig.tight_layout()
     plt.show()
 
+def show_fft(normalized_smoothed_brf):
+    num_samples = len(normalized_smoothed_brf)
+    sample_spacing = 1.0/num_samples
+    xf = np.linspace(0.0, 1.0/(2.0*sample_spacing), num_samples//2)
+    yf = fft(normalized_smoothed_brf)
+    plt.plot(xf, 2.0/num_samples*np.abs(yf[0:num_samples//2]))
+    plt.grid()
+    plt.show()
+
+def save_brf_csv(brf_array, bulb):
+    save_path = ''
+    if bulb == 'sylvania': save_path = brf_save_load_path + '\\' + sylvania_CFL_13w
+    elif bulb == 'philips': save_path = brf_save_load_path + '\\' + philips_incandescent_40w
+    os.chdir(save_path)
+    # num_files = len(os.listdir(save_path))
+    brf_file_name = sylv_file_num + '.csv'
+    np.savetxt(brf_file_name, brf_array, delimiter = ',')
+
+
 if __name__ == '__main__':
-
-    test_cross_corr(2, 10)
-
     # img_1 = img_from_path(ecosmart_CFL)
     img_1 = img_from_path(subtr_path)
     # img_2 = img_from_path(philips_incandescent)
     # img_3 = img_from_path(sylvania_CFL)
 
     # brf_1 = brf_extraction(img_1)
-    brf_1 = img_1[654:1224,831]
-    show_plot(brf_1)
+    brf_1 = crop_brf(img_1)
+    # show_plot(brf_1)
     # # brf_2 = brf_extraction(img_2)
     # # brf_3 = brf_extraction(img_3)
     # brf_2 = img_2[590:1050,2220]
     # brf_3 = img_3[590:1050,2220]
 
     smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
-    show_plot(smoothed_1)
+    # show_plot(smoothed_1)
     # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
     # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
     norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
-    show_plot(norm_smoothed_1)
+    save_brf_csv(norm_smoothed_1, 'sylvania')
+    # show_plot(norm_smoothed_1)
 
     # fit_sinusoid(smoothed_1)
     # normalized_1 = normalize_brf(smoothed_1)
     # normalized_2 = normalize_brf(smoothed_2)
     # normalized_3 = normalize_brf(smoothed_3)
 
-    align_nadirs(norm_smoothed_1)
+    # align_nadirs(norm_smoothed_1)
     # align_sinusoid(norm_smoothed_1, sylv_sub_test)
 
     # fit_raw_brf(smoothed_1)
@@ -658,12 +674,20 @@ if __name__ == '__main__':
     # # print(max_2)
     # print(max_3)
 
-    # brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    # smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    # norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
+'''
+    #retrieves raw brfs
+    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    #smooths raw brfs
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    #normalized between 0 and 1
+    norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
 
-    # norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
-    # for i in range(len(norm_smooth_list_1)):
+    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+    for i in range(len(norm_smooth_list_1)):
+        print(master_brf_list[i])
+        show_fft(norm_smooth_list_1[i])
+'''
+
     #     print(master_brf_list[i] + ' 0')
     #     show_plot(norm_smooth_list_1[i])
     #     align_sinusoid(norm_smooth_list_1[i])
