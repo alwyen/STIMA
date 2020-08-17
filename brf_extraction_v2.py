@@ -613,33 +613,13 @@ if __name__ == '__main__':
     # img_2 = img_from_path(philips_incandescent)
     # img_3 = img_from_path(sylvania_CFL)
 
-    # brf_1 = brf_extraction(img_1)
     brf_1 = crop_brf(img_1)
-    # show_plot(brf_1)
-    # # brf_2 = brf_extraction(img_2)
-    # # brf_3 = brf_extraction(img_3)
-    # brf_2 = img_2[590:1050,2220]
-    # brf_3 = img_3[590:1050,2220]
 
     smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
-    # show_plot(smoothed_1)
-    # smoothed_2 = ss.savgol_filter(brf_2, savgol_window, 3)
-    # smoothed_3 = ss.savgol_filter(brf_3, savgol_window, 3)
 
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
     norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
     save_brf_csv(norm_smoothed_1, 'philips')
-    # show_plot(norm_smoothed_1)
-
-    # fit_sinusoid(smoothed_1)
-    # normalized_1 = normalize_brf(smoothed_1)
-    # normalized_2 = normalize_brf(smoothed_2)
-    # normalized_3 = normalize_brf(smoothed_3)
-
-    # align_nadirs(norm_smoothed_1)
-    # align_sinusoid(norm_smoothed_1, sylv_sub_test)
-
-    # fit_raw_brf(smoothed_1)
 
     # fig, ax = plt.subplots(3,1)
     # # fig.tight_layout(pad = 4.0)
@@ -659,25 +639,6 @@ if __name__ == '__main__':
     # box = ax[2].get_position()
     # ax[2].set_position([box.x0, box.y0, box.width * 0.9, box.height])
 
-    # plt.show()
-
-    # # extract_normalized_brf(normalized_1, 'Ecosmart CFL 14W')
-    # # extract_normalized_brf(normalized_2, 'Philips Incandescent 40W')
-    # # extract_normalized_brf(normalized_3, 'Sylvania CFL 13W')
-
-    # # max_1 = cross_corr(normalized_1, normalized_1)
-    # # max_2 = cross_corr(normalized_1, normalized_2)
-    # # max_3 = cross_corr(normalized_2, normalized_2)
-    # max_1 = cross_corr(normalized_1, normalized_2)
-    # # max_1 = cross_corr(normalized_2, normalized_1)
-    # # max_2 = cross_corr(normalized_2, normalized_3)
-    # max_3 = cross_corr(normalized_1, normalized_3)
-    # # max_3 = cross_corr(normalized_3, normalized_1)
-
-    # print(max_1)
-    # # print(max_2)
-    # print(max_3)
-
 '''
     #retrieves raw brfs
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
@@ -691,15 +652,6 @@ if __name__ == '__main__':
         print(master_brf_list[i])
         show_fft(norm_smooth_list_1[i])
 '''
-
-    #     print(master_brf_list[i] + ' 0')
-    #     show_plot(norm_smooth_list_1[i])
-    #     align_sinusoid(norm_smooth_list_1[i])
-
-    #     print(master_brf_list[i] + ' 1')
-    #     show_plot(norm_smooth_list_2[i])
-    #     align_sinusoid(norm_smooth_list_2[i])
-
 
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
