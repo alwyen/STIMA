@@ -17,11 +17,11 @@ path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
 path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
 
-# sylv_file_num = 'sylvania_4'
+sylv_file_num = 'sylvania_4'
 # subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_file_num + '.jpg'
 brf_save_load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\csv_brf'
-phil_file_num = 'philips_0'
-subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + phil_file_num + '.jpg'
+philips_file_num = 'philips_4'
+subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + philips_file_num + '.jpg'
 
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
@@ -47,7 +47,7 @@ width = 1024
 savgol_window = 31
 
 def crop_brf(brf_img):
-    return brf_img[684:1269,1227]
+    return brf_img[708:1272,960]
 
 def align_brfs(brf_1, brf_2):
     #shfit amount corresponds to second argument (brf_2)
@@ -595,11 +595,15 @@ def show_fft(normalized_smoothed_brf):
 
 def save_brf_csv(brf_array, bulb):
     save_path = ''
-    if bulb == 'sylvania': save_path = brf_save_load_path + '\\' + sylvania_CFL_13w
-    elif bulb == 'philips': save_path = brf_save_load_path + '\\' + philips_incandescent_40w
+    brf_file_name = ''
+    if bulb == 'sylvania':
+        save_path = brf_save_load_path + '\\' + sylvania_CFL_13w
+        brf_file_name = sylv_file_num + '.csv'
+    elif bulb == 'philips':
+        save_path = brf_save_load_path + '\\' + philips_incandescent_40w
+        brf_file_name = philips_file_num + '.csv'
     os.chdir(save_path)
     # num_files = len(os.listdir(save_path))
-    brf_file_name = sylv_file_num + '.csv'
     np.savetxt(brf_file_name, brf_array, delimiter = ',')
 
 
@@ -624,7 +628,7 @@ if __name__ == '__main__':
 
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
     norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
-    save_brf_csv(norm_smoothed_1, 'sylvania')
+    save_brf_csv(norm_smoothed_1, 'philips')
     # show_plot(norm_smoothed_1)
 
     # fit_sinusoid(smoothed_1)
