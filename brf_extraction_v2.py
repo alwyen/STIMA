@@ -606,8 +606,23 @@ def save_brf_csv(brf_array, bulb):
     # num_files = len(os.listdir(save_path))
     np.savetxt(brf_file_name, brf_array, delimiter = ',')
 
+def load_brfs(bulb):
+    brF_list = []
+    load_path = ''
+    if bulb == 'sylvania': load_path = brf_save_load_path + '\\' + sylvania_CFL_13w
+    if bulb == 'philips': load_path = brf_save_load_path + '\\' + philips_incandescent_40w
+    os.chdir(load_path)
+    num_files = len(os.listdir(load_path))
+    for i in range(num_files):
+        file_name = bulb + '_' + str(i) + '.csv'
+        brf = np.genfromtxt(file_name, delimiter = ',')
+        show_plot(brf)
+
 
 if __name__ == '__main__':
+    load_brfs('sylvania')
+
+    '''
     # img_1 = img_from_path(ecosmart_CFL)
     img_1 = img_from_path(subtr_path)
     # img_2 = img_from_path(philips_incandescent)
@@ -620,6 +635,7 @@ if __name__ == '__main__':
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
     norm_smoothed_1 = map(norm_smoothed_1, -1, 1)
     save_brf_csv(norm_smoothed_1, 'philips')
+    '''
 
     # fig, ax = plt.subplots(3,1)
     # # fig.tight_layout(pad = 4.0)
