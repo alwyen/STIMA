@@ -607,7 +607,7 @@ def save_brf_csv(brf_array, bulb):
     np.savetxt(brf_file_name, brf_array, delimiter = ',')
 
 def load_brfs(bulb):
-    brF_list = []
+    brf_list = []
     load_path = ''
     if bulb == 'sylvania': load_path = brf_save_load_path + '\\' + sylvania_CFL_13w
     if bulb == 'philips': load_path = brf_save_load_path + '\\' + philips_incandescent_40w
@@ -616,11 +616,29 @@ def load_brfs(bulb):
     for i in range(num_files):
         file_name = bulb + '_' + str(i) + '.csv'
         brf = np.genfromtxt(file_name, delimiter = ',')
-        show_plot(brf)
+        brf_list.append(brf)
+    return brf_list
 
+def load_scope_waveforms(path):
+    os.chdir(path)
+    num_files = len(os.listdir(path))
+    for i in range(num_files):
+        file_name = path + '\\' + 'waveform_' + str(i) + '.csv'
+        df = pd.read_csv(file_name)
+        brf = df.iloc[:,1]
+        # print(brf)
+        show_fft(brf)
+        # show_plot(brf)
 
 if __name__ == '__main__':
-    load_brfs('sylvania')
+    # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
+    # load_scope_waveforms(path)
+    
+    # brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
+    brf_list_2 = load_brfs('sylvania')
+    for brf in brf_list_2:
+        show_fft(brf)
+        # show_plot(brf)
 
     '''
     # img_1 = img_from_path(ecosmart_CFL)
