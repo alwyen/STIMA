@@ -584,14 +584,42 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     fig.tight_layout()
     plt.show()
 
+#find average length of cycle
 def show_fft(normalized_smoothed_brf):
+    peak_indices = ss.find_peaks(normalized_smoothed_brf, distance = 60)[0]
+    avg_cycle_len = 0
+    for i in range(len(peak_indices)-1):
+        avg_cycle_len += peak_indices[i+1] - peak_indices[i]
+    avg_cycle_len = int(round(avg_cycle_len/(len(peak_indices)-1)))
+
+    sample_rate = avg_cycle_len * 120
+    # num_samples = len(normalized_smoothed_brf)
     num_samples = len(normalized_smoothed_brf)
-    sample_spacing = 1.0/num_samples
-    xf = np.linspace(0.0, 1.0/(2.0*sample_spacing), num_samples//2)
+    # print(num_samples)
+    sample_spacing = 1/sample_rate
+    # print(sample_spacing)
+    xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
+    # print(xf)
     yf = fft(normalized_smoothed_brf)
-    plt.plot(xf, 2.0/num_samples*np.abs(yf[0:num_samples//2]))
+    yf = 2.0/num_samples*np.abs(yf[0:num_samples//2])
+    plt.plot(xf, yf)
+    # plt.plot(xf, np.abs(yf[0:num_samples//2]))
+    
+    peak_indices = ss.find_peaks(yf)[0]
+    peak_values = yf[peak_indices]
+    max_peak = np.amax(peak_values)
+    print(max_peak)
+    index = np.where(yf == max_peak)
+    print(xf[index])
+    
+    plt.xlabel('Frequency')
+    plt.ylabel('Amplitude')
+    # plt.xticks(np.arange(0, 1/(sample_spacing*2), 100))
+    plt.title('Sylvania CFL')
     plt.grid()
     plt.show()
+
+    return xf, yf
 
 def save_brf_csv(brf_array, bulb):
     save_path = ''
@@ -630,15 +658,38 @@ def load_scope_waveforms(path):
         show_fft(brf)
         # show_plot(brf)
 
+#input fft of brf
+def remove_120hz(yf):
+    max_peak = np.amax(yf)
+    max_peak_index = np.where(yf == max_peak)[0]
+    nadir_indices = ss.find_peaks(yf)[0]
+    for nadir_freq in nadir_indices:
+        if nadir_freq > max_peak_index:
+            yf[0:nadir_freq] = 0
+            #interpolate points after??
+            break
+    return yf
+
+
+
 if __name__ == '__main__':
     # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
     # load_scope_waveforms(path)
     
-    # brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
+    brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
     brf_list_2 = load_brfs('sylvania')
-    for brf in brf_list_2:
-        show_fft(brf)
-        # show_plot(brf)
+
+    for brf_1 in brf_list_1:
+        for brf in brf_list_2:
+            pass
+        pass
+
+    for brf in brf_list_1:
+        xf, yf = show_fft(brf)
+        new_yf = remove_120hz(yf)
+        plt.plot(xf, yf)
+        plt.show()
+
 
     '''
     # img_1 = img_from_path(ecosmart_CFL)
