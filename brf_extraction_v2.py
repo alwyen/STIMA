@@ -136,11 +136,20 @@ def normalize(brf, start, end):
         brf_points = np.concatenate((brf_points, [normalized]), 0)
     return brf_points
 
-def map(brf, out_min, out_max):
+def map_to_out(brf, out_min, out_max):
     new_brf = []
     brf = np.array(brf)
     in_min = np.amin(brf)
     in_max = np.amax(brf)
+    for val in brf:
+        mapped = (val - in_min)*(out_max - out_min)/(in_max - in_min) + out_min
+        new_brf.append(mapped)
+    return new_brf
+
+#LEARN HOW TO INCLUDE OPTIONS
+def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
+    new_brf = []
+    brf = np.array(waveform)
     for val in brf:
         mapped = (val - in_min)*(out_max - out_min)/(in_max - in_min) + out_min
         new_brf.append(mapped)
@@ -191,7 +200,7 @@ def remove_sin(norm_brf, name):
     value_first = int(round(norm_brf[0]))
     value_last = int(round(norm_brf[len(norm_brf)-1]))
     
-    brf = map(norm_brf, -1, 1) #mapping to between -1 and 1 to fit a sin wave
+    brf = map_to_out(norm_brf, -1, 1) #mapping to between -1 and 1 to fit a sin wave
     brf = np.array(brf)
 
     start = np.pi/2
@@ -264,11 +273,16 @@ def pearson_coeff(brf_1, brf_2):
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
     elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
     r, p = pearsonr(brf_1, brf_2)
+    r = round(r, 2)
     return r
 
 def cross_corr(brf_1, brf_2):
-    correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
-    max = round(np.amax(np.array(correlate)), 3)
+    # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    show_plot(correlate)
+    correlate = map_in_to_out(correlate, -0.5, 0.5, 0, 1)
+    show_plot(correlate)
+    max = round(np.amax(np.array(correlate)), 6)
     return max
 
 def extract_brfs_from_list(master_brf_list):
@@ -341,8 +355,8 @@ def normalize_smoothed_brf_list(brf_list_1, brf_list_2):
     normalized_1 = np.array([])
     normalized_2 = np.array([])
     for i in range(len(brf_list_1)):
-        normalized_1 = map(extract_normalized_brf(brf_list_1[i]), -1, 1)
-        normalized_2 = map(extract_normalized_brf(brf_list_2[i]), -1, 1)
+        normalized_1 = map_to_out(extract_normalized_brf(brf_list_1[i]), -1, 1)
+        normalized_2 = map_to_out(extract_normalized_brf(brf_list_2[i]), -1, 1)
         list_1.append(normalized_1) #appends new normalized BRFs
         list_2.append(normalized_2)
         normalized_1 = np.array([]) #reset arrays
@@ -368,7 +382,7 @@ def fit_raw_brf(smoothed_1):
 
     brf_cropped_1 = brf_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
     normalized_cropped_1 = normalize_brf(brf_cropped_1)
-    norm_raw_brf_1 = map(norm_raw_brf_1, -1, 1)
+    norm_raw_brf_1 = map_to_out(norm_raw_brf_1, -1, 1)
 
     fitted_1 = fit_biased_sin(smoothed_1, 'name')
     
@@ -384,7 +398,7 @@ def fit_sinusoid(smoothed_brf): #input BRF needs to be smoothed ONLY; need to ge
     zero_crossing_indices = np.array([])
 
     norm_smoothed = extract_normalized_brf(smoothed_brf)
-    norm_smoothed = np.array(map(norm_smoothed, -1, 1))
+    norm_smoothed = np.array(map_to_out(norm_smoothed, -1, 1))
 
     fitted_sinusoid = np.array([])
 
@@ -437,7 +451,7 @@ def fit_sinusoid(smoothed_brf): #input BRF needs to be smoothed ONLY; need to ge
 #creates an unbiased sinusoid and aligns that with the normalized, smoothed BRF
 def align_sinusoid(normalized_smoothed_brf, name):
     sinusoid = np.array([])
-    brf = np.array(map(normalized_smoothed_brf, -1, 1))
+    brf = np.array(map_to_out(normalized_smoothed_brf, -1, 1))
     brf_peak_finding = brf
 
     avg_dist_bt_peaks = 0
@@ -489,7 +503,7 @@ def align_sinusoid(normalized_smoothed_brf, name):
 
 def align_nadirs(normalized_smoothed_brf):
     sinusoid = np.array([])
-    brf = np.array(map(normalized_smoothed_brf, -1, 1))
+    brf = np.array(map_to_out(normalized_smoothed_brf, -1, 1))
 
     value_first = int(round(normalized_smoothed_brf[0]))
     value_last = int(round(normalized_smoothed_brf[len(normalized_smoothed_brf)-1]))
@@ -553,9 +567,6 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     #double checked with x/y-axis is correct; seems correct
     for brf_1 in brf_list_1:
         for brf_2 in brf_list_2:
-            # plt.plot(brf_1)
-            # plt.plot(brf_2)
-            # plt.show()
             max = cross_corr(brf_1, brf_2)
             peak_cross_corr_list.append(max)
         cross_corr_heatmap.append(peak_cross_corr_list)
@@ -584,8 +595,78 @@ def correlation_heat_map(brf_list_1, brf_list_2, title):
     fig.tight_layout()
     plt.show()
 
+def pearson_correlation_heat_map(waveform_list_1, waveform_list_2):
+    corr_list = []
+    corr_heatmap = []
+
+    #double checked with x/y-axis is correct; seems correct
+    for waveform_1 in waveform_list_1:
+        for waveform_2 in waveform_list_2:
+            r = pearson_coeff(waveform_1, waveform_2)
+            print(f'Pearson Coeff: {r}')
+            show_two_brfs(waveform_1, waveform_2)
+            corr_list.append(r)
+        print()
+        corr_list = np.flip(corr_list)
+        corr_heatmap.append(corr_list)
+        corr_list = []
+    
+    fig, ax = plt.subplots()
+    # pcoeff_heatplot = ax.imshow(pcoeff_heatmap, cmap = "Blues")
+    cross_corr_heatplot = ax.imshow(corr_heatmap, cmap = "Blues")
+    ax.set_xticks(np.arange(len(waveform_list_1)))
+    ax.set_yticks(np.arange(len(waveform_list_2)))
+    ax.set_xticklabels(np.flip(np.arange(len(waveform_list_1))))
+
+    # ax.set_yticklabels(brf_name_list_1)
+    # ax.set_title(title)
+
+    for i in range(len(corr_heatmap)):
+        for j in range(len(corr_heatmap[i])):
+            text = ax.text(j, i, corr_heatmap[i][j],
+                        ha="center", va="center", color="black")
+
+    colorbar = fig.colorbar(cross_corr_heatplot)
+    # plt.xticks(rotation = 45)
+    fig.tight_layout()
+    plt.show()
+
+def check_heatmap_direction():
+    x = np.array([1,2,3,4,5])
+    y = np.array([1,2,3,4,5])
+    mult_row = []
+    mult_heatmap = []
+
+    for i in x:
+        for j in y:
+            mult_row.append(i*j)
+        mult_row = np.array(mult_row)
+        mult_row = np.flip(mult_row)
+        mult_heatmap.append(mult_row)
+        mult_row = []
+    
+    fig, ax = plt.subplots()
+    heatplot = ax.imshow(mult_heatmap, cmap = 'Blues')
+    ax.set_xticks(np.arange(len(x)))
+    ax.set_yticks(np.arange(len(y)))
+    ax.set_xticklabels(np.flip(x))
+    ax.set_yticklabels(y)
+
+    for i in range(len(mult_heatmap)):
+        for j in range(len(mult_heatmap[i])):
+            text = ax.text(j, i, mult_heatmap[i][j],
+                        ha="center", va="center", color="black")
+
+    colorbar = fig.colorbar(heatplot)
+    # plt.xticks(rotation = 45)
+    fig.tight_layout()
+    plt.show()
+
+    
+
 #find average length of cycle
-def show_fft(normalized_smoothed_brf):
+#need to normalize so that all 120Hz amplitudes are the same?
+def return_fft(normalized_smoothed_brf):
     peak_indices = ss.find_peaks(normalized_smoothed_brf, distance = 60)[0]
     avg_cycle_len = 0
     for i in range(len(peak_indices)-1):
@@ -602,24 +683,37 @@ def show_fft(normalized_smoothed_brf):
     # print(xf)
     yf = fft(normalized_smoothed_brf)
     yf = 2.0/num_samples*np.abs(yf[0:num_samples//2])
-    plt.plot(xf, yf)
-    # plt.plot(xf, np.abs(yf[0:num_samples//2]))
+    # yf = normalize_brf(yf) #need to change the name of this method
+
     
-    peak_indices = ss.find_peaks(yf)[0]
-    peak_values = yf[peak_indices]
-    max_peak = np.amax(peak_values)
-    print(max_peak)
-    index = np.where(yf == max_peak)
-    print(xf[index])
-    
-    plt.xlabel('Frequency')
-    plt.ylabel('Amplitude')
-    # plt.xticks(np.arange(0, 1/(sample_spacing*2), 100))
-    plt.title('Sylvania CFL')
-    plt.grid()
-    plt.show()
+    # peak_indices = ss.find_peaks(yf)[0]
+    # peak_values = yf[peak_indices]
+    # max_peak = np.amax(peak_values)
+    # print(max_peak)
+    # index = np.where(yf == max_peak)
+    # print(xf[index])
+
+    # plt.plot(xf, yf)
+    # plt.xlabel('Frequency')
+    # plt.ylabel('Amplitude')
+    # # plt.xticks(np.arange(0, 1/(sample_spacing*2), 100))
+    # plt.title('Sylvania CFL')
+    # plt.grid()
+    # plt.show()
 
     return xf, yf
+
+#input fft of brf
+def remove_120hz(yf):
+    max_peak = np.amax(yf)
+    max_peak_index = np.where(yf == max_peak)[0]
+    nadir_indices = ss.find_peaks(yf)[0]
+    for nadir_freq in nadir_indices:
+        if nadir_freq > max_peak_index:
+            yf[0:nadir_freq] = 0
+            #interpolate points after??
+            break
+    return yf
 
 def save_brf_csv(brf_array, bulb):
     save_path = ''
@@ -655,41 +749,33 @@ def load_scope_waveforms(path):
         df = pd.read_csv(file_name)
         brf = df.iloc[:,1]
         # print(brf)
-        show_fft(brf)
+        return_fft(brf)
         # show_plot(brf)
-
-#input fft of brf
-def remove_120hz(yf):
-    max_peak = np.amax(yf)
-    max_peak_index = np.where(yf == max_peak)[0]
-    nadir_indices = ss.find_peaks(yf)[0]
-    for nadir_freq in nadir_indices:
-        if nadir_freq > max_peak_index:
-            yf[0:nadir_freq] = 0
-            #interpolate points after??
-            break
-    return yf
-
-
 
 if __name__ == '__main__':
     # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
     # load_scope_waveforms(path)
     
+    #each brf in each list is normalized and smoothed
     brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
     brf_list_2 = load_brfs('sylvania')
 
-    for brf_1 in brf_list_1:
-        for brf in brf_list_2:
-            pass
-        pass
+    fft_list_1 = []
+    fft_list_2 = []
 
-    for brf in brf_list_1:
-        xf, yf = show_fft(brf)
-        new_yf = remove_120hz(yf)
-        plt.plot(xf, yf)
-        plt.show()
+    for i in range(len(brf_list_1)):
+        xf_1, yf_1 = return_fft(brf_list_1[i])
+        xf_2, yf_2 = return_fft(brf_list_2[i])
+        fft_list_1.append(remove_120hz(yf_1))
+        fft_list_2.append(remove_120hz(yf_2))
 
+    fft_list = fft_list_1 + fft_list_2
+    
+    pearson_correlation_heat_map(fft_list, fft_list)
+    # for fft_1 in fft_list:
+    #     for fft_2 in fft_list:
+    #         print(cross_corr(fft_1, fft_2))
+    #     print()
 
     '''
     # img_1 = img_from_path(ecosmart_CFL)
