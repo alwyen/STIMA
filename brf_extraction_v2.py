@@ -9,6 +9,7 @@ from scipy.stats.stats import pearsonr
 import pandas as pd
 import os.path
 from os import path
+import math
 
 from signal_alignment import phase_align
 
@@ -45,6 +46,21 @@ height = 576
 width = 1024
 
 savgol_window = 31
+
+################################################################################################
+
+def mean(array):
+    np_array = np.array(array)
+    return np.sum(np_array)/len(np_array)
+
+def std_dev(array, mean):
+    sum_dif_squared = 0
+    for value in array:
+        sum_dif_squared += (value - mean)**2
+    sum_dif_squared = sum_dif_squared/len(array)
+    return math.sqrt(sum_dif_squared)
+    
+################################################################################################
 
 def crop_brf(brf_img):
     return brf_img[708:1272,960]
@@ -673,6 +689,15 @@ def test_cross_corr(num_periods_1, num_periods_2): #using two sinusoids
 
     show_plot(correlate)
 
+def t_test(array_1, array_2):
+    mean_1 = mean(array_1)
+    mean_2 = mean(array_2)
+    std_dev_1 = std_dev(array_1, mean_1)
+    std_dev_2 = std_dev(array_2, mean_2)
+    denominator = math.sqrt(std_dev_1**2/len(array_1) + std_dev_2**2/len(array_2))
+    t = abs(mean_1 - mean_2)/denominator
+    return t
+
 ################################################################################################
 #frequency methods
 
@@ -686,7 +711,6 @@ def return_fft(normalized_smoothed_brf):
     avg_cycle_len = int(round(avg_cycle_len/(len(peak_indices)-1)))
 
     sample_rate = avg_cycle_len * 120
-    # num_samples = len(normalized_smoothed_brf)
     num_samples = len(normalized_smoothed_brf)
     # print(num_samples)
     sample_spacing = 1/sample_rate
@@ -695,7 +719,7 @@ def return_fft(normalized_smoothed_brf):
     # print(xf)
     yf = fft(normalized_smoothed_brf)
     yf = 2.0/num_samples*np.abs(yf[0:num_samples//2])
-    # yf = normalize_brf(yf) #need to change the name of this method
+    yf = normalize_brf(yf) #need to change the name of this method
 
     
     # peak_indices = ss.find_peaks(yf)[0]
@@ -726,6 +750,15 @@ def remove_120hz(yf):
             #interpolate points after??
             break
     return yf
+
+#return 10 highest peak frequencies (lowest freq to highest)
+def peak_frequencies(xf, yf):
+    peak_indices = ss.find_peaks(yf)[0]
+    yf_peak_values = yf[peak_indices]
+    xf_freq_values = xf[peak_indices]
+    plt.plot(xf, yf)
+    plt.plot(xf_freq_values, yf_peak_values, 'x')
+    plt.show()
 
 ################################################################################################
 
@@ -782,16 +815,31 @@ if __name__ == '__main__':
     for i in range(len(brf_list_1)):
         xf_1, yf_1 = return_fft(brf_list_1[i])
         xf_2, yf_2 = return_fft(brf_list_2[i])
-        fft_list_1.append(remove_120hz(yf_1))
-        fft_list_2.append(remove_120hz(yf_2))
+        fft_list_1.append([xf_1, remove_120hz(yf_1)])
+        fft_list_2.append([xf_2, remove_120hz(yf_2)])
+        # fft_list_1.append([xf_1, yf_1])
+        # fft_list_2.append([xf_2, yf_2])
+
+        # peak_frequencies(xf_1, yf_1)
+        # peak_frequencies(xf_2, yf_2)
+
+    # for fft_1 in fft_list_1:
+    #     for fft_2 in fft_list_2:
+    #         print(t_test(fft_1, fft_2))
 
     fft_list = fft_list_1 + fft_list_2
-    
-    pearson_correlation_heat_map(fft_list, fft_list)
-    # for fft_1 in fft_list:
-    #     for fft_2 in fft_list:
-    #         print(cross_corr(fft_1, fft_2))
-    #     print()
+
+    for fft_1 in fft_list:
+        for fft_2 in fft_list:
+            print(t_test(fft_1[1], fft_2[1]))
+            # plt.plot(fft_1[0], fft_1[1])
+            # plt.plot(fft_2[0], fft_2[1])
+            plt.plot(fft_1[1])
+            plt.plot(fft_2[1])
+            plt.show()
+        print()
+
+    # pearson_correlation_heat_map(fft_list, fft_list)
 
     '''
     # img_1 = img_from_path(ecosmart_CFL)
