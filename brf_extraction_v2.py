@@ -269,6 +269,8 @@ def extract_normalized_brf(smoothed_brf):
         new_brf = np.concatenate((new_brf, cycle), 0)
     return new_brf
 
+################################################################################################
+
 def pearson_coeff(brf_1, brf_2):
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
     elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
@@ -284,6 +286,9 @@ def cross_corr(brf_1, brf_2):
     show_plot(correlate)
     max = round(np.amax(np.array(correlate)), 6)
     return max
+
+################################################################################################
+#list-based methods
 
 def extract_brfs_from_list(master_brf_list):
     brf_list_1 = []
@@ -371,16 +376,18 @@ def normalize_brf_list(brf_list_1, brf_list_2):
         list_2.append(normalize_brf(brf_list_2[i]))
     return list_1, list_2
 
+################################################################################################
+
 def fit_raw_brf(smoothed_1):
     extrema_indices = return_extrema(smoothed_1)
 
     norm_raw_brf_1 = np.array([])
     for i in range(len(extrema_indices)-1):
-        temp = brf_1[extrema_indices[i]:extrema_indices[i+1]]
+        temp = smoothed_1[extrema_indices[i]:extrema_indices[i+1]]
         norm_temp = normalize(temp, temp[0], temp[len(temp)-1])
         norm_raw_brf_1 = np.concatenate((norm_raw_brf_1, norm_temp), 0)        
 
-    brf_cropped_1 = brf_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
+    brf_cropped_1 = smoothed_1[extrema_indices[0]:extrema_indices[len(extrema_indices)-1]]
     normalized_cropped_1 = normalize_brf(brf_cropped_1)
     norm_raw_brf_1 = map_to_out(norm_raw_brf_1, -1, 1)
 
@@ -534,26 +541,7 @@ def align_nadirs(normalized_smoothed_brf):
 
     show_plot(subtracted_wave)
 
-def test_cross_corr(num_periods_1, num_periods_2): #using two sinusoids
-    sinusoid_1 = np.array([])
-    sinusoid_2 = np.array([])
-
-    for i in range(num_periods_1):
-        x = np.linspace(np.pi, -np.pi, 200)
-        sinusoid_1 = np.concatenate((sinusoid_1, np.sin(x)), 0)
-        np.delete(sinusoid_1, -1)
-
-    for i in range(num_periods_2):
-        x = np.linspace(np.pi, -np.pi, 200)
-        sinusoid_2 = np.concatenate((sinusoid_2, np.sin(x)), 0)
-        np.delete(sinusoid_2, -1)
-
-    show_plot(sinusoid_1)
-    show_plot(sinusoid_2)
-
-    correlate = ss.correlate(sinusoid_2, sinusoid_1, mode = 'full')/len(sinusoid_1)
-
-    show_plot(correlate)
+################################################################################################
 
 #name for list 2 will be reverse of name for list 1
 def correlation_heat_map(brf_list_1, brf_list_2, title):
@@ -631,6 +619,8 @@ def pearson_correlation_heat_map(waveform_list_1, waveform_list_2):
     fig.tight_layout()
     plt.show()
 
+################################################################################################
+
 def check_heatmap_direction():
     x = np.array([1,2,3,4,5])
     y = np.array([1,2,3,4,5])
@@ -662,7 +652,29 @@ def check_heatmap_direction():
     fig.tight_layout()
     plt.show()
 
-    
+def test_cross_corr(num_periods_1, num_periods_2): #using two sinusoids
+    sinusoid_1 = np.array([])
+    sinusoid_2 = np.array([])
+
+    for i in range(num_periods_1):
+        x = np.linspace(np.pi, -np.pi, 200)
+        sinusoid_1 = np.concatenate((sinusoid_1, np.sin(x)), 0)
+        np.delete(sinusoid_1, -1)
+
+    for i in range(num_periods_2):
+        x = np.linspace(np.pi, -np.pi, 200)
+        sinusoid_2 = np.concatenate((sinusoid_2, np.sin(x)), 0)
+        np.delete(sinusoid_2, -1)
+
+    show_plot(sinusoid_1)
+    show_plot(sinusoid_2)
+
+    correlate = ss.correlate(sinusoid_2, sinusoid_1, mode = 'full')/len(sinusoid_1)
+
+    show_plot(correlate)
+
+################################################################################################
+#frequency methods
 
 #find average length of cycle
 #need to normalize so that all 120Hz amplitudes are the same?
@@ -715,6 +727,8 @@ def remove_120hz(yf):
             break
     return yf
 
+################################################################################################
+
 def save_brf_csv(brf_array, bulb):
     save_path = ''
     brf_file_name = ''
@@ -751,6 +765,8 @@ def load_scope_waveforms(path):
         # print(brf)
         return_fft(brf)
         # show_plot(brf)
+
+################################################################################################
 
 if __name__ == '__main__':
     # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
