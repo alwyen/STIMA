@@ -751,11 +751,32 @@ def remove_120hz(yf):
             break
     return yf
 
-#return 10 highest peak frequencies (lowest freq to highest)
-def peak_frequencies(xf, yf):
-    peak_indices = ss.find_peaks(yf)[0]
-    yf_peak_values = yf[peak_indices]
-    xf_freq_values = xf[peak_indices]
+#return 5 highest peak frequencies (lowest freq to highest)
+def peak_frequencies(xf, yf, num_freq_peaks):
+    n_top_freq_peak_indices = []
+    smoothed_yf = ss.savgol_filter(yf, 9, 2) #poly => 2?
+    peak_indices = ss.find_peaks(smoothed_yf)[0]
+    smoothed_xf_freq_values = xf[peak_indices] #--> freq values for smoothed fft
+
+    yf_peak_indices = ss.find_peaks(yf)[0]
+    yf_peak_values = yf[yf_peak_indices]
+    xf_freq_values = xf[yf_peak_indices]
+
+    for i in range(num_freq_peaks):
+        corresponding_freq_value = find_nearest(xf_freq_values, smoothed_xf_freq_values[i])
+        index_value = int(np.where(xf == corresponding_freq_value)[0])
+        # if xf_freq_values[i] < xf_freq_values[i+1]:
+
+
+        n_top_freq_peak_indices.append(index_value)
+        
+    peak_values = yf[n_top_freq_peak_indices]
+    peak_indices = xf[n_top_freq_peak_indices]
+
+    plt.plot(peak_indices, peak_values, 'x')
+    plt.plot(xf, yf)
+    plt.show()
+
     plt.plot(xf, yf)
     plt.plot(xf_freq_values, yf_peak_values, 'x')
     plt.show()
@@ -815,13 +836,13 @@ if __name__ == '__main__':
     for i in range(len(brf_list_1)):
         xf_1, yf_1 = return_fft(brf_list_1[i])
         xf_2, yf_2 = return_fft(brf_list_2[i])
-        fft_list_1.append([xf_1, remove_120hz(yf_1)])
-        fft_list_2.append([xf_2, remove_120hz(yf_2)])
+        # fft_list_1.append([xf_1, remove_120hz(yf_1)])
+        # fft_list_2.append([xf_2, remove_120hz(yf_2)])
         # fft_list_1.append([xf_1, yf_1])
-        # fft_list_2.append([xf_2, yf_2])
+        fft_list_2.append([xf_2, yf_2])
 
         # peak_frequencies(xf_1, yf_1)
-        # peak_frequencies(xf_2, yf_2)
+        peak_frequencies(xf_2, yf_2, 5)
 
     # for fft_1 in fft_list_1:
     #     for fft_2 in fft_list_2:
