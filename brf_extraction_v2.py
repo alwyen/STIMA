@@ -19,11 +19,11 @@ path_2 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\2'
 path_3 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\3'
 path_4 = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\blurred_1'
 
-sylv_file_num = 'sylvania_4'
-# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_file_num + '.jpg'
+sylv_file_num = 'sylvania_0'
+subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\sylvania' + '\\' + sylv_file_num + '.jpg'
 brf_save_load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\csv_brf'
 philips_file_num = 'philips_4'
-subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + philips_file_num + '.jpg'
+# subtr_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF Subtraction Images 2\philips' + '\\' + philips_file_num + '.jpg'
 
 # ecosmart_blurred = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\ecosmart_blurred.jpg'
 # philips_uncalibrated = r'C:\Users\alexy\OneDrive\Documents\STIMA\Images\BRF_images\philips_uncalibrated.jpg'
@@ -50,10 +50,12 @@ savgol_window = 31
 
 ################################################################################################
 
+#returns the mean value of an array
 def mean(array):
     np_array = np.array(array)
     return np.sum(np_array)/len(np_array)
 
+#returns the standard deviation of an array based on the mean
 def std_dev(array, mean):
     sum_dif_squared = 0
     for value in array:
@@ -63,15 +65,18 @@ def std_dev(array, mean):
     
 ################################################################################################
 
+#crops a brf from an image; 
 def crop_brf(brf_img):
-    return brf_img[708:1272,960]
+    return brf_img[639:1266,1110]
 
+#aligns brfs by aligning phases
 def align_brfs(brf_1, brf_2):
     #shfit amount corresponds to second argument (brf_2)
     shift_amount = phase_align(brf_1, brf_2, [10, 90]) #[10, 90] => region of interest; figure out what this is???
     shifted_brf_2 = shift(brf_2, shift_amount, mode = 'nearest')
     return brf_1, shifted_brf_2
 
+#takes in two BRFs and truncates the longer one
 def truncate_longer(brf_1, brf_2):
     if len(brf_1) > len(brf_2):
         brf_1 = brf_1[0:len(brf_2)]
@@ -79,26 +84,31 @@ def truncate_longer(brf_1, brf_2):
         brf_2 = brf_2[0:len(brf_1)]
     return brf_1, brf_2
 
+#finds the closest value in an array based on in the input parameter 'value'
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
 
+#returns the paths for rolling and dc image pairs; rolling returned first, then dc
 def get_rolling_dc_paths(img_path):
     rolling = img_path + '_rolling.jpg'
     dc = img_path + '_dc.jpg'
     return rolling, dc
 
+#gets the image from an input path
 def img_from_path(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     # img = cv2.resize(img, (width, height))
     return img
 
+#shows the plot of a BRF/array with a specific figure size
 def show_plot(array):
     plt.figure(figsize = (10, 1))
     plt.plot(array)
     plt.show()
 
+#shows two BRFs on the same figure
 def show_two_brfs(brf_1, brf_2):
     plt.figure(figsize = (10, 2))
     plt.plot(brf_1, label = '1')
@@ -106,6 +116,7 @@ def show_two_brfs(brf_1, brf_2):
     plt.legend()
     plt.show()
 
+#plots a column every 100 pixels (width-wise)
 def plot_entire_image(rolling_image):
     height = rolling_image.shape[0]
     width = rolling_image.shape[1]
@@ -113,11 +124,13 @@ def plot_entire_image(rolling_image):
         plt.plot(ss.savgol_filter(rolling_image[0:height, col], savgol_window, 3))
         plt.show()
 
+#shows the image with cv2
 def show_image(img):
     cv2.imshow('img', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+#gets BRF; duplicate above
 def brf_extraction(img):
     height = img.shape[0]
     width = img.shape[1]
@@ -129,6 +142,7 @@ def brf_extraction(img):
     column = img[770:1200,550] #blurred_1 tests
     return column
 
+#normalized the BRF based on BRF min and max values
 def normalize_brf(brf):
     brf_points = []
     # min = int(np.amin(brf))
@@ -141,6 +155,7 @@ def normalize_brf(brf):
     brf_points = np.array(brf_points)
     return brf_points
 
+#normalized BRF from known 'start' and 'end' values
 def normalize(brf, start, end):
     min = int(start)
     max = int(end)
@@ -153,6 +168,7 @@ def normalize(brf, start, end):
         brf_points = np.concatenate((brf_points, [normalized]), 0)
     return brf_points
 
+#maps BRF to 'out_min' and 'out_max' based on brf min and max
 def map_to_out(brf, out_min, out_max):
     new_brf = []
     brf = np.array(brf)
@@ -163,7 +179,7 @@ def map_to_out(brf, out_min, out_max):
         new_brf.append(mapped)
     return new_brf
 
-#LEARN HOW TO INCLUDE OPTIONS
+#maps 'in_min' and 'in_max' to 'out_min' and 'out_max'
 def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
     new_brf = []
     brf = np.array(waveform)
@@ -172,6 +188,7 @@ def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
         new_brf.append(mapped)
     return new_brf
 
+#shows peaks of a BRF with the BRF in a figure; distance for peaks set to 60
 def show_peaks_with_brf(brf):
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     peak_values = brf[peak_indices]
@@ -179,6 +196,7 @@ def show_peaks_with_brf(brf):
     plt.plot(brf)
     plt.show()
 
+#returns both min and max indices on a BRF
 def return_extrema(brf):
     peak_indices = np.array(ss.find_peaks(brf, distance = 60)[0])
     nadir_indices = np.array(ss.find_peaks(-brf, distance = 60)[0])
@@ -186,7 +204,8 @@ def return_extrema(brf):
     # extrema_values = brf[extrema_indices]
     return extrema_indices
 
-def cycles_from_brf(brf, option): #gets cycles from ONE BRF
+#gets cycles from ONE BRF
+def cycles_from_brf(brf, option):
     cycle_list = []
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     for i in range(len(peak_indices)-1):
@@ -195,7 +214,8 @@ def cycles_from_brf(brf, option): #gets cycles from ONE BRF
         cycle_list.append(cycle)
     return cycle_list
 
-def normalize_half_cycles(brf): #extracts and normalizes each half cycle
+#extracts and normalizes each half cycle based on the peak and nadir indices
+def normalize_half_cycles(brf):
     half_cycles = []
     peak_indices = ss.find_peaks(brf, distance = 60)[0]
     nadir_indices = ss.find_peaks(-brf, distance = 60)[0]
@@ -210,6 +230,7 @@ def normalize_half_cycles(brf): #extracts and normalizes each half cycle
     return half_cycles
 
 #constructs a fitted sinusoid to the normalized brf
+#removes sinusoidal wave from BRF
 def remove_sin(norm_brf, name):
     fitted_sinusoid = np.array([]) #concatenate sinusoids to fit brf
     norm_brf = np.array(norm_brf)
@@ -271,14 +292,7 @@ def remove_sin(norm_brf, name):
     # plt.show()
     # print(f'First: {value_first}\nLast: {value_last}')
 
-def fit_biased_sin(smoothed_brf, name):
-    new_brf = np.array([])
-    cycle_list = normalize_half_cycles(smoothed_brf) #extracts and normalizes each half cycle
-    for cycle in cycle_list:
-        new_brf = np.concatenate((new_brf, cycle), 0)
-    fitted = remove_sin(new_brf, name)
-    return fitted
-
+#returns normalized BRF via half cycles
 def extract_normalized_brf(smoothed_brf):
     new_brf = np.array([])
     cycle_list = normalize_half_cycles(smoothed_brf) #extracts and normalizes each half cycle
@@ -288,6 +302,7 @@ def extract_normalized_brf(smoothed_brf):
 
 ################################################################################################
 
+#pearson coefficient method
 def pearson_coeff(brf_1, brf_2):
     if len(brf_1) > len(brf_2): brf_1 = brf_1[0:len(brf_2)]
     elif len(brf_2) > len(brf_1): brf_2 = brf_2[0:len(brf_1)]
@@ -295,11 +310,12 @@ def pearson_coeff(brf_1, brf_2):
     r = round(r, 2)
     return r
 
+#cross correlation
 def cross_corr(brf_1, brf_2):
     # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
     correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
     show_plot(correlate)
-    correlate = map_in_to_out(correlate, -0.5, 0.5, 0, 1)
+    correlate = map_in_to_out(correlate, -0.5, 0.5, 0, 1) #maps to 0 and 1
     show_plot(correlate)
     max = round(np.amax(np.array(correlate)), 6)
     return max
@@ -770,7 +786,8 @@ def peak_frequencies(xf, yf, num_freq_peaks):
     for i in range(len(xf_freq_values)):
         xf_freq_values[i] = round(xf_freq_values[i], 2)
 
-    print(xf_freq_values)
+    print(f'Frequency Values: {xf_freq_values}')
+    print(f'Peak Values: {yf_peak_values}')
 
     plt.plot(xf_freq_values, yf_peak_values, 'x')
     plt.plot(xf, yf)
@@ -873,7 +890,23 @@ def load_scope_waveforms(path):
 if __name__ == '__main__':
     # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
     # load_scope_waveforms(path)
-    
+    '''
+    #retrieves raw brfs
+    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
+    #smooths raw brfs
+    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
+    #normalized between 0 and 1
+    norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
+
+    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
+
+    for i in range(len(norm_smooth_list_1)):
+        xf_1, yf_1 = return_fft(norm_smooth_list_1[i])
+        xf_2, yf_2 = return_fft(norm_smooth_list_2[i])
+        print(master_brf_list[i])
+        peak_frequencies(xf_1, yf_1, 5)
+        peak_frequencies(xf_2, yf_2, 5)
+
     #each brf in each list is normalized and smoothed
     brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
     brf_list_2 = load_brfs('sylvania')
@@ -890,7 +923,7 @@ if __name__ == '__main__':
         fft_list_2.append([xf_2, yf_2])
 
         peak_frequencies(xf_1, yf_1, 5)
-        # peak_frequencies(xf_2, yf_2, 5)
+        peak_frequencies(xf_2, yf_2, 5)
 
     # for fft_1 in fft_list_1:
     #     for fft_2 in fft_list_2:
@@ -907,17 +940,18 @@ if __name__ == '__main__':
             plt.plot(fft_2[1])
             plt.show()
         print()
-
+    '''
     # pearson_correlation_heat_map(fft_list, fft_list)
 
-    '''
     # img_1 = img_from_path(ecosmart_CFL)
     img_1 = img_from_path(subtr_path)
     # img_2 = img_from_path(philips_incandescent)
     # img_3 = img_from_path(sylvania_CFL)
 
     brf_1 = crop_brf(img_1)
-
+    show_plot(brf_1)
+    save_brf_csv(brf_1, 'sylvania')
+    '''
     smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
 
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
@@ -942,20 +976,6 @@ if __name__ == '__main__':
     # ax[2].legend(loc = 'center left', bbox_to_anchor = (1, 0.5))
     # box = ax[2].get_position()
     # ax[2].set_position([box.x0, box.y0, box.width * 0.9, box.height])
-
-'''
-    #retrieves raw brfs
-    brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
-    #smooths raw brfs
-    smoothed_list_1, smoothed_list_2 = smooth_brfs_from_list(brf_list_1, brf_list_2)
-    #normalized between 0 and 1
-    norm_smooth_list_1, norm_smooth_list_2 = normalize_brfs_from_list(smoothed_list_1, smoothed_list_2)
-
-    norm_smooth_list_1, norm_smooth_list_2 = normalize_smoothed_brf_list(smoothed_list_1, smoothed_list_2)
-    for i in range(len(norm_smooth_list_1)):
-        print(master_brf_list[i])
-        show_fft(norm_smooth_list_1[i])
-'''
 
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(smoothed_list_1, smoothed_list_2)
     # cycle_list_1, cycle_list_2 = extract_cycles_from_list(norm_smooth_list_1, norm_smooth_list_2)
