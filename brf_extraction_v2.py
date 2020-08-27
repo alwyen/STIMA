@@ -10,6 +10,7 @@ import pandas as pd
 import os.path
 from os import path
 import math
+import pylab
 
 from signal_alignment import phase_align
 
@@ -752,34 +753,81 @@ def remove_120hz(yf):
     return yf
 
 #return 5 highest peak frequencies (lowest freq to highest)
+#this method will not work for freq components that are not decending in strength
 def peak_frequencies(xf, yf, num_freq_peaks):
     n_top_freq_peak_indices = []
     smoothed_yf = ss.savgol_filter(yf, 9, 2) #poly => 2?
-    peak_indices = ss.find_peaks(smoothed_yf)[0]
-    smoothed_xf_freq_values = xf[peak_indices] #--> freq values for smoothed fft
+    peak_indices = ss.find_peaks(smoothed_yf)[0] #indices for smoothed_yf peaks
+    smoothed_xf_freq_values = xf[peak_indices] #freq values corresponding to smoothed_yf peaks
 
-    yf_peak_indices = ss.find_peaks(yf)[0]
-    yf_peak_values = yf[yf_peak_indices]
-    xf_freq_values = xf[yf_peak_indices]
+    yf_peak_indices = ss.find_peaks(yf, width = 1)[0] #peak indices for yf (original FFT)
+    indices = yf_peak_indices[0:num_freq_peaks] #showing top num_freq_peaks (number of) peaks
+    yf_peak_values = yf[indices]
+    xf_freq_values = xf[indices]
+    # yf_peak_values = yf[yf_peak_indices] #peak values
+    # xf_freq_values = xf[yf_peak_indices] #freq values corresponding to peaks
 
-    for i in range(num_freq_peaks):
-        corresponding_freq_value = find_nearest(xf_freq_values, smoothed_xf_freq_values[i])
-        index_value = int(np.where(xf == corresponding_freq_value)[0])
-        # if xf_freq_values[i] < xf_freq_values[i+1]:
+    for i in range(len(xf_freq_values)):
+        xf_freq_values[i] = round(xf_freq_values[i], 2)
 
+    print(xf_freq_values)
 
-        n_top_freq_peak_indices.append(index_value)
-        
-    peak_values = yf[n_top_freq_peak_indices]
-    peak_indices = xf[n_top_freq_peak_indices]
-
-    plt.plot(peak_indices, peak_values, 'x')
-    plt.plot(xf, yf)
-    plt.show()
-
-    plt.plot(xf, yf)
     plt.plot(xf_freq_values, yf_peak_values, 'x')
+    plt.plot(xf, yf)
     plt.show()
+
+    '''
+    #loop through and get each peak value index
+    for i in range(num_freq_peaks):
+        #get closest corresponding frequency value from smoothed_xf --> original xf
+        corresponding_freq_value = find_nearest(xf_freq_values, smoothed_xf_freq_values[i])
+        index_value = int(np.where(xf == corresponding_freq_value)[0]) #get the index of that corresponding frequency value
+        index_in_yf_peak_indices_array = int(np.where(yf_peak_indices == index_value)[0]) #index that corresponds to position in yf_peak_indices ARRAY
+
+        # check if following peak value is greater
+        if yf_peak_values[index_in_yf_peak_indices_array+1] > yf_peak_values[index_in_yf_peak_indices_array]:
+            n_top_freq_peak_indices.append(yf_peak_indices[index_in_yf_peak_indices_array+1])
+        else:
+            n_top_freq_peak_indices.append(index_value)
+    
+    peak_freq_values = yf[n_top_freq_peak_indices]
+    freq_values = xf[n_top_freq_peak_indices]
+    for i in range(len(freq_values)):
+        freq_values[i] = round(freq_values[i], 2)
+
+    print(freq_values)
+
+    plt.plot(freq_values, peak_freq_values, 'x')
+    plt.plot(xf, yf)
+    plt.show()
+    '''
+
+def thresholding_algo(y, lag, threshold, influence):
+    signals = np.zeros(len(y))
+    filteredY = np.array(y)
+    avgFilter = [0]*len(y)
+    stdFilter = [0]*len(y)
+    avgFilter[lag - 1] = np.mean(y[0:lag])
+    stdFilter[lag - 1] = np.std(y[0:lag])
+    for i in range(lag, len(y)):
+        if abs(y[i] - avgFilter[i-1]) > threshold * stdFilter [i-1]:
+            if y[i] > avgFilter[i-1]:
+                signals[i] = 1
+            else:
+                signals[i] = -1
+
+            filteredY[i] = influence * y[i] + (1 - influence) * filteredY[i-1]
+            avgFilter[i] = np.mean(filteredY[(i-lag+1):i+1])
+            stdFilter[i] = np.std(filteredY[(i-lag+1):i+1])
+        else:
+            signals[i] = 0
+            filteredY[i] = y[i]
+            avgFilter[i] = np.mean(filteredY[(i-lag+1):i+1])
+            stdFilter[i] = np.std(filteredY[(i-lag+1):i+1])
+
+    return dict(signals = np.asarray(signals),
+                avgFilter = np.asarray(avgFilter),
+                stdFilter = np.asarray(stdFilter))
 
 ################################################################################################
 
@@ -841,8 +889,8 @@ if __name__ == '__main__':
         # fft_list_1.append([xf_1, yf_1])
         fft_list_2.append([xf_2, yf_2])
 
-        # peak_frequencies(xf_1, yf_1)
-        peak_frequencies(xf_2, yf_2, 5)
+        peak_frequencies(xf_1, yf_1, 5)
+        # peak_frequencies(xf_2, yf_2, 5)
 
     # for fft_1 in fft_list_1:
     #     for fft_2 in fft_list_2:
