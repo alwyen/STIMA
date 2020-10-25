@@ -361,18 +361,6 @@ def normalize_brfs_from_list(brf_list_1, brf_list_2):
 
     return list_1, list_2
 
-def process_brfs_from_list(brf_list_1, brf_list_2): #remove sin from each BRF
-    list_1 = []
-    list_2 = []
-
-    for i in range(len(brf_list_1)):
-        fitted_1 = fit_biased_sin(brf_list_1[i], master_brf_list[i])
-        fitted_2 = fit_biased_sin(brf_list_2[i], master_brf_list[i])
-        list_1.append(fitted_1)
-        list_2.append(fitted_2)
-    
-    return list_1, list_2
-
 def smooth_brfs_from_list(brf_list_1, brf_list_2):
     list_1 = []
     list_2 = []
@@ -777,7 +765,9 @@ def peak_frequencies(xf, yf, num_freq_peaks):
     smoothed_xf_freq_values = xf[peak_indices] #freq values corresponding to smoothed_yf peaks
 
     yf_peak_indices = ss.find_peaks(yf, width = 1)[0] #peak indices for yf (original FFT)
+    # yf_peak_indices = ss.find_peaks(yf)[0] #peak indices for yf (original FFT)
     indices = yf_peak_indices[0:num_freq_peaks] #showing top num_freq_peaks (number of) peaks
+    # indices = yf_peak_indices #showing top num_freq_peaks (number of) peaks
     yf_peak_values = yf[indices]
     xf_freq_values = xf[indices]
     # yf_peak_values = yf[yf_peak_indices] #peak values
@@ -791,6 +781,8 @@ def peak_frequencies(xf, yf, num_freq_peaks):
 
     plt.plot(xf_freq_values, yf_peak_values, 'x')
     plt.plot(xf, yf)
+    plt.xlabel('Frequency')
+    plt.ylabel('Amplitude')
     plt.show()
 
     '''
@@ -890,7 +882,9 @@ def load_scope_waveforms(path):
 if __name__ == '__main__':
     # path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
     # load_scope_waveforms(path)
+    
     '''
+
     #retrieves raw brfs
     brf_list_1, brf_list_2 = extract_brfs_from_list(master_brf_list)
     #smooths raw brfs
@@ -904,8 +898,10 @@ if __name__ == '__main__':
         xf_1, yf_1 = return_fft(norm_smooth_list_1[i])
         xf_2, yf_2 = return_fft(norm_smooth_list_2[i])
         print(master_brf_list[i])
-        peak_frequencies(xf_1, yf_1, 5)
-        peak_frequencies(xf_2, yf_2, 5)
+        peak_frequencies(xf_1, remove_120hz(yf_1), 5)
+        peak_frequencies(xf_2, remove_120hz(yf_2), 5)
+
+    '''
 
     #each brf in each list is normalized and smoothed
     brf_list_1 = load_brfs('philips') #if things aren't working, check if brfs are being correctly saved/loaded
@@ -922,12 +918,14 @@ if __name__ == '__main__':
         # fft_list_1.append([xf_1, yf_1])
         fft_list_2.append([xf_2, yf_2])
 
-        peak_frequencies(xf_1, yf_1, 5)
-        peak_frequencies(xf_2, yf_2, 5)
+        # peak_frequencies(xf_1, yf_1, 12)
+        peak_frequencies(xf_2, yf_2, 12)
 
     # for fft_1 in fft_list_1:
     #     for fft_2 in fft_list_2:
     #         print(t_test(fft_1, fft_2))
+
+    '''
 
     fft_list = fft_list_1 + fft_list_2
 
@@ -940,7 +938,7 @@ if __name__ == '__main__':
             plt.plot(fft_2[1])
             plt.show()
         print()
-    '''
+    
     # pearson_correlation_heat_map(fft_list, fft_list)
 
     # img_1 = img_from_path(ecosmart_CFL)
@@ -951,7 +949,7 @@ if __name__ == '__main__':
     brf_1 = crop_brf(img_1)
     show_plot(brf_1)
     save_brf_csv(brf_1, 'sylvania')
-    '''
+    
     smoothed_1 = ss.savgol_filter(brf_1, savgol_window, 3)
 
     norm_smoothed_1 = extract_normalized_brf(smoothed_1)
