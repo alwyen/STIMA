@@ -56,8 +56,8 @@ def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
     return new_brf
 
 def cross_corr(brf_1, brf_2):
-    # correlate = ss.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
-    correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    correlate = ss.correlate(brf_1, brf_2[:int(len(brf_2)/2)], mode = 'full')/len(brf_1)
+    # correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
     correlate = map_in_to_out(correlate, -0.5, 0.5, 0, 1) #maps to 0 and 1
     show_plot(correlate)
     max = round(np.amax(np.array(correlate)), 6)
@@ -75,6 +75,8 @@ if __name__ == "__main__":
     eiko_cfl_23w_0_brf = process_brf_0(eiko_cfl_23w_0.brf)
     philips_cfl_13w_0_brf = process_brf_0(philips_cfl_13w_0.brf)
     eiko_incan_100w_0_brf = process_brf_0(eiko_incan_100w_0.brf)
+
+    show_plot(eiko_cfl_13w_0_brf)
 
     #eiko cfl 13w 0 with 9
     cc1 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_13w_9_brf)
