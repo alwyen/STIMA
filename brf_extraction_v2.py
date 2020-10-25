@@ -149,10 +149,7 @@ def normalize_brf(brf):
     # max = int(np.amax(brf))
     min = np.amin(brf)
     max = np.amax(brf)
-    #FIND A BETTER WAY TO DO THIS (USING NP ARRAY)
-    for i in range(len(brf)):
-        brf_points.append((brf[i] - min)/(max - min))
-    brf_points = np.array(brf_points)
+    normalized = (brf[:]-min)/(max-min)
     return brf_points
 
 #normalized BRF from known 'start' and 'end' values
