@@ -18,7 +18,7 @@ savgol_window = 31
 
 class scope_brf():
     def __init__(self, csv_path):
-        brf_data = np.genfromtxt(eiko_cfl_13w_0_path, delimiter = ',')
+        brf_data = np.genfromtxt(csv_path, delimiter = ',')
         brf_data = brf_data[1:len(brf_data)] #removing first row
         time, brf, voltage = np.hsplit(brf_data, len(brf_data[0]))
         self.time = time
@@ -42,9 +42,10 @@ def normalize_brf(brf):
 #hstack, smooth, normalize
 def process_brf_0(brf):
     brf = np.hstack(brf)
-    normalized = normalize_brf(brf)
-    # smoothed = savgol(brf)
-    # normalized = normalize_brf(smoothed)
+    # normalized = normalize_brf(brf)
+    smoothed = savgol(brf)
+    normalized = normalize_brf(smoothed)
+    show_plot(normalized)
     return normalized
 
 def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
@@ -56,8 +57,8 @@ def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
     return new_brf
 
 def cross_corr(brf_1, brf_2):
-    correlate = ss.correlate(brf_1, brf_2[:int(len(brf_2)/2)], mode = 'full')/len(brf_1)
-    # correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
+    # correlate = ss.correlate(brf_1, brf_2[:int(len(brf_2)/2)], mode = 'full')/len(brf_1)
+    correlate = np.correlate(brf_1, brf_2, mode = 'full')/len(brf_1)
     correlate = map_in_to_out(correlate, -0.5, 0.5, 0, 1) #maps to 0 and 1
     show_plot(correlate)
     max = round(np.amax(np.array(correlate)), 6)
