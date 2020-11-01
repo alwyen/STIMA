@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as ss
+from scipy.fftpack import fft
 eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
@@ -33,6 +34,12 @@ def savgol(brf):
     smoothed = ss.savgol_filter(brf, savgol_window, 3)
     return smoothed
 
+def moving_average(brf, window):
+    averaged = np.zeros(len(brf)-window)
+    for i in range(len(brf)-window):
+        averaged[i] = np.sum(brf[i:i+window])/window
+    show_plot(averaged)
+
 def normalize_brf(brf):
     min = np.amin(brf)
     max = np.amax(brf)
@@ -42,10 +49,19 @@ def normalize_brf(brf):
 #hstack, smooth, normalize
 def process_brf_0(brf):
     brf = np.hstack(brf)
-    # normalized = normalize_brf(brf)
+    normalized = normalize_brf(brf)
     smoothed = savgol(brf)
     normalized = normalize_brf(smoothed)
-    show_plot(normalized)
+
+    # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
+    # peak_values = normalized[peak_indices]
+    # plt.plot(peak_indices, peak_values, 'x')
+    # plt.plot(normalized)
+    # plt.show()
+    # for i in range(len(peak_indices)-1):
+        # print(peak_indices[i+1]-peak_indices[i])
+
+    # show_plot(normalized)
     return normalized
 
 def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
@@ -64,7 +80,23 @@ def cross_corr(brf_1, brf_2):
     max = round(np.amax(np.array(correlate)), 6)
     return max
 
+def dft(brf):
+    sample_rate = 836 * 120 #hardcoded sample rate: 
+    num_samples = len(brf)
+    # print(num_samples)
+    sample_spacing = 1/sample_rate
+    # print(sample_spacing)
+    xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
+    # print(xf)
+    yf = fft(brf)
+    yf = 2.0/num_samples*np.abs(yf[0:num_samples//2])
+    yf = normalize_brf(yf) #need to change the name of this method
+    boundary = 50
+    plt.plot(xf[:boundary], yf[:boundary])
+    plt.show()
+
 if __name__ == "__main__":
+    window = 50
     eiko_cfl_13w_0 = scope_brf(eiko_cfl_13w_0_path) #waveform_0
     eiko_cfl_13w_9 = scope_brf(eiko_cfl_13w_9_path)
     eiko_cfl_23w_0 = scope_brf(eiko_cfl_23w_0_path)
@@ -72,26 +104,28 @@ if __name__ == "__main__":
     eiko_incan_100w_0 = scope_brf(eiko_incan_100w_path)
 
     eiko_cfl_13w_0_brf = process_brf_0(eiko_cfl_13w_0.brf)
+    # moving_average(eiko_cfl_13w_0_brf, window)
     eiko_cfl_13w_9_brf = process_brf_0(eiko_cfl_13w_9.brf)
     eiko_cfl_23w_0_brf = process_brf_0(eiko_cfl_23w_0.brf)
     philips_cfl_13w_0_brf = process_brf_0(philips_cfl_13w_0.brf)
     eiko_incan_100w_0_brf = process_brf_0(eiko_incan_100w_0.brf)
-
-    show_plot(eiko_cfl_13w_0_brf)
+    # moving_average(eiko_incan_100w_0_brf, window)
 
     #eiko cfl 13w 0 with 9
-    cc1 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_13w_9_brf)
+    # cc1 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_13w_9_brf)
 
     #eiko cfl 13w_0 with 23w_0
-    cc2 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_23w_0_brf)
+    # cc2 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_23w_0_brf)
 
     #eiko 13w with philips 13w
-    cc3 = cross_corr(eiko_cfl_13w_0_brf, philips_cfl_13w_0_brf)
+    # cc3 = cross_corr(eiko_cfl_13w_0_brf, philips_cfl_13w_0_brf)
 
     #eiko cfl 13w with philips incan 100w
-    cc4 = cross_corr(eiko_cfl_13w_0_brf, eiko_incan_100w_0_brf)
+    # cc4 = cross_corr(eiko_cfl_13w_0_brf, eiko_incan_100w_0_brf)
 
-    print(cc1)
-    print(cc2)
-    print(cc3)
-    print(cc4)
+    # print(cc1)
+    # print(cc2)
+    # print(cc3)
+    # print(cc4)
+
+    dft(eiko_cfl_13w_0_brf)
