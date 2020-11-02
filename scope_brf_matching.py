@@ -6,12 +6,29 @@ eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
 eiko_incandescent_100w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_incandescent_100w'
+halco_incan_60w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\halco_incandescent_60w'
+philips_incan_200w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_incandescent_200w'
 
 eiko_cfl_13w_0_path = eiko_cfl_13w + '\\' + 'waveform_0.csv' #figure out some automated way for this
+eiko_cfl_13w_0_name = 'Eiko CFL 13W'
+
 eiko_cfl_13w_9_path = eiko_cfl_13w + '\\' + 'waveform_9.csv'
+
 eiko_cfl_23w_0_path = eiko_cfl_23w + '\\' + 'waveform_0.csv'
+eiko_cfl_23w_0_name = 'Eiko CFL 23W'
+
 philips_cfl_13w_path = philips_cfl_13w + '\\' + 'waveform_0.csv'
+philips_cfl_13w_name = 'Philips CFL 13W'
+
 eiko_incan_100w_path = eiko_incandescent_100w + '\\' + 'waveform_0.csv'
+eiko_incan_100w_name = 'Eiko Incandescent 100W'
+
+halco_incan_60w_path = halco_incan_60w + '\\' + 'waveform_0.csv'
+halco_incan_60w_name = 'Halco Incandescent 60W'
+
+philips_incan_200w_path = philips_incan_200w + '\\' + 'waveform_0.csv'
+philips_incan_200w_name = 'Philips Incandescent 200W'
+
 #is there a fast/efficient way to load all the data so that I can just pick and choose without having to
 #hardcode path in?
 
@@ -47,12 +64,12 @@ def normalize_brf(brf):
     return normalized_brf
 
 #hstack, smooth, normalize
-def process_brf_0(brf): #smoothing does effect dft transformation
+def process_brf_0(brf, name): #smoothing does effect dft transformation
     brf = np.hstack(brf) #combining into 1D array from len(brf) array
     # dft(brf)
     smoothed = savgol(brf)
     normalized = normalize_brf(smoothed)
-    dft(normalized)
+    dft_idft(normalized, name)
     # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
     # peak_values = normalized[peak_indices]
     # plt.plot(peak_indices, peak_values, 'x')
@@ -80,9 +97,9 @@ def cross_corr(brf_1, brf_2):
     max = round(np.amax(np.array(correlate)), 6)
     return max
 
-def dft(brf):
+def dft_idft(brf, name):
     boundary = 50
-    
+
     sample_rate = 990 * 120 #hardcoded sample rate: 
     num_samples = len(brf)
     # print(num_samples)
@@ -93,20 +110,27 @@ def dft(brf):
     yf_orig = fft(brf)
 
     yf = 2.0/num_samples*np.abs(yf_orig[0:num_samples//2])
-    # yf = normalize_brf(yf)
     peak_indices = ss.find_peaks(yf)[0]
     xf_values = xf[peak_indices]
+    yf_values = yf[peak_indices]
     print(xf_values[:5])
-    yf_temp = yf
-    plt.plot(xf[:boundary], yf[:boundary])
-    yf_temp[peak_indices[0]] = 0
-    print(yf_temp[peak_indices[0]])
-    plt.plot(xf[:boundary], yf_temp[:boundary])
+    plt.plot(xf[:boundary],yf[:boundary])
+    plt.plot(xf_values[:5], yf_values[:5],'x')
     plt.show()
 
-    # plt.plot(np.fft.irfft(yf))
-    # # plt.plot(brf)
-    # plt.show()
+    yf_orig[peak_indices[0:5]] = 0
+    print(yf_orig[peak_indices[0:5]])
+
+
+
+    brf_without_120 = ifft(yf_orig)
+    plt.plot(brf, label = 'Original BRF')
+    plt.plot(brf_without_120, label = '120Hz Removed')
+    plt.xlabel('Samples')
+    plt.ylabel('Normalized Intensity')
+    plt.legend(loc='upper right')
+    plt.title(name)
+    plt.show()
 
 if __name__ == "__main__":
     window = 50
@@ -115,13 +139,17 @@ if __name__ == "__main__":
     eiko_cfl_23w_0 = scope_brf(eiko_cfl_23w_0_path)
     philips_cfl_13w_0 = scope_brf(philips_cfl_13w_path)
     eiko_incan_100w_0 = scope_brf(eiko_incan_100w_path)
+    halco_incan_60w_0 = scope_brf(halco_incan_60w_path)
+    philips_incan_200w_0 = scope_brf(philips_incan_200w_path)
 
-    eiko_cfl_13w_0_brf = process_brf_0(eiko_cfl_13w_0.brf)
+    eiko_cfl_13w_0_brf = process_brf_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
     # moving_average(eiko_cfl_13w_0_brf, window)
-    eiko_cfl_13w_9_brf = process_brf_0(eiko_cfl_13w_9.brf)
-    eiko_cfl_23w_0_brf = process_brf_0(eiko_cfl_23w_0.brf)
-    philips_cfl_13w_0_brf = process_brf_0(philips_cfl_13w_0.brf)
-    eiko_incan_100w_0_brf = process_brf_0(eiko_incan_100w_0.brf)
+    eiko_cfl_13w_9_brf = process_brf_0(eiko_cfl_13w_9.brf, eiko_cfl_13w_0_name)
+    eiko_cfl_23w_0_brf = process_brf_0(eiko_cfl_23w_0.brf, eiko_cfl_23w_0_name)
+    philips_cfl_13w_0_brf = process_brf_0(philips_cfl_13w_0.brf, philips_cfl_13w_name)
+    eiko_incan_100w_0_brf = process_brf_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
+    halco_incan_60w_0_brf = process_brf_0(halco_incan_60w_0.brf, halco_incan_60w_name)
+    philips_incan_200w_0_brf = process_brf_0(philips_incan_200w_0.brf, philips_incan_200w_name)
     # moving_average(eiko_incan_100w_0_brf, window)
 
     #eiko cfl 13w 0 with 9
