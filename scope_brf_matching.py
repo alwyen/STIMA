@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as ss
-from scipy.fftpack import fft
+from scipy.fftpack import fft, ifft
 eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
@@ -47,12 +47,12 @@ def normalize_brf(brf):
     return normalized_brf
 
 #hstack, smooth, normalize
-def process_brf_0(brf):
-    brf = np.hstack(brf)
-    normalized = normalize_brf(brf)
+def process_brf_0(brf): #smoothing does effect dft transformation
+    brf = np.hstack(brf) #combining into 1D array from len(brf) array
+    # dft(brf)
     smoothed = savgol(brf)
     normalized = normalize_brf(smoothed)
-
+    dft(normalized)
     # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
     # peak_values = normalized[peak_indices]
     # plt.plot(peak_indices, peak_values, 'x')
@@ -81,19 +81,32 @@ def cross_corr(brf_1, brf_2):
     return max
 
 def dft(brf):
-    sample_rate = 836 * 120 #hardcoded sample rate: 
+    boundary = 50
+    
+    sample_rate = 990 * 120 #hardcoded sample rate: 
     num_samples = len(brf)
     # print(num_samples)
     sample_spacing = 1/sample_rate
     # print(sample_spacing)
     xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
     # print(xf)
-    yf = fft(brf)
-    yf = 2.0/num_samples*np.abs(yf[0:num_samples//2])
-    yf = normalize_brf(yf) #need to change the name of this method
-    boundary = 50
+    yf_orig = fft(brf)
+
+    yf = 2.0/num_samples*np.abs(yf_orig[0:num_samples//2])
+    # yf = normalize_brf(yf)
+    peak_indices = ss.find_peaks(yf)[0]
+    xf_values = xf[peak_indices]
+    print(xf_values[:5])
+    yf_temp = yf
     plt.plot(xf[:boundary], yf[:boundary])
+    yf_temp[peak_indices[0]] = 0
+    print(yf_temp[peak_indices[0]])
+    plt.plot(xf[:boundary], yf_temp[:boundary])
     plt.show()
+
+    # plt.plot(np.fft.irfft(yf))
+    # # plt.plot(brf)
+    # plt.show()
 
 if __name__ == "__main__":
     window = 50
@@ -127,5 +140,3 @@ if __name__ == "__main__":
     # print(cc2)
     # print(cc3)
     # print(cc4)
-
-    dft(eiko_cfl_13w_0_brf)
