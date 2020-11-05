@@ -69,6 +69,7 @@ def process_brf_0(brf, name): #smoothing does effect dft transformation
     # dft(brf)
     smoothed = savgol(brf)
     normalized = normalize_brf(smoothed)
+    # filter_120hz(normalized)
     dft_idft(normalized, name)
     # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
     # peak_values = normalized[peak_indices]
@@ -100,7 +101,7 @@ def cross_corr(brf_1, brf_2):
 def dft_idft(brf, name):
     boundary = 50
 
-    sample_rate = 990 * 120 #hardcoded sample rate: 
+    sample_rate = 990 * 120 #sampling frequency
     num_samples = len(brf)
     # print(num_samples)
     sample_spacing = 1/sample_rate
@@ -108,7 +109,7 @@ def dft_idft(brf, name):
     xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
     # print(xf)
     yf_orig = fft(brf)
-
+    print(xf[:5])
     yf = 2.0/num_samples*np.abs(yf_orig[0:num_samples//2])
     peak_indices = ss.find_peaks(yf)[0]
     xf_values = xf[peak_indices]
@@ -131,6 +132,12 @@ def dft_idft(brf, name):
     plt.legend(loc='upper right')
     plt.title(name)
     plt.show()
+
+def filter_120hz(brf):
+    sample_rate = 990 * 120
+    sos = ss.butter(120, 300, 'lp', sample_rate, output = 'sos')
+    filtered_brf = ss.sosfilt(sos, brf)
+    show_plot(filtered_brf)
 
 if __name__ == "__main__":
     window = 50
