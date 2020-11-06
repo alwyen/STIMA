@@ -15,23 +15,25 @@ def dft_idft(signal):
     # print(sample_spacing)
     xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
     # print(xf)
-    orig_signal = fft(signal)
-    yf = 2.0/num_samples*np.abs(orig_signal[0:num_samples//2])
+    orig_fft = fft(signal)
+    yf = 2.0/num_samples*np.abs(orig_fft[0:num_samples//2])
     peak_indices = ss.find_peaks(yf)[0]
     xf_values = xf[peak_indices]
     yf_values = yf[peak_indices]
     yf_values[yf_values < 0.5] = 0
     xf_values[yf_values == 0] = 0
-    orig_signal[3] = 0
-    orig_signal[4] = 0
+    orig_fft[10] = 0
+    orig_fft[15] = 0
 
-    yf[3] = 0
-    yf[4] = 0
+    # yf[yf == yf_values] = 0
+    # yf[10] = 0
+    # yf[15] = 0
 
     print(yf)
-
-    plt.plot(xf,yf)
+    plt.plot(xf[:boundary],yf[:boundary])
     plt.show()
+
+    return ifft(orig_fft)
 
 if __name__ == "__main__":
 
@@ -42,8 +44,9 @@ if __name__ == "__main__":
 
     clean_signal = sin_10hz + sin_15hz
     signal = sin_10hz + sin_15hz + noise
-
-    dft_idft(signal)
+    sinusoids_removed = dft_idft(signal)
+    print('again')
+    second = dft_idft(sinusoids_removed)
 
 
     fig, ax = plt.subplots(4,1)
@@ -54,5 +57,7 @@ if __name__ == "__main__":
     ax[1].plot(clean_signal)
 
     ax[2].plot(signal)
+
+    ax[3].plot(sinusoids_removed)
 
     plt.show()
