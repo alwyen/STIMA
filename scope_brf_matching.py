@@ -69,8 +69,8 @@ def process_brf_0(brf, name): #smoothing does effect dft transformation
     # dft(brf)
     smoothed = savgol(brf)
     normalized = normalize_brf(smoothed)
-    # filter_120hz(normalized)
-    dft_idft(normalized, name)
+    filter_120hz(normalized)
+    # dft_idft(normalized, name)
     # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
     # peak_values = normalized[peak_indices]
     # plt.plot(peak_indices, peak_values, 'x')
@@ -135,7 +135,7 @@ def dft_idft(brf, name):
 
 def filter_120hz(brf):
     sample_rate = 990 * 120
-    sos = ss.butter(120, 300, 'lp', sample_rate, output = 'sos')
+    sos = ss.butter(120, 300, 'hp', sample_rate, output = 'sos')
     filtered_brf = ss.sosfilt(sos, brf)
     show_plot(filtered_brf)
 
