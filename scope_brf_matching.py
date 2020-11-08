@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as ss
 from scipy.fftpack import fft, ifft
+import math
 eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
@@ -135,7 +136,7 @@ def dft_idft(brf, name):
 
 def filter_120hz(brf):
     sample_rate = 990 * 120
-    sos = ss.butter(120, 300, 'hp', sample_rate, output = 'sos')
+    sos = ss.butter(120, 300, 'hp', fs=sample_rate, output = 'sos')
     filtered_brf = ss.sosfilt(sos, brf)
     show_plot(filtered_brf)
 
