@@ -37,8 +37,9 @@ def dft_idft(signal):
 
     return ifft(orig_fft)
 
-def bandpass_filter(signal):
-    sos = ss.butter(10, 20, 'bandpass', fs=1005, output='sos')
+def bandstop_filter(signal):
+    # sos = ss.butter(10, 20, 'hp', fs=1005, output='sos')
+    sos = ss.butter(1, [9,11], 'bs', fs=1005, output='sos')
     filtered = ss.sosfilt(sos, signal)
     return filtered
 
@@ -46,15 +47,20 @@ if __name__ == "__main__":
 
     t = np.linspace(0,1,1000, False)
     sin_10hz = np.sin(2*np.pi*10*t)
-    sin_15hz = np.sin(2*np.pi*15*t)
-    sin_25hz = np.sin(2*np.pi*25*t)
+    sin_10hz = np.sin(2*np.pi*10*t + np.pi/2)
+    # sin_15hz = np.sin(2*np.pi*15*t)
+    # sin_25hz = np.sin(2*np.pi*25*t)
     noise = np.random.random_sample((len(t),))
 
-    clean_signal = sin_10hz + sin_15hz + sin_25hz
-    signal = sin_10hz + sin_15hz + sin_25hz + noise
+    # clean_signal = sin_10hz + sin_15hz + sin_25hz
+    # signal = sin_10hz + sin_15hz + sin_25hz + noise
+    # clean_signal = sin_10hz + sin_15hz
+    clean_signal = sin_10hz
+    # signal = sin_10hz + sin_15hz + noise
+    signal = sin_10hz + noise
     # sinusoids_removed = dft_idft(signal)
     # second = dft_idft(sinusoids_removed)
-    filtered = bandpass_filter(signal)
+    filtered = bandstop_filter(signal)
 
     fig, ax = plt.subplots(4,1)
     fig.tight_layout(pad = 2.0)

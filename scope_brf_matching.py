@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as ss
 from scipy.fftpack import fft, ifft
 import math
+
 eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
@@ -40,9 +41,9 @@ class scope_brf():
         brf_data = np.genfromtxt(csv_path, delimiter = ',')
         brf_data = brf_data[1:len(brf_data)] #removing first row
         time, brf, voltage = np.hsplit(brf_data, len(brf_data[0]))
-        self.time = time
-        self.brf = brf
-        self.voltage = voltage
+        self.time = np.hstack(time)
+        self.brf = np.hstack(brf)
+        self.voltage = np.hstack(voltage)
 
 def show_plot(brf_data):
     plt.plot(brf_data)
@@ -64,24 +65,34 @@ def normalize_brf(brf):
     normalized_brf = (brf[:]-min)/(max-min)
     return normalized_brf
 
+def center_zero(brf):
+    min = np.amin(brf)
+    max = np.amax(brf)
+    normalized_brf = (brf[:]-brf[0])/(max-min)
+    return normalized_brf
+
 #hstack, smooth, normalize
-def process_brf_0(brf, name): #smoothing does effect dft transformation
+def process_waveform_0(brf, name): #smoothing does effect dft transformation
     brf = np.hstack(brf) #combining into 1D array from len(brf) array
     # dft(brf)
-    smoothed = savgol(brf)
-    normalized = normalize_brf(smoothed)
-    filter_120hz(normalized)
-    # dft_idft(normalized, name)
-    # peak_indices = ss.find_peaks(-normalized, distance = 800)[0]
-    # peak_values = normalized[peak_indices]
-    # plt.plot(peak_indices, peak_values, 'x')
-    # plt.plot(normalized)
-    # plt.show()
-    # for i in range(len(peak_indices)-1):
-        # print(peak_indices[i+1]-peak_indices[i])
+    filtered_brf = filter_120hz(brf,name)
+    filtered_smoothed = savgol(filtered_brf)
+    filtered_normalized = normalize_brf(filtered_smoothed)
+    return filtered_normalized
 
-    # show_plot(normalized)
-    return normalized
+def align_brf_sin(brf, sin):
+    brf = normalize_brf(brf)
+    sin = normalize_brf(sin)
+    nadir_indices = ss.find_peaks(-brf, distance = 750)[0]
+    truncated_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
+    truncated_sin = sin[:len(truncated_brf)]
+    aligned_half_cycle = np.absolute(center_zero(truncated_sin))
+    smoothed_brf = savgol(truncated_brf)
+    plt.plot(smoothed_brf)
+    plt.plot(aligned_half_cycle)
+    plt.show()
+    subtracted = np.subtract(smoothed_brf,aligned_half_cycle)
+    show_plot(subtracted)
 
 def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
     new_brf = []
@@ -123,8 +134,6 @@ def dft_idft(brf, name):
     yf_orig[peak_indices[0:5]] = 0
     print(yf_orig[peak_indices[0:5]])
 
-
-
     brf_without_120 = ifft(yf_orig)
     plt.plot(brf, label = 'Original BRF')
     plt.plot(brf_without_120, label = '120Hz Removed')
@@ -134,11 +143,20 @@ def dft_idft(brf, name):
     plt.title(name)
     plt.show()
 
-def filter_120hz(brf):
+def filter_120hz(brf, name):
+    # plt.plot(brf)
+    # plt.title(name)
+    # plt.show()
     sample_rate = 990 * 120
-    sos = ss.butter(120, 300, 'hp', fs=sample_rate, output = 'sos')
+    # sos = ss.butter(120, 200, 'hp', fs=sample_rate, output = 'sos')
+    # sos = ss.butter(5, [120, 300, 420, 600, 720], 'bs', fs=sample_rate, output = 'sos')
+    sos = ss.butter(1, [119, 121], 'bs', fs = sample_rate, output = 'sos')
     filtered_brf = ss.sosfilt(sos, brf)
-    show_plot(filtered_brf)
+
+    plt.plot(filtered_brf)
+    plt.title(name)
+    plt.show()
+    return filtered_brf
 
 if __name__ == "__main__":
     window = 50
@@ -150,14 +168,23 @@ if __name__ == "__main__":
     halco_incan_60w_0 = scope_brf(halco_incan_60w_path)
     philips_incan_200w_0 = scope_brf(philips_incan_200w_path)
 
-    eiko_cfl_13w_0_brf = process_brf_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
-    # moving_average(eiko_cfl_13w_0_brf, window)
-    eiko_cfl_13w_9_brf = process_brf_0(eiko_cfl_13w_9.brf, eiko_cfl_13w_0_name)
-    eiko_cfl_23w_0_brf = process_brf_0(eiko_cfl_23w_0.brf, eiko_cfl_23w_0_name)
-    philips_cfl_13w_0_brf = process_brf_0(philips_cfl_13w_0.brf, philips_cfl_13w_name)
-    eiko_incan_100w_0_brf = process_brf_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
-    halco_incan_60w_0_brf = process_brf_0(halco_incan_60w_0.brf, halco_incan_60w_name)
-    philips_incan_200w_0_brf = process_brf_0(philips_incan_200w_0.brf, philips_incan_200w_name)
+    # eiko_cfl_13w_0_brf = process_waveform_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
+    eiko_cfl_13w_0_brf = eiko_cfl_13w_0.brf
+    eiko_cfl_13w_sin = eiko_cfl_13w_0.voltage
+    align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin)
+    
+
+
+    # eiko_cfl_13w_9_brf = process_waveform_0(eiko_cfl_13w_9.brf, eiko_cfl_13w_0_name)
+    # eiko_cfl_23w_0_brf = process_waveform_0(eiko_cfl_23w_0.brf, eiko_cfl_23w_0_name)
+    # philips_cfl_13w_0_brf = process_waveform_0(philips_cfl_13w_0.brf, philips_cfl_13w_name)
+
+    # eiko_incan_100w_0_brf = process_waveform_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
+    eiko_incan_100w_0_brf = eiko_incan_100w_0.brf
+    eiko_incan_100w_sin = eiko_incan_100w_0.voltage
+    align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin)
+    # halco_incan_60w_0_brf = process_waveform_0(halco_incan_60w_0.brf, halco_incan_60w_name)
+    # philips_incan_200w_0_brf = process_waveform_0(philips_incan_200w_0.brf, philips_incan_200w_name)
     # moving_average(eiko_incan_100w_0_brf, window)
 
     #eiko cfl 13w 0 with 9
