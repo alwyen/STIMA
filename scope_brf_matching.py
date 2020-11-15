@@ -65,34 +65,41 @@ def normalize_brf(brf):
     normalized_brf = (brf[:]-min)/(max-min)
     return normalized_brf
 
-def center_zero(brf):
+def center_zero(brf, zero_value):
     min = np.amin(brf)
     max = np.amax(brf)
-    normalized_brf = (brf[:]-brf[0])/(max-min)
+    print(zero_value)
+    normalized_brf = (brf[:]-brf[zero_value])/(max-min)
     return normalized_brf
 
-#hstack, smooth, normalize
+#smooth, normalize
 def process_waveform_0(brf, name): #smoothing does effect dft transformation
-    brf = np.hstack(brf) #combining into 1D array from len(brf) array
     # dft(brf)
     filtered_brf = filter_120hz(brf,name)
     filtered_smoothed = savgol(filtered_brf)
     filtered_normalized = normalize_brf(filtered_smoothed)
     return filtered_normalized
 
-def align_brf_sin(brf, sin):
+def align_brf_sin(brf, sin, name):
     brf = normalize_brf(brf)
     sin = normalize_brf(sin)
     nadir_indices = ss.find_peaks(-brf, distance = 750)[0]
     truncated_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
+    nadir_indices = ss.find_peaks(-truncated_brf, distance = 750)[0]
     truncated_sin = sin[:len(truncated_brf)]
-    aligned_half_cycle = np.absolute(center_zero(truncated_sin))
+    aligned_half_cycle = center_zero(truncated_sin, nadir_indices[1])
+    aligned_half_cycle[nadir_indices[1]:] = -aligned_half_cycle[nadir_indices[1]:]
+    # aligned_half_cycle = center_zero(truncated_sin, nadir_indices[1])
     smoothed_brf = savgol(truncated_brf)
-    plt.plot(smoothed_brf)
-    plt.plot(aligned_half_cycle)
+    plt.plot(smoothed_brf, label = 'BRF')
+    plt.plot(aligned_half_cycle, label = 'Grid Voltage')
+    plt.title(name)
+    plt.legend()
     plt.show()
     subtracted = np.subtract(smoothed_brf,aligned_half_cycle)
-    show_plot(subtracted)
+    plt.plot(subtracted)
+    plt.title(name + ' (Subtraction Performed)')
+    plt.show()
 
 def map_in_to_out(waveform, in_min, in_max, out_min, out_max):
     new_brf = []
@@ -110,39 +117,6 @@ def cross_corr(brf_1, brf_2):
     max = round(np.amax(np.array(correlate)), 6)
     return max
 
-def dft_idft(brf, name):
-    boundary = 50
-
-    sample_rate = 990 * 120 #sampling frequency
-    num_samples = len(brf)
-    # print(num_samples)
-    sample_spacing = 1/sample_rate
-    # print(sample_spacing)
-    xf = np.linspace(0, 1.0/(2*sample_spacing), num_samples//2)
-    # print(xf)
-    yf_orig = fft(brf)
-    print(xf[:5])
-    yf = 2.0/num_samples*np.abs(yf_orig[0:num_samples//2])
-    peak_indices = ss.find_peaks(yf)[0]
-    xf_values = xf[peak_indices]
-    yf_values = yf[peak_indices]
-    print(xf_values[:5])
-    plt.plot(xf[:boundary],yf[:boundary])
-    plt.plot(xf_values[:5], yf_values[:5],'x')
-    plt.show()
-
-    yf_orig[peak_indices[0:5]] = 0
-    print(yf_orig[peak_indices[0:5]])
-
-    brf_without_120 = ifft(yf_orig)
-    plt.plot(brf, label = 'Original BRF')
-    plt.plot(brf_without_120, label = '120Hz Removed')
-    plt.xlabel('Samples')
-    plt.ylabel('Normalized Intensity')
-    plt.legend(loc='upper right')
-    plt.title(name)
-    plt.show()
-
 def filter_120hz(brf, name):
     # plt.plot(brf)
     # plt.title(name)
@@ -150,12 +124,13 @@ def filter_120hz(brf, name):
     sample_rate = 990 * 120
     # sos = ss.butter(120, 200, 'hp', fs=sample_rate, output = 'sos')
     # sos = ss.butter(5, [120, 300, 420, 600, 720], 'bs', fs=sample_rate, output = 'sos')
-    sos = ss.butter(1, [119, 121], 'bs', fs = sample_rate, output = 'sos')
-    filtered_brf = ss.sosfilt(sos, brf)
-
-    plt.plot(filtered_brf)
-    plt.title(name)
-    plt.show()
+    for i in range(9):
+        sos = ss.butter(i, [119, 121], 'bs', fs = sample_rate, output = 'sos')
+        # sos = ss.butter(1, [119, 121], 'bs', fs = sample_rate, output = 'sos')
+        filtered_brf = ss.sosfilt(sos, brf)
+        plt.plot(filtered_brf, label = 'Order: ' + str(i))
+        plt.title(name)
+        plt.show()
     return filtered_brf
 
 if __name__ == "__main__":
@@ -171,7 +146,7 @@ if __name__ == "__main__":
     # eiko_cfl_13w_0_brf = process_waveform_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
     eiko_cfl_13w_0_brf = eiko_cfl_13w_0.brf
     eiko_cfl_13w_sin = eiko_cfl_13w_0.voltage
-    align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin)
+    align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin, eiko_cfl_13w_0_name)
     
 
 
@@ -182,7 +157,7 @@ if __name__ == "__main__":
     # eiko_incan_100w_0_brf = process_waveform_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
     eiko_incan_100w_0_brf = eiko_incan_100w_0.brf
     eiko_incan_100w_sin = eiko_incan_100w_0.voltage
-    align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin)
+    align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin, eiko_incan_100w_name)
     # halco_incan_60w_0_brf = process_waveform_0(halco_incan_60w_0.brf, halco_incan_60w_name)
     # philips_incan_200w_0_brf = process_waveform_0(philips_incan_200w_0.brf, philips_incan_200w_name)
     # moving_average(eiko_incan_100w_0_brf, window)
