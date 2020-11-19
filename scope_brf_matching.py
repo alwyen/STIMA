@@ -72,6 +72,22 @@ def center_zero(brf, zero_value):
     normalized_brf = (brf[:]-brf[zero_value])/(max-min)
     return normalized_brf
 
+def concatenate_waveforms(base_path):
+    waveform = np.array([])
+    for i in range(10):
+        eiko_cfl_13w_path = base_path + '\\waveform_' + str(i) + '.csv'
+        brf = scope_brf(eiko_cfl_13w_path).brf
+        nadir_indices = ss.find_peaks(-brf, distance = 750)[0]
+        truncated_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
+        waveform = np.concatenate((waveform, truncated_brf))
+    return waveform
+
+def crest_factor(brf):
+    peak_value = np.amax(brf)
+    rms = math.sqrt(np.sum(np.array(brf))/len(brf))
+    crest_factor = peak_value/rms
+    return crest_factor
+
 #smooth, normalize
 def process_waveform_0(brf, name): #smoothing does effect dft transformation
     # dft(brf)
@@ -118,19 +134,25 @@ def cross_corr(brf_1, brf_2):
     return max
 
 def filter_120hz(brf, name):
-    # plt.plot(brf)
-    # plt.title(name)
-    # plt.show()
     sample_rate = 990 * 120
     # sos = ss.butter(120, 200, 'hp', fs=sample_rate, output = 'sos')
     # sos = ss.butter(5, [120, 300, 420, 600, 720], 'bs', fs=sample_rate, output = 'sos')
-    for i in range(9):
-        sos = ss.butter(i, [119, 121], 'bs', fs = sample_rate, output = 'sos')
-        # sos = ss.butter(1, [119, 121], 'bs', fs = sample_rate, output = 'sos')
-        filtered_brf = ss.sosfilt(sos, brf)
-        plt.plot(filtered_brf, label = 'Order: ' + str(i))
-        plt.title(name)
-        plt.show()
+    sos = ss.butter(7, [115, 125], 'bs', fs = sample_rate, output = 'sos')
+    filtered_brf = ss.sosfilt(sos, brf)
+    # sos = ss.butter(7, [295, 305], 'bs', fs = sample_rate, output = 'sos')
+    # filtered_brf = ss.sosfilt(sos, filtered_brf)
+    # sos = ss.butter(7, [415, 425], 'bs', fs = sample_rate, output = 'sos')
+    # filtered_brf = ss.sosfilt(sos, filtered_brf)
+    # sos = ss.butter(7, [595, 605], 'bs', fs = sample_rate, output = 'sos')
+    # filtered_brf = ss.sosfilt(sos, filtered_brf)
+    # sos = ss.butter(7, [715, 725], 'bs', fs = sample_rate, output = 'sos')
+    # filtered_brf = ss.sosfilt(sos, filtered_brf)
+
+    plt.plot(filtered_brf, label = "120Hz \"Filtered\" BRF")
+    plt.plot(brf, label = "Original BRF")
+    plt.legend()
+    plt.title(name)
+    plt.show()
     return filtered_brf
 
 if __name__ == "__main__":
@@ -143,12 +165,14 @@ if __name__ == "__main__":
     halco_incan_60w_0 = scope_brf(halco_incan_60w_path)
     philips_incan_200w_0 = scope_brf(philips_incan_200w_path)
 
+    concatenated = concatenate_waveforms(eiko_cfl_13w)
+    filter_120hz(concatenated, eiko_cfl_13w_0_name)
+
     # eiko_cfl_13w_0_brf = process_waveform_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
     eiko_cfl_13w_0_brf = eiko_cfl_13w_0.brf
     eiko_cfl_13w_sin = eiko_cfl_13w_0.voltage
-    align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin, eiko_cfl_13w_0_name)
-    
-
+    filter_120hz(eiko_cfl_13w_0_brf, eiko_cfl_13w_0_name)
+    # align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin, eiko_cfl_13w_0_name)
 
     # eiko_cfl_13w_9_brf = process_waveform_0(eiko_cfl_13w_9.brf, eiko_cfl_13w_0_name)
     # eiko_cfl_23w_0_brf = process_waveform_0(eiko_cfl_23w_0.brf, eiko_cfl_23w_0_name)
@@ -157,7 +181,8 @@ if __name__ == "__main__":
     # eiko_incan_100w_0_brf = process_waveform_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
     eiko_incan_100w_0_brf = eiko_incan_100w_0.brf
     eiko_incan_100w_sin = eiko_incan_100w_0.voltage
-    align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin, eiko_incan_100w_name)
+    filter_120hz(eiko_incan_100w_0_brf, eiko_incan_100w_name)
+    # align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin, eiko_incan_100w_name)
     # halco_incan_60w_0_brf = process_waveform_0(halco_incan_60w_0.brf, halco_incan_60w_name)
     # philips_incan_200w_0_brf = process_waveform_0(philips_incan_200w_0.brf, philips_incan_200w_name)
     # moving_average(eiko_incan_100w_0_brf, window)

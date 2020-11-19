@@ -37,9 +37,10 @@ def dft_idft(signal):
 
     return ifft(orig_fft)
 
-def bandstop_filter(signal):
+def bandstop_filter(signal, i):
     # sos = ss.butter(10, 20, 'hp', fs=1005, output='sos')
-    sos = ss.butter(1, [9,11], 'bs', fs=1005, output='sos')
+    sos = ss.butter(i, [5,15], 'bs', fs=1005, output='sos')
+    # sos = ss.butter(1, [9,11], 'bs', fs=1005, output='sos')
     filtered = ss.sosfilt(sos, signal)
     return filtered
 
@@ -60,7 +61,8 @@ if __name__ == "__main__":
     signal = sin_10hz + noise
     # sinusoids_removed = dft_idft(signal)
     # second = dft_idft(sinusoids_removed)
-    filtered = bandstop_filter(signal)
+    # for i in range(1,9):
+    filtered = bandstop_filter(signal, 7)
 
     fig, ax = plt.subplots(4,1)
     fig.tight_layout(pad = 2.0)
@@ -70,11 +72,12 @@ if __name__ == "__main__":
 
     ax[1].plot(clean_signal)
     ax[1].set_title('Clean 10Hz + 15Hz Signal')
+    ax[1].set_title('Clean 10Hz')
 
     ax[2].plot(signal)
     ax[2].set_title('Clean Signal + Noise')
 
     ax[3].plot(filtered)
-    ax[3].set_title('Signal with 10Hz and 15Hz Frequency Components Removed')
+    ax[3].set_title('Signal with 10Hz Frequency Component Removed, Order = ' + str(7))
 
     plt.show()
