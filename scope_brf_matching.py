@@ -7,22 +7,22 @@ import math
 eiko_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_13w'
 eiko_cfl_23w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_cfl_23w'
 philips_cfl_13w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_cfl_13w'
-eiko_incandescent_100w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_incandescent_100w'
+eiko_incan_100w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\eiko_incandescent_100w'
 halco_incan_60w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\halco_incandescent_60w'
 philips_incan_200w = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files\philips_incandescent_200w'
 
 eiko_cfl_13w_0_path = eiko_cfl_13w + '\\' + 'waveform_0.csv' #figure out some automated way for this
-eiko_cfl_13w_0_name = 'Eiko CFL 13W'
+eiko_cfl_13w_name = 'Eiko CFL 13W'
 
 eiko_cfl_13w_9_path = eiko_cfl_13w + '\\' + 'waveform_9.csv'
 
 eiko_cfl_23w_0_path = eiko_cfl_23w + '\\' + 'waveform_0.csv'
-eiko_cfl_23w_0_name = 'Eiko CFL 23W'
+eiko_cfl_23w_name = 'Eiko CFL 23W'
 
 philips_cfl_13w_path = philips_cfl_13w + '\\' + 'waveform_0.csv'
 philips_cfl_13w_name = 'Philips CFL 13W'
 
-eiko_incan_100w_path = eiko_incandescent_100w + '\\' + 'waveform_0.csv'
+eiko_incan_100w_path = eiko_incan_100w + '\\' + 'waveform_0.csv'
 eiko_incan_100w_name = 'Eiko Incandescent 100W'
 
 halco_incan_60w_path = halco_incan_60w + '\\' + 'waveform_0.csv'
@@ -53,6 +53,11 @@ def savgol(brf):
     smoothed = ss.savgol_filter(brf, savgol_window, 3)
     return smoothed
 
+def extract_brf(scope_data):
+    brf = scope_data.brf
+    smoothed = savgol(brf)
+    return smoothed
+
 def moving_average(brf, window):
     averaged = np.zeros(len(brf)-window)
     for i in range(len(brf)-window):
@@ -72,14 +77,20 @@ def center_zero(brf, zero_value):
     normalized_brf = (brf[:]-brf[zero_value])/(max-min)
     return normalized_brf
 
-def concatenate_waveforms(base_path):
-    waveform = np.array([])
+def extract_waveforms(base_path):
+    waveform_list = []
     for i in range(10):
-        eiko_cfl_13w_path = base_path + '\\waveform_' + str(i) + '.csv'
-        brf = scope_brf(eiko_cfl_13w_path).brf
+        brf_path = base_path + '\\waveform_' + str(i) + '.csv'
+        brf = scope_brf(brf_path).brf
         nadir_indices = ss.find_peaks(-brf, distance = 750)[0]
         truncated_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
-        waveform = np.concatenate((waveform, truncated_brf))
+        waveform_list.append(truncated_brf)
+    return waveform_list
+
+def concatenate_waveforms(waveform_list):
+    waveform = np.array([])
+    for i in range(len(waveform_list)):
+        waveform = np.concatenate((waveform, waveform_list[i]),0)
     return waveform
 
 def crest_factor(brf):
@@ -87,6 +98,18 @@ def crest_factor(brf):
     rms = math.sqrt(np.sum(np.array(brf))/len(brf))
     crest_factor = peak_value/rms
     return crest_factor
+
+#smooth brf, then normalize
+def crest_factor_analysis(base_path, brf_list_name):
+    waveform_list = extract_waveforms(base_path)
+    concatenated = np.array([])
+    print(brf_list_name)
+    for waveform in waveform_list:
+        #I think this is just 1/RMS after normalization
+        print(crest_factor(normalize_brf(savgol(waveform))))
+        concatenated = np.concatenate((concatenated,waveform),0)
+    print(crest_factor(normalize_brf(concatenated)))
+    print()
 
 #smooth, normalize
 def process_waveform_0(brf, name): #smoothing does effect dft transformation
@@ -165,41 +188,9 @@ if __name__ == "__main__":
     halco_incan_60w_0 = scope_brf(halco_incan_60w_path)
     philips_incan_200w_0 = scope_brf(philips_incan_200w_path)
 
-    concatenated = concatenate_waveforms(eiko_cfl_13w)
-    filter_120hz(concatenated, eiko_cfl_13w_0_name)
-
-    # eiko_cfl_13w_0_brf = process_waveform_0(eiko_cfl_13w_0.brf, eiko_cfl_13w_0_name)
-    eiko_cfl_13w_0_brf = eiko_cfl_13w_0.brf
-    eiko_cfl_13w_sin = eiko_cfl_13w_0.voltage
-    filter_120hz(eiko_cfl_13w_0_brf, eiko_cfl_13w_0_name)
-    # align_brf_sin(eiko_cfl_13w_0_brf, eiko_cfl_13w_sin, eiko_cfl_13w_0_name)
-
-    # eiko_cfl_13w_9_brf = process_waveform_0(eiko_cfl_13w_9.brf, eiko_cfl_13w_0_name)
-    # eiko_cfl_23w_0_brf = process_waveform_0(eiko_cfl_23w_0.brf, eiko_cfl_23w_0_name)
-    # philips_cfl_13w_0_brf = process_waveform_0(philips_cfl_13w_0.brf, philips_cfl_13w_name)
-
-    # eiko_incan_100w_0_brf = process_waveform_0(eiko_incan_100w_0.brf, eiko_incan_100w_name)
-    eiko_incan_100w_0_brf = eiko_incan_100w_0.brf
-    eiko_incan_100w_sin = eiko_incan_100w_0.voltage
-    filter_120hz(eiko_incan_100w_0_brf, eiko_incan_100w_name)
-    # align_brf_sin(eiko_incan_100w_0_brf, eiko_incan_100w_sin, eiko_incan_100w_name)
-    # halco_incan_60w_0_brf = process_waveform_0(halco_incan_60w_0.brf, halco_incan_60w_name)
-    # philips_incan_200w_0_brf = process_waveform_0(philips_incan_200w_0.brf, philips_incan_200w_name)
-    # moving_average(eiko_incan_100w_0_brf, window)
-
-    #eiko cfl 13w 0 with 9
-    # cc1 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_13w_9_brf)
-
-    #eiko cfl 13w_0 with 23w_0
-    # cc2 = cross_corr(eiko_cfl_13w_0_brf, eiko_cfl_23w_0_brf)
-
-    #eiko 13w with philips 13w
-    # cc3 = cross_corr(eiko_cfl_13w_0_brf, philips_cfl_13w_0_brf)
-
-    #eiko cfl 13w with philips incan 100w
-    # cc4 = cross_corr(eiko_cfl_13w_0_brf, eiko_incan_100w_0_brf)
-
-    # print(cc1)
-    # print(cc2)
-    # print(cc3)
-    # print(cc4)
+    crest_factor_analysis(eiko_cfl_13w, eiko_cfl_13w_name)
+    crest_factor_analysis(eiko_cfl_23w, eiko_cfl_23w_name)
+    crest_factor_analysis(philips_cfl_13w, philips_cfl_13w_name)
+    crest_factor_analysis(eiko_incan_100w, eiko_incan_100w_name)
+    crest_factor_analysis(halco_incan_60w, halco_incan_60w_name)
+    crest_factor_analysis(philips_incan_200w, philips_incan_200w_name)
