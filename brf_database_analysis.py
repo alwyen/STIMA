@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 from scipy import signal
@@ -15,6 +16,16 @@ class plots():
         plt.show()
 
 class brf_database():
+    '''
+    Folders to drop:
+        halco_led_10w
+        sylvania_led_12w
+        westinghouse_led_11w
+
+    Interesting BRFs:
+        sylvania_led_11w
+    '''
+
     def __init__(self, database_path):
         whole_database = pd.read_csv(database_path)
         self.brf_database = whole_database.loc[:,['Folder_Name', 'Name', 'Bulb_Type']]
@@ -71,7 +82,7 @@ class brf_extraction():
             for i in range(num_files):
                 brf_path = path + '\\waveform_' + str(i) + '.csv'
                 brf = waveform_data(brf_path).brf
-                brf = waveform_data.clean_brf(brf)
+                brf = waveform_data.normalize_brf(waveform_data.clean_brf(brf))
                 brf_list.append(brf)
             self.brf_list = brf_list
 
@@ -90,7 +101,12 @@ class brf_analysis():
 
 if __name__ == "__main__":
     database = brf_database(database_path).brf_database
-    bulb_types = brf_database.return_bulb_types(database)
+
+    database = database.drop(database[database['Folder_Name'] == 'halco_led_10w'].index)
+    database = database.drop(database[database['Folder_Name'] == 'sylvania_led_12w'].index)
+    database = database.drop(database[database['Folder_Name'] == 'westinghouse_led_11w'].index)
+    
+    bulb_types = brf_database.return_bulb_types(database) #drop bulb type column later?
     for i in range(len(bulb_types)):
         print(bulb_types[i])
         new_database = brf_database.return_bulb_type_waveforms(database,str(bulb_types[i]))
@@ -99,4 +115,4 @@ if __name__ == "__main__":
             print(item[0])
             brf_list = brf_extraction(item[0]).brf_list
             concatenated_brf = brf_extraction.concatenate_waveforms(brf_list)
-            plots.show_plot(concatenated_brf)
+            # plots.show_plot(concatenated_brf)
