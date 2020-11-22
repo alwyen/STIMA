@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as ss
+from scipy import stats
 from scipy.fftpack import fft, ifft
 import math
 
@@ -99,6 +100,9 @@ def crest_factor(brf):
     crest_factor = peak_value/rms
     return crest_factor
 
+def kurtosis(brf):
+    return stats.kurtosis(brf)
+
 #smooth brf, then normalize
 def crest_factor_analysis(base_path, brf_list_name):
     waveform_list = extract_waveforms(base_path)
@@ -106,9 +110,10 @@ def crest_factor_analysis(base_path, brf_list_name):
     print(brf_list_name)
     for waveform in waveform_list:
         #I think this is just 1/RMS after normalization
-        print(crest_factor(normalize_brf(savgol(waveform))))
+        # print(crest_factor(normalize_brf(savgol(waveform))))
         concatenated = np.concatenate((concatenated,waveform),0)
-    print(crest_factor(normalize_brf(concatenated)))
+    # print(crest_factor(normalize_brf(concatenated)))
+    print(kurtosis(normalize_brf(concatenated)))
     print()
 
 #smooth, normalize
