@@ -117,11 +117,11 @@ class brf_analysis():
         return stats.skew(brf)
 
     #for each bulb type, print out the stats for that particular concatenated waveform
-    def for_type_print_stats(database):
-        bulb_types = database_processing.return_bulb_types(database) #drop bulb type column later?
+    def for_type_print_stats(brf_database):
+        bulb_types = database_processing.return_bulb_types(brf_database) #drop bulb type column later?
         for i in range(len(bulb_types)):
             print(bulb_types[i])
-            new_database = database_processing.return_bulb_type_waveforms(database,str(bulb_types[i]))
+            new_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_types[i]))
             same_type_list = database_processing.database_to_list(new_database)
             for item in same_type_list: #item: folder name; name; bulb type
                 brf_list = brf_extraction(item[0]).brf_list
@@ -132,53 +132,63 @@ class brf_analysis():
             print()
 
 class brf_classification():
+    #split this up into multiple functions?
     def KNN(brf_database):
-        brf_database = database_processing.drop_bulb_type_column(brf_database)
-        database_as_list = database_processing.database_to_list(brf_database)
+        # brf_database = database_processing.drop_bulb_type_column(brf_database)
+        # database_as_list = database_processing.database_to_list(brf_database)
 
-        KNN_input = list([])
-        KNN_output = list([])
+        bulb_type_list = database_processing.return_bulb_types(brf_database)
 
-        #for each element:
-        #   index 0: [crest factor, kurtosis, skew]
-        #   index 1: BRF name
-        KNN_prediction_list = list([])
+        for bulb_type in bulb_type_list:
+            print(bulb_type)
+            same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
+            same_type_database = database_processing.drop_bulb_type_column(same_type_database)
+            same_type_list = database_processing.database_to_list(same_type_database)
 
-        #index 0: Folder Name
-        #index 1: BRF Name
-        for i in range(len(database_as_list)):
-            folder_name = database_as_list[i][0]
-            brf_name = database_as_list[i][1]
-            waveform_list = brf_extraction(folder_name).brf_list
-            #ignoring the first waveform – will use that for classification
-            for i in range(len(waveform_list)):
-                crest_factor = brf_analysis.crest_factor(waveform_list[i])
-                kurtosis = brf_analysis.kurtosis(waveform_list[i])
-                skew = brf_analysis.skew(waveform_list[i])
-                input_param = [crest_factor, kurtosis, skew]
-                if i == 0:
-                    KNN_prediction_list.append([input_param, brf_name])
-                else:
-                    KNN_input.append(input_param)
-                    KNN_output.append(brf_name)
-            print(f'{brf_name} Finished')
+            KNN_input = list([])
+            KNN_output = list([])
 
-        brf_KNN_model = KNeighborsClassifier(n_neighbors = 9) #used 9 because about 9 waveforms for each BRF
-        brf_KNN_model.fit(KNN_input, KNN_output)
-        print('Model Built')
-        
-        true_positive = 0
-        total = len(KNN_prediction_list)
-        for prediction in KNN_prediction_list:
-            input_data = prediction[0]
-            # print(input_data)
-            expected_output = prediction[1]
-            output = brf_KNN_model.predict([input_data])[0]
-            if expected_output == output:
-                true_positive += 1
+            #for each element:
+            #   index 0: [crest factor, kurtosis, skew]
+            #   index 1: BRF name
+            KNN_prediction_list = list([])
 
-        recall = true_positive/total
-        print(recall)
+            #index 0: Folder Name
+            #index 1: BRF Name
+            for i in range(len(same_type_list)):
+                folder_name = same_type_list[i][0]
+                brf_name = same_type_list[i][1]
+                waveform_list = brf_extraction(folder_name).brf_list
+                #ignoring the first waveform – will use that for classification
+                for i in range(len(waveform_list)):
+                    crest_factor = brf_analysis.crest_factor(waveform_list[i])
+                    kurtosis = brf_analysis.kurtosis(waveform_list[i])
+                    skew = brf_analysis.skew(waveform_list[i])
+                    input_param = [crest_factor, kurtosis, skew]
+                    if i == 0:
+                        KNN_prediction_list.append([input_param, brf_name])
+                    else:
+                        KNN_input.append(input_param)
+                        KNN_output.append(brf_name)
+                print(f'{brf_name} Finished')
+
+            brf_KNN_model = KNeighborsClassifier(n_neighbors = 9) #used 9 because about 9 waveforms for each BRF
+            brf_KNN_model.fit(KNN_input, KNN_output)
+            # print('Model Built')
+            
+            true_positive = 0
+            total = len(KNN_prediction_list)
+            for prediction in KNN_prediction_list:
+                input_data = prediction[0]
+                # print(input_data)
+                expected_output = prediction[1]
+                output = brf_KNN_model.predict([input_data])[0]
+                if expected_output == output:
+                    true_positive += 1
+
+            recall = true_positive/total
+            print(f'Recall: {recall}')
+            print()
 
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
