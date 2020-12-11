@@ -66,7 +66,6 @@ class database_processing():
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
 class raw_waveform_processing():
-    #
     def __init__(self, brf_path):
         brf_data = np.genfromtxt(brf_path, delimiter = ',')
         brf_data = brf_data[1:len(brf_data)] #removing first row
@@ -89,6 +88,13 @@ class raw_waveform_processing():
     def savgol(brf, savgol_window):
         smoothed = ss.savgol_filter(brf, savgol_window, 3)
         return smoothed
+
+    def truncate_longer(brf_1, brf_2):
+        if len(brf_1) > len(brf_2):
+            brf_1 = brf_1[0:len(brf_2)]
+        else:
+            brf_2 = brf_2[0:len(brf_1)]
+        return brf_1, brf_2
 
 #uses the raw_waveform_processing class to extract the processed data
 #brf_extraction class manipulates data into a list of BRF waveforms or one concatenated BRF waveform
@@ -115,6 +121,11 @@ class brf_extraction():
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
+    def min_error(brf_1, brf_2):
+        brf_1, brf_2 = raw_waveform_processing.truncate_longer(brf_1, brf_2)
+        error = np.sum(np.square(np.absolute(np.array(brf_1) - np.array(brf_2))))
+        return error
+
     def crest_factor(brf):
         peak_value = np.amax(brf)
         rms = math.sqrt(np.sum(np.array(brf))/len(brf))
@@ -143,7 +154,27 @@ class brf_analysis():
             print()
 
 class brf_classification():
-    #split this up into multiple functions? YES
+    def compare_brfs(brf_database):
+        brf_database_list = database_processing.database_to_list(brf_database)
+        best_comparison_list = list([])
+        for i in range(len(brf_database_list)): #outer loop for comparing against specific bulb
+            brf_1 = brf_extraction(brf_database_list[i][0]).brf_list[0] #grabs first BRF in list
+            brf_name_1 = brf_database_list[i][1]
+            error_list = list([])
+            for j in range(len(brf_database_list)): #inner loop that goes through entire list
+                brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[1]
+                brf_name_2 = brf_database_list[j][1]
+                error_score = brf_analysis.min_error(brf_1, brf_2)
+                error_list.append((error_score, brf_name_1, brf_name_2))
+            sorted_min_error = sorted(error_list, key = lambda x: x[0])
+            print(f'Best matches for: {brf_name_1}')
+            print(sorted_min_error[0])
+            print(sorted_min_error[1])
+            print(sorted_min_error[2])
+            print()
+
+
+
     def train_KNN(brf_database, n):
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
@@ -226,4 +257,6 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    brf_classification.KNN(brf_database)
+    brf_classification.compare_brfs(brf_database)
+
+    # brf_classification.KNN(brf_database)
