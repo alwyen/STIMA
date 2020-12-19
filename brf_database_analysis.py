@@ -79,11 +79,11 @@ class raw_waveform_processing():
         cleaned_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
         return cleaned_brf
 
-    def normalize_brf(brf):
-        min = np.amin(brf)
-        max = np.amax(brf)
-        normalized_brf = (brf[:]-min)/(max-min)
-        return normalized_brf
+    def normalize(array):
+        min = np.amin(array)
+        max = np.amax(array)
+        normalized = (array[:]-min)/(max-min)
+        return normalized
 
     def savgol(brf, savgol_window):
         smoothed = ss.savgol_filter(brf, savgol_window, 3)
@@ -109,7 +109,7 @@ class brf_extraction():
             for i in range(num_files):
                 brf_path = path + '\\waveform_' + str(i) + '.csv'
                 brf = raw_waveform_processing(brf_path).brf
-                brf = raw_waveform_processing.normalize_brf(raw_waveform_processing.clean_brf(brf))
+                brf = raw_waveform_processing.normalize(raw_waveform_processing.clean_brf(brf))
                 brf_list.append(brf)
             self.brf_list = brf_list
 
@@ -153,19 +153,64 @@ class brf_analysis():
                 print(brf_analysis.skew(concatenated_brf))
             print()
 
+    # def confusion_matrix_KNN(KNN_prediction_list, classifer):
+    #     '''
+    #     CFL --> 0
+    #     Incandescent --> 1
+    #     Halogen --> 2
+    #     LED --> 3
+    #     '''
+
+    #     for in_out in KNN_prediction_list:
+    #         in_param = in_out[0]
+    #         brf_type = in_out[1]
+
+    def confusion_matrix_type(ground_list, predicted_list, bulb_types):
+        '''
+        CFL --> 0
+        Incandescent --> 1
+        Halogen --> 2
+        LED --> 3
+        '''
+        prediction_matrix = np.zeros((len(bulb_types),len(bulb_types)))
+
+        total = np.zeros((len(bulb_types),len(bulb_types)))
+
+        assert len(ground_list) == len(predicted_list)
+
+        for i in range(len(ground)):
+            ground_index = bulb_types.index(ground_list[i])
+            estimated_index = bulb_types.index(estimated_list[i])
+
+            prediction_matrix[ground_index][estimated_index] += 1
+            total[ground_index][:] += 1
+        
+        confusion_matrix = np.divide(prediction_matrix, total)
+
+        plt.imshow(confusion_matrix)
+        plt.show()
+
+
 class brf_classification():
     def compare_brfs(brf_database):
+        bulb_types = database_processing.return_bulb_types(brf_database)
         brf_database_list = database_processing.database_to_list(brf_database)
-        best_comparison_list = list([])
+        
+        ground_list = list([])
+        predicted_list = list([])
+
         for i in range(len(brf_database_list)): #outer loop for comparing against specific bulb
             brf_1 = brf_extraction(brf_database_list[i][0]).brf_list[0] #grabs first BRF in list
             brf_name_1 = brf_database_list[i][1]
+            brf_type_1 = brf_database_list[i][2]
             error_list = list([])
             for j in range(len(brf_database_list)): #inner loop that goes through entire list
                 brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[1]
                 brf_name_2 = brf_database_list[j][1]
+                brf_type_2 = brf_database_list[j][2]
                 error_score = brf_analysis.min_error(brf_1, brf_2)
-                error_list.append((error_score, brf_name_1, brf_name_2))
+                # error_list.append((error_score, brf_name_1, brf_name_2))
+                error_list.append((error_score, brf_type_1, brf_type_2))
             sorted_min_error = sorted(error_list, key = lambda x: x[0])
             print(f'Best matches for: {brf_name_1}')
             print(sorted_min_error[0])
@@ -173,6 +218,11 @@ class brf_classification():
             print(sorted_min_error[2])
             print()
 
+            ground_list.append(sorted_min_error[0][1])
+            predicted_list.append(sorted_min_error[0][2])
+
+        brf_analysis.confusion_matrix_type(ground_list, predicted_list, bulb_types)
+        
 
 
     def train_KNN(brf_database, n):
@@ -182,9 +232,17 @@ class brf_classification():
         KNN_input = list([])
         KNN_output = list([])
 
+        crest_factor_array = np.array([])
+        kurtosis_array = np.array([])
+        skew_array = np.array([])
+
         #for each element:
         #   index 0: [crest factor, kurtosis, skew]
         #   index 1: BRF name
+        crest_factor_prediction = np.array([])
+        kurtosis_prediction = np.array([])
+        skew_prediction = np.array([])
+        brf_name_output_label = list([])
         KNN_prediction_list = list([])
 
         #index 0: Folder Name
@@ -201,15 +259,35 @@ class brf_classification():
                 skew = brf_analysis.skew(waveform_list[i])
                 input_param = [crest_factor, kurtosis, skew]
                 if i == 0:
-                    KNN_prediction_list.append([input_param, brf_name])
+                    crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
+                    kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
+                    skew_prediction = np.append(skew_prediction, skew)
+                    # KNN_prediction_list.append([input_param, brf_name])
+                    brf_name_output_label.append(brf_name)
                 else:
+                    crest_factor_array = np.append(crest_factor_array, crest_factor)
+                    kurtosis_array = np.append(kurtosis_array, kurtosis)
+                    skew_array = np.append(skew_array, skew)
                     KNN_input.append(input_param)
                     KNN_output.append(brf_name)
             print(f'{brf_name} Finished')
 
-            brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
-            
-            brf_KNN_model.fit(KNN_input, KNN_output)
+        crest_factor_array_normalized = raw_waveform_processing.normalize(crest_factor_array)
+        kurtosis_array_normalized = raw_waveform_processing.normalize(kurtosis_array)
+        skew_array_normalized = raw_waveform_processing.normalize(skew_array)
+
+        crest_factor_prediction_normalized = raw_waveform_processing.normalize(crest_factor_prediction)
+        kurtosis_prediction_normalized = raw_waveform_processing.normalize(kurtosis_prediction)
+        skew_prediction_normalized = raw_waveform_processing.normalize(skew_prediction)
+
+        KNN_prediction_values = np.hstack((np.hsplit(crest_factor_prediction_normalized,len(crest_factor_prediction_normalized)), np.split(kurtosis_prediction_normalized, len(kurtosis_prediction_normalized)), np.hsplit(skew_prediction,len(skew_prediction))))
+        KNN_prediction_list = list(zip(KNN_prediction_values, brf_name_output_label))
+
+        KNN_input = list(zip(crest_factor_array_normalized, kurtosis_array_normalized, skew_array_normalized))
+
+        brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
+
+        brf_KNN_model.fit(KNN_input, KNN_output)
 
         return brf_KNN_model, KNN_prediction_list
 
@@ -257,6 +335,6 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    brf_classification.compare_brfs(brf_database)
+    # brf_classification.compare_brfs(brf_database)
 
-    # brf_classification.KNN(brf_database)
+    brf_classification.KNN(brf_database)
