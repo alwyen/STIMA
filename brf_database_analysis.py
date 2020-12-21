@@ -6,6 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 import math
 import os
+import seaborn as sn
 
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
@@ -25,23 +26,32 @@ class plots():
         Halogen --> 2
         LED --> 3
         '''
-        prediction_matrix = np.zeros((len(bulb_types),len(bulb_types)))
-
-        total = np.zeros((len(bulb_types),len(bulb_types)))
+        bulb_types_list = list(bulb_types[:4])
+        bulb_types = list(bulb_types)
+        prediction_matrix = np.zeros((len(bulb_types_list),len(bulb_types_list)))
+        total = np.zeros((len(bulb_types_list),len(bulb_types_list)))
 
         assert len(ground_list) == len(predicted_list)
 
         for i in range(len(ground_list)):
             ground_index = bulb_types.index(ground_list[i])
-            estimated_index = bulb_types.index(estimated_list[i])
-
-            prediction_matrix[ground_index][estimated_index] += 1
-            total[ground_index][:] += 1
+            predicted_index = bulb_types.index(predicted_list[i])
+            if ground_index < 4 and predicted_index < 4: #excluding halogen-xenon and incandescent xenon
+                prediction_matrix[ground_index][predicted_index] += 1
+                total[ground_index][:] += 1
         
         confusion_matrix = np.divide(prediction_matrix, total)
-
-        plt.imshow(confusion_matrix)
+        
+        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in bulb_types_list], columns = [i for i in bulb_types_list])
+        plt.figure(figsize = (10,7))
+        sn.heatmap(df_cm, annot=True)        
+        plt.title('Confusion Matrix of Bulb Types')
         plt.show()
+        
+        # plt.matshow(confusion_matrix)
+        # plt.xticks(np.arange(0,len(bulb_types_list)), labels = bulb_types_list)
+        # plt.yticks(np.arange(0,len(bulb_types_list)), labels = bulb_types_list)
+        # plt.show()
 
 #this class does all the processing on the database side from the master CSV file
 class database_processing():
@@ -268,7 +278,8 @@ class brf_classification():
                     crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
                     kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
                     skew_prediction = np.append(skew_prediction, skew)
-                    KNN_prediction_list.append([input_param, brf_name])
+                    # KNN_prediction_list.append([input_param, brf_name])
+                    KNN_prediction_list.append([input_param, bulb_type])
                     # brf_name_output_label.append(brf_name)
                     # brf_name_output_label.append(bulb_type)
                 else:
@@ -276,8 +287,8 @@ class brf_classification():
                     kurtosis_array = np.append(kurtosis_array, kurtosis)
                     skew_array = np.append(skew_array, skew)
                     KNN_input.append(input_param)
-                    KNN_output.append(brf_name)
-                    # KNN_output.append(bulb_type)
+                    # KNN_output.append(brf_name)
+                    KNN_output.append(bulb_type)
             print(f'{brf_name} Finished')
 
         '''
