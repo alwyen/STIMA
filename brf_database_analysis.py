@@ -17,6 +17,31 @@ class plots():
     def show_plot(waveform):
         plt.plot(waveform)
         plt.show()
+    
+    def confusion_matrix_type(ground_list, predicted_list, bulb_types):
+        '''
+        CFL --> 0
+        Incandescent --> 1
+        Halogen --> 2
+        LED --> 3
+        '''
+        prediction_matrix = np.zeros((len(bulb_types),len(bulb_types)))
+
+        total = np.zeros((len(bulb_types),len(bulb_types)))
+
+        assert len(ground_list) == len(predicted_list)
+
+        for i in range(len(ground_list)):
+            ground_index = bulb_types.index(ground_list[i])
+            estimated_index = bulb_types.index(estimated_list[i])
+
+            prediction_matrix[ground_index][estimated_index] += 1
+            total[ground_index][:] += 1
+        
+        confusion_matrix = np.divide(prediction_matrix, total)
+
+        plt.imshow(confusion_matrix)
+        plt.show()
 
 #this class does all the processing on the database side from the master CSV file
 class database_processing():
@@ -110,7 +135,12 @@ class brf_extraction():
                 brf_path = path + '\\waveform_' + str(i) + '.csv'
                 brf = raw_waveform_processing(brf_path).brf
                 brf = raw_waveform_processing.normalize(raw_waveform_processing.clean_brf(brf))
-                brf_list.append(brf)
+                nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+                brf1 = brf[0:nadir_indices[1]]
+                brf2 = brf[nadir_indices[1]:len(brf)]
+                # brf_list.append(brf)
+                brf_list.append(brf1)
+                brf_list.append(brf2)
             self.brf_list = brf_list
 
         def concatenate_waveforms(waveform_list):
@@ -164,31 +194,6 @@ class brf_analysis():
     #     for in_out in KNN_prediction_list:
     #         in_param = in_out[0]
     #         brf_type = in_out[1]
-
-    def confusion_matrix_type(ground_list, predicted_list, bulb_types):
-        '''
-        CFL --> 0
-        Incandescent --> 1
-        Halogen --> 2
-        LED --> 3
-        '''
-        prediction_matrix = np.zeros((len(bulb_types),len(bulb_types)))
-
-        total = np.zeros((len(bulb_types),len(bulb_types)))
-
-        assert len(ground_list) == len(predicted_list)
-
-        for i in range(len(ground)):
-            ground_index = bulb_types.index(ground_list[i])
-            estimated_index = bulb_types.index(estimated_list[i])
-
-            prediction_matrix[ground_index][estimated_index] += 1
-            total[ground_index][:] += 1
-        
-        confusion_matrix = np.divide(prediction_matrix, total)
-
-        plt.imshow(confusion_matrix)
-        plt.show()
 
 
 class brf_classification():
@@ -251,6 +256,7 @@ class brf_classification():
         for i in range(len(brf_database_list)):
             folder_name = brf_database_list[i][0]
             brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
             waveform_list = brf_extraction(folder_name).brf_list
             #ignoring the first waveform – will use that for classification
             for i in range(len(waveform_list)):
@@ -262,30 +268,34 @@ class brf_classification():
                     crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
                     kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
                     skew_prediction = np.append(skew_prediction, skew)
-                    # KNN_prediction_list.append([input_param, brf_name])
-                    brf_name_output_label.append(brf_name)
+                    KNN_prediction_list.append([input_param, brf_name])
+                    # brf_name_output_label.append(brf_name)
+                    # brf_name_output_label.append(bulb_type)
                 else:
                     crest_factor_array = np.append(crest_factor_array, crest_factor)
                     kurtosis_array = np.append(kurtosis_array, kurtosis)
                     skew_array = np.append(skew_array, skew)
                     KNN_input.append(input_param)
                     KNN_output.append(brf_name)
+                    # KNN_output.append(bulb_type)
             print(f'{brf_name} Finished')
 
-        crest_factor_array_normalized = raw_waveform_processing.normalize(crest_factor_array)
-        kurtosis_array_normalized = raw_waveform_processing.normalize(kurtosis_array)
-        skew_array_normalized = raw_waveform_processing.normalize(skew_array)
+        '''
+        # crest_factor_array_normalized = raw_waveform_processing.normalize(crest_factor_array)
+        # kurtosis_array_normalized = raw_waveform_processing.normalize(kurtosis_array)
+        # skew_array_normalized = raw_waveform_processing.normalize(skew_array)
 
-        crest_factor_prediction_normalized = raw_waveform_processing.normalize(crest_factor_prediction)
-        kurtosis_prediction_normalized = raw_waveform_processing.normalize(kurtosis_prediction)
-        skew_prediction_normalized = raw_waveform_processing.normalize(skew_prediction)
+        # crest_factor_prediction_normalized = raw_waveform_processing.normalize(crest_factor_prediction)
+        # kurtosis_prediction_normalized = raw_waveform_processing.normalize(kurtosis_prediction)
+        # skew_prediction_normalized = raw_waveform_processing.normalize(skew_prediction)
 
-        KNN_prediction_values = np.hstack((np.hsplit(crest_factor_prediction_normalized,len(crest_factor_prediction_normalized)), np.split(kurtosis_prediction_normalized, len(kurtosis_prediction_normalized)), np.hsplit(skew_prediction,len(skew_prediction))))
-        KNN_prediction_list = list(zip(KNN_prediction_values, brf_name_output_label))
-
-        KNN_input = list(zip(crest_factor_array_normalized, kurtosis_array_normalized, skew_array_normalized))
+        # KNN_prediction_values = np.vstack((crest_factor_prediction_normalized, kurtosis_prediction_normalized, skew_prediction_normalized)).T
+        # KNN_prediction_list = list(zip(KNN_prediction_values, brf_name_output_label))
+        # KNN_input = np.vstack((crest_factor_array_normalized, kurtosis_array_normalized, skew_array_normalized)).T
+        '''
 
         brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
+        # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, weights = 'distance') #used 9 because about 9 waveforms for each BRF
 
         brf_KNN_model.fit(KNN_input, KNN_output)
 
@@ -301,28 +311,44 @@ class brf_classification():
         brf_name_list = list([])
         brf_recall_list = list([])
 
+        '''
         #requires and input list and output list to train the model
         for bulb_type in bulb_type_list:
             print(bulb_type)
             same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
-            same_type_database = database_processing.drop_bulb_type_column(same_type_database)
-            same_type_list = database_processing.database_to_list(same_type_database)
-  
-            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors)
+            # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
-            true_positive = 0
-            total = len(KNN_prediction_list)
-            for prediction in KNN_prediction_list:
-                input_data = prediction[0]
-                # print(input_data)
-                expected_output = prediction[1]
-                output = brf_KNN_model.predict([input_data])[0]
-                if expected_output == output:
-                    true_positive += 1
+        brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors)
+        '''
+        brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors)
+
+        ground_list = list([])
+        predicted_list = list([])
+
+        true_positive = 0
+        total = len(KNN_prediction_list)
+        for prediction in KNN_prediction_list:
+            input_data = prediction[0]
+            expected_output = prediction[1]
+            output = brf_KNN_model.predict([input_data])[0]
+
+            ground_list.append(expected_output)
+            predicted_list.append(output)
+
+            if expected_output == output:
+                true_positive += 1
+            # else:
+            #     print(f'Expected: {expected_output}')
+            #     print(f'Predicted: {output}')
+            #     print()
 
             recall = true_positive/total
             print(f'Recall: {recall}')
             print()
+
+        plots.confusion_matrix_type(ground_list, predicted_list, bulb_type_list)
+        
+
 
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
