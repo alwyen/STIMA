@@ -44,8 +44,10 @@ class plots():
         
         df_cm = pd.DataFrame(confusion_matrix, index = [i for i in bulb_types_list], columns = [i for i in bulb_types_list])
         plt.figure(figsize = (10,7))
-        sn.heatmap(df_cm, annot=True)        
+        sn.heatmap(df_cm, annot=True)
         plt.title('Confusion Matrix of Bulb Types')
+        plt.xlabel('Predicted', fontsize = 16)
+        plt.ylabel('Expected', fontsize = 16)
         plt.show()
         
         # plt.matshow(confusion_matrix)
@@ -219,6 +221,7 @@ class brf_classification():
             brf_name_1 = brf_database_list[i][1]
             brf_type_1 = brf_database_list[i][2]
             error_list = list([])
+            print(brf_name_1)
             for j in range(len(brf_database_list)): #inner loop that goes through entire list
                 brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[1]
                 brf_name_2 = brf_database_list[j][1]
@@ -226,17 +229,13 @@ class brf_classification():
                 error_score = brf_analysis.min_error(brf_1, brf_2)
                 # error_list.append((error_score, brf_name_1, brf_name_2))
                 error_list.append((error_score, brf_type_1, brf_type_2))
+            #sorting by error score
             sorted_min_error = sorted(error_list, key = lambda x: x[0])
-            print(f'Best matches for: {brf_name_1}')
-            print(sorted_min_error[0])
-            print(sorted_min_error[1])
-            print(sorted_min_error[2])
-            print()
 
             ground_list.append(sorted_min_error[0][1])
             predicted_list.append(sorted_min_error[0][2])
 
-        brf_analysis.confusion_matrix_type(ground_list, predicted_list, bulb_types)
+        plots.confusion_matrix_type(ground_list, predicted_list, bulb_types)
         
 
 
@@ -347,19 +346,19 @@ class brf_classification():
             predicted_list.append(output)
 
             if expected_output == output:
+                print(f'Expected: {expected_output}; Output: {output}')
                 true_positive += 1
             # else:
             #     print(f'Expected: {expected_output}')
             #     print(f'Predicted: {output}')
             #     print()
 
-            recall = true_positive/total
-            print(f'Recall: {recall}')
-            print()
+        precision = true_positive/total
+        print(f'Recall: {precision}')
+        print()
 
         plots.confusion_matrix_type(ground_list, predicted_list, bulb_type_list)
         
-
 
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
@@ -372,6 +371,5 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    # brf_classification.compare_brfs(brf_database)
-
-    brf_classification.KNN(brf_database)
+    brf_classification.compare_brfs(brf_database)
+    # brf_classification.KNN(brf_database)
