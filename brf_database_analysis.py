@@ -60,11 +60,14 @@ class plots():
         confusion_matrix = np.divide(prediction_matrix, total_matrix)
 
         df_cm = pd.DataFrame(confusion_matrix, index = [i for i in unique_brf_names], columns = [i for i in unique_brf_names])
-        plt.figure(figsize = (10,7)).tight_layout()
+        plt.figure(figsize = (8,7)).tight_layout()
         sn.heatmap(df_cm)
         plt.title(title)
         plt.xlabel('Predicted', fontsize = 16)
+        plt.xticks(rotation = 45, ha = 'right') #why is alignment right...?
         plt.ylabel('Expected', fontsize = 16)
+        plt.yticks(rotation = 45, va = 'top') #why is alignment right...?
+        plt.tight_layout()
         plt.show()
 
 #this class does all the processing on the database side from the master CSV file
@@ -276,7 +279,7 @@ class brf_classification():
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 input_param = [crest_factor, kurtosis, skew]
-                if i == 0:
+                if i < 3:
                     crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
                     kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
                     skew_prediction = np.append(skew_prediction, skew)
