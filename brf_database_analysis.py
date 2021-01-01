@@ -64,9 +64,9 @@ class plots():
         sn.heatmap(df_cm)
         plt.title(title)
         plt.xlabel('Predicted', fontsize = 16)
-        plt.xticks(rotation = 45, ha = 'right') #why is alignment right...?
+        plt.xticks(rotation = 45, ha = 'right') #why is alignment 'right'...?
         plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(rotation = 45, va = 'top') #why is alignment right...?
+        plt.yticks(rotation = 45, va = 'top') #why is alignment 'top'...?
         plt.tight_layout()
         plt.show()
 
@@ -215,34 +215,65 @@ class brf_analysis():
 
 
 class brf_classification():
-    def compare_brfs(brf_database):
+    def compare_brfs(brf_database, num_comparisons):
         bulb_types = database_processing.return_bulb_types(brf_database)
         brf_database_list = database_processing.database_to_list(brf_database)
         
         ground_list = list([])
         predicted_list = list([])
 
-        for i in range(len(brf_database_list)): #outer loop for comparing against specific bulb
-            brf_1 = brf_extraction(brf_database_list[i][0]).brf_list[0] #grabs first BRF in list
-            brf_name_1 = brf_database_list[i][1]
-            brf_type_1 = brf_database_list[i][2]
-            error_list = list([])
-            print(brf_name_1)
-            for j in range(len(brf_database_list)): #inner loop that goes through entire list
-                brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[1]
-                brf_name_2 = brf_database_list[j][1]
-                brf_type_2 = brf_database_list[j][2]
-                error_score = brf_analysis.min_error(brf_1, brf_2)
-                # error_list.append((error_score, brf_name_1, brf_name_2))
-                error_list.append((error_score, brf_type_1, brf_type_2))
-            #sorting by error score
-            sorted_min_error = sorted(error_list, key = lambda x: x[0])
+        bulb_type_list = database_processing.return_bulb_types(brf_database)
 
-            ground_list.append(sorted_min_error[0][1])
-            predicted_list.append(sorted_min_error[0][2])
+        #Personal note: if want to generate confusion matrix for bulb type, don't include outer bulb_type for loop
+        #               otherwise, if want to compare unique BRFs, compare between the bulb type classification
+        #               additionally, need to change what is being appended to the error list (type or name?)
 
-        plots.confusion_matrix_type(ground_list, predicted_list, bulb_types)
-        
+        for bulb_type in bulb_type_list:
+            print(bulb_type)
+            same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
+            same_type_database_list = database_processing.database_to_list(same_type_database)
+            same_type_name_list = database_processing.database_to_list(database_processing.return_names(same_type_database))
+            #RENAMING same_type_database_list to brf_database_list for convenience
+            brf_database_list = same_type_database_list
+
+            #unindent this if comparing bulb types for the ENTIRE database 
+            for i in range(len(brf_database_list)): #outer loop for comparing against specific bulb
+                brf_1 = brf_extraction(brf_database_list[i][0]).brf_list[0] #grabs first BRF in list
+                brf_name_1 = brf_database_list[i][1]
+                brf_type_1 = brf_database_list[i][2]
+                error_list = list([])
+                print(brf_name_1)
+                for j in range(len(brf_database_list)): #inner loop that goes through entire list
+                    for k in range(1, num_comparisons+1):
+                        brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[k]
+                        brf_name_2 = brf_database_list[j][1]
+                        brf_type_2 = brf_database_list[j][2]
+                        error_score = brf_analysis.min_error(brf_1, brf_2)
+                    # error_list.append((error_score, brf_name_1, brf_name_2))
+
+                    '''
+                    0 --> error score
+                    1 --> brf_1
+                    2 --> brf_2
+                    sorted by min error, so grab n closest matches
+                    '''
+
+                    # error_list.append((error_score, brf_type_1, brf_type_2))
+                    error_list.append((error_score, brf_name_1, brf_name_2))
+                #sorting by error score
+                sorted_min_error = sorted(error_list, key = lambda x: x[0])
+
+                #grabs top three closest matches
+                ground_list.append(sorted_min_error[0][1])
+                predicted_list.append(sorted_min_error[0][2])
+
+            #PLOT FOR UNIQUE BRFS WITHIN A BULB TYPE CATEGORY
+            # plots.confusion_matrix_type(ground_list, predicted_list, bulb_types)
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix of For {bulb_type} Bulb Type Using Sheinin\'s Statistical Measurement \n(tested with {num_comparisons} double cycles)')
+            #need to reset lists
+            ground_list = list([])
+            predicted_list = list([])
+            print()
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
     def train_KNN(brf_database, n, classification_type):
@@ -365,11 +396,11 @@ class brf_classification():
                 #     print()
 
             precision = true_positive/total
-            print(f'Recall: {precision}')
+            print(f'Precision: {precision}')
             print()
 
             brf_name_list = database_processing.database_to_list(database_processing.return_names(brf_database))
-            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type')
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)')
 
 
 if __name__ == "__main__":
@@ -383,5 +414,5 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    # brf_classification.compare_brfs(brf_database)
-    brf_classification.KNN(brf_database, 'name')
+    brf_classification.compare_brfs(brf_database, 3)
+    # brf_classification.KNN(brf_database, 'name')
