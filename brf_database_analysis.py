@@ -70,6 +70,23 @@ class plots():
         plt.tight_layout()
         plt.show()
 
+    def KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, unique_brf_names, title):
+        
+        assert tallied_matrix.shape == total_matrix.shape
+
+        confusion_matrix = np.divide(tallied_matrix, total_matrix)
+
+        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in unique_brf_names], columns = [i for i in unique_brf_names])
+        plt.figure(figsize = (8,7)).tight_layout()
+        sn.heatmap(df_cm)
+        plt.title(title)
+        plt.xlabel('Predicted', fontsize = 16)
+        plt.xticks(rotation = 45, ha = 'right')
+        plt.ylabel('Expected', fontsize = 16)
+        plt.yticks(rotation = 45, va = 'top')
+        plt.tight_layout()
+        plt.show()
+
 #this class does all the processing on the database side from the master CSV file
 class database_processing():
     '''
@@ -364,7 +381,6 @@ class brf_classification():
         # database_as_list = database_processing.database_to_list(brf_database)
 
         bulb_type_list = database_processing.return_bulb_types(brf_database)
-        brf_name_list = list([])
         brf_recall_list = list([])
 
         #requires and input list and output list to train the model
@@ -383,11 +399,14 @@ class brf_classification():
 
             true_positive = 0
             total = len(KNN_prediction_list)
+
+            tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+            total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+
             for prediction in KNN_prediction_list:
                 input_data = prediction[0]
                 expected_output = prediction[1]
                 output = brf_KNN_model.predict([input_data])[0]
-                print(brf_KNN_model.predict_proba([input_data]))
 
                 ground_list.append(expected_output)
                 predicted_list.append(output)
@@ -395,16 +414,36 @@ class brf_classification():
                 if expected_output == output:
                     print(f'Expected: {expected_output}; Output: {output}')
                     true_positive += 1
-                # else:
-                #     print(f'Expected: {expected_output}')
-                #     print(f'Predicted: {output}')
-                #     print()
+
+                probabilities = brf_KNN_model.predict_proba([input_data])
+                row_total = np.full(probabilities.shape,number_neighbors)
+
+                expected_index = same_type_name_list.index(expected_output)
+
+                #creating matrixs of same shape as tallied_matrix and tota_matrix to add matricies
+                temp_probabilities_matrix = np.zeros(probabilities.shape)
+                temp_total_matrix = np.zeros(probabilities.shape)
+                zeros_row = np.zeros(probabilities.shape)
+                for i in range(len(tallied_matrix)):
+                    if i == expected_index:
+                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,probabilities))
+                        temp_total_matrix = np.vstack((temp_total_matrix,row_total))
+                    else:
+                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
+                        temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
+
+                #removing first row
+                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]
+                temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
+
+                tallied_matrix += temp_probabilities_matrix
+                total_matrix += temp_total_matrix                
 
             precision = true_positive/total
             print(f'Precision: {precision}')
             print()
 
-            brf_name_list = database_processing.database_to_list(database_processing.return_names(brf_database))
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)')
             plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)')
 
 
@@ -420,4 +459,4 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
     # brf_classification.compare_brfs(brf_database, 3)
-    brf_classification.KNN(brf_database, 9, 'name', 1, 'double')
+    brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
