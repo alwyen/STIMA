@@ -154,7 +154,7 @@ class raw_waveform_processing():
 #uses the raw_waveform_processing class to extract the processed data
 #brf_extraction class manipulates data into a list of BRF waveforms or one concatenated BRF waveform
 class brf_extraction():
-        def __init__(self, brf_folder_name):
+        def __init__(self, brf_folder_name, single_or_double):
             cwd = os.getcwd()
             brf_list = []
             path = base_path + '\\' + brf_folder_name
@@ -168,9 +168,11 @@ class brf_extraction():
                 nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
                 brf1 = brf[0:nadir_indices[1]]
                 brf2 = brf[nadir_indices[1]:len(brf)]
-                # brf_list.append(brf)
-                brf_list.append(brf1)
-                brf_list.append(brf2)
+                if single_or_double == 'double':
+                    brf_list.append(brf)
+                elif single_or_double == 'single':
+                    brf_list.append(brf1)
+                    brf_list.append(brf2)
             self.brf_list = brf_list
 
         def concatenate_waveforms(waveform_list):
@@ -199,14 +201,14 @@ class brf_analysis():
         return stats.skew(brf)
 
     #for each bulb type, print out the stats for that particular concatenated waveform
-    def for_type_print_stats(brf_database):
+    def for_type_print_stats(brf_database, single_or_double):
         bulb_types = database_processing.return_bulb_types(brf_database) #drop bulb type column later?
         for i in range(len(bulb_types)):
             print(bulb_types[i])
             new_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_types[i]))
             same_type_list = database_processing.database_to_list(new_database)
             for item in same_type_list: #item: folder name; name; bulb type
-                brf_list = brf_extraction(item[0]).brf_list
+                brf_list = brf_extraction(item[0], single_or_double).brf_list
                 concatenated_brf = brf_extraction.concatenate_waveforms(brf_list)
                 # print(brf_analysis.crest_factor(concatenated_brf))
                 # print(brf_analysis.kurtosis(concatenated_brf))
@@ -215,7 +217,7 @@ class brf_analysis():
 
 
 class brf_classification():
-    def compare_brfs(brf_database, num_comparisons):
+    def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
         bulb_types = database_processing.return_bulb_types(brf_database)
         brf_database_list = database_processing.database_to_list(brf_database)
         
@@ -238,14 +240,14 @@ class brf_classification():
 
             #unindent this if comparing bulb types for the ENTIRE database 
             for i in range(len(brf_database_list)): #outer loop for comparing against specific bulb
-                brf_1 = brf_extraction(brf_database_list[i][0]).brf_list[0] #grabs first BRF in list
+                brf_1 = brf_extraction(brf_database_list[i][0], single_or_double).brf_list[0] #grabs first BRF in list
                 brf_name_1 = brf_database_list[i][1]
                 brf_type_1 = brf_database_list[i][2]
                 error_list = list([])
                 print(brf_name_1)
                 for j in range(len(brf_database_list)): #inner loop that goes through entire list
                     for k in range(1, num_comparisons+1):
-                        brf_2 = brf_extraction(brf_database_list[j][0]).brf_list[k]
+                        brf_2 = brf_extraction(brf_database_list[j][0], single_or_double).brf_list[k]
                         brf_name_2 = brf_database_list[j][1]
                         brf_type_2 = brf_database_list[j][2]
                         error_score = brf_analysis.min_error(brf_1, brf_2)
@@ -275,8 +277,12 @@ class brf_classification():
             predicted_list = list([])
             print()
 
+    def my_distance(weights):
+        print(weights)
+        return weights
+
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
-    def train_KNN(brf_database, n, classification_type):
+    def train_KNN(brf_database, n, classification_type, num_test_waveforms, single_or_double):
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
         
@@ -303,14 +309,14 @@ class brf_classification():
             folder_name = brf_database_list[i][0]
             brf_name = brf_database_list[i][1]
             bulb_type = brf_database_list[i][2]
-            waveform_list = brf_extraction(folder_name).brf_list
+            waveform_list = brf_extraction(folder_name, single_or_double).brf_list
             #ignoring the first waveform – will use that for classification
             for i in range(len(waveform_list)):
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 input_param = [crest_factor, kurtosis, skew]
-                if i < 3:
+                if i < num_test_waveforms: #determines number of test/training waveforms
                     crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
                     kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
                     skew_prediction = np.append(skew_prediction, skew)
@@ -353,11 +359,9 @@ class brf_classification():
 
         return brf_KNN_model, KNN_prediction_list
 
-    def KNN(brf_database, classification_type):
+    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double):
         # brf_database = database_processing.drop_bulb_type_column(brf_database)
         # database_as_list = database_processing.database_to_list(brf_database)
-
-        number_neighbors = 9
 
         bulb_type_list = database_processing.return_bulb_types(brf_database)
         brf_name_list = list([])
@@ -370,7 +374,7 @@ class brf_classification():
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
-            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type)
+            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
 
@@ -383,6 +387,7 @@ class brf_classification():
                 input_data = prediction[0]
                 expected_output = prediction[1]
                 output = brf_KNN_model.predict([input_data])[0]
+                print(brf_KNN_model.predict_proba([input_data]))
 
                 ground_list.append(expected_output)
                 predicted_list.append(output)
@@ -414,5 +419,5 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    brf_classification.compare_brfs(brf_database, 3)
-    # brf_classification.KNN(brf_database, 'name')
+    # brf_classification.compare_brfs(brf_database, 3)
+    brf_classification.KNN(brf_database, 9, 'name', 1, 'double')
