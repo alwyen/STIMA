@@ -232,6 +232,25 @@ class brf_analysis():
                 print(brf_analysis.skew(concatenated_brf))
             print()
 
+    def gradient(data):
+        horizontal_gradient = np.array([[1, 0, -1]])
+        gradient_x = signal.convolve(data, horizontal_gradient, mode = 'valid')
+        plots.show_plot(gradient_x)
+        return gradient_x
+
+    def NCC(data_1, data_2):
+        mean_subtracted_1 = data_1 - np.mean(data_1)
+        min_1 = np.amin(mean_subtracted_1)
+        max_1 = np.amax(mean_subtracted_1)
+        norm_1 = mean_subtracted_1/(np.sqrt(np.sum((data_1 - np.mean_data_1)**2)))
+
+        mean_subtracted_2 = data_2 - np.mean(data_2)
+        min_2 = np.amin(mean_subtracted_2)
+        max_2 = np.amax(mean_subtracted_2)
+        norm_2 = mean_subtracted_1/(np.sqrt(np.sum((data_2 - np.mean_data_2)**2)))
+
+        return np.dot(norm_1, norm_2)
+
 
 class brf_classification():
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
@@ -268,7 +287,7 @@ class brf_classification():
                         brf_name_2 = brf_database_list[j][1]
                         brf_type_2 = brf_database_list[j][2]
                         error_score = brf_analysis.min_error(brf_1, brf_2)
-                    # error_list.append((error_score, brf_name_1, brf_name_2))
+                        error_list.append((error_score, brf_name_1, brf_name_2))
 
                     '''
                     0 --> error score
@@ -277,14 +296,13 @@ class brf_classification():
                     sorted by min error, so grab n closest matches
                     '''
 
-                    # error_list.append((error_score, brf_type_1, brf_type_2))
-                    error_list.append((error_score, brf_name_1, brf_name_2))
                 #sorting by error score
                 sorted_min_error = sorted(error_list, key = lambda x: x[0])
 
                 #grabs top three closest matches
-                ground_list.append(sorted_min_error[0][1])
-                predicted_list.append(sorted_min_error[0][2])
+                for k in range(1, num_comparisons+1):
+                    ground_list.append(sorted_min_error[k][1])
+                    predicted_list.append(sorted_min_error[k][2])
 
             #PLOT FOR UNIQUE BRFS WITHIN A BULB TYPE CATEGORY
             # plots.confusion_matrix_type(ground_list, predicted_list, bulb_types)
@@ -433,11 +451,13 @@ class brf_classification():
                         temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
 
                 #removing first row
-                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]
+                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
                 temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
 
                 tallied_matrix += temp_probabilities_matrix
-                total_matrix += temp_total_matrix                
+                total_matrix += temp_total_matrix
+
+                print(tallied_matrix)
 
             precision = true_positive/total
             print(f'Precision: {precision}')
@@ -458,5 +478,5 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    # brf_classification.compare_brfs(brf_database, 3)
-    brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
+    brf_classification.compare_brfs(brf_database, 3, 'double')
+    # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
