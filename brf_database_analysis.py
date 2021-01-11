@@ -10,7 +10,9 @@ import seaborn as sn
 
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
+save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests'
 savgol_window = 31
+mov_avg_w_size = 5
 
 brf_analysis_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
 
@@ -19,6 +21,11 @@ class plots():
         plt.plot(waveform)
         plt.show()
     
+    def save_plot(waveform, plot_name):
+        plt.plot(waveform)
+        plt.title(plot_name)
+        plt.savefig(plot_name + '.png')
+
     def confusion_matrix_type(ground_list, predicted_list, bulb_types):
         bulb_types_list = list(bulb_types[:4])
         bulb_types = list(bulb_types)
@@ -158,8 +165,11 @@ class raw_waveform_processing():
         return normalized
 
     def savgol(brf, savgol_window):
-        smoothed = ss.savgol_filter(brf, savgol_window, 3)
+        smoothed = signal.savgol_filter(brf, savgol_window, 3)
         return smoothed
+
+    def moving_average(data, window_size):
+        return signal.convolve(data, np.ones(window_size) , mode = 'valid') / window_size
 
     def truncate_longer(brf_1, brf_2):
         if len(brf_1) > len(brf_2):
@@ -217,25 +227,12 @@ class brf_analysis():
     def skew(brf):
         return stats.skew(brf)
 
-    #for each bulb type, print out the stats for that particular concatenated waveform
-    def for_type_print_stats(brf_database, single_or_double):
-        bulb_types = database_processing.return_bulb_types(brf_database) #drop bulb type column later?
-        for i in range(len(bulb_types)):
-            print(bulb_types[i])
-            new_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_types[i]))
-            same_type_list = database_processing.database_to_list(new_database)
-            for item in same_type_list: #item: folder name; name; bulb type
-                brf_list = brf_extraction(item[0], single_or_double).brf_list
-                concatenated_brf = brf_extraction.concatenate_waveforms(brf_list)
-                # print(brf_analysis.crest_factor(concatenated_brf))
-                # print(brf_analysis.kurtosis(concatenated_brf))
-                print(brf_analysis.skew(concatenated_brf))
-            print()
-
-    def gradient(data):
-        horizontal_gradient = np.array([[1, 0, -1]])
+    def gradient(data, name):
+        horizontal_gradient = np.array([1, 0, -1])
+        # horizontal_gradient = np.array([1/12, -2/3, 0, 2/3, -1/12])
         gradient_x = signal.convolve(data, horizontal_gradient, mode = 'valid')
-        plots.show_plot(gradient_x)
+        smoothed_gradient = raw_waveform_processing.savgol(gradient_x, savgol_window)
+        plots.save_plot(smoothed_gradient, name)
         return gradient_x
 
     def NCC(data_1, data_2):
@@ -250,6 +247,56 @@ class brf_analysis():
         norm_2 = mean_subtracted_1/(np.sqrt(np.sum((data_2 - np.mean_data_2)**2)))
 
         return np.dot(norm_1, norm_2)
+
+    #for each bulb type, print out the stats for that particular concatenated waveform
+    def for_type_print_stats(brf_database, single_or_double):
+        bulb_types = database_processing.return_bulb_types(brf_database)
+        for i in range(len(bulb_types)):
+            print(bulb_types[i])
+            new_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_types[i]))
+            same_type_list = database_processing.database_to_list(new_database)
+            for item in same_type_list: #item: folder name; name; bulb type
+                brf_list = brf_extraction(item[0], single_or_double).brf_list
+                concatenated_brf = brf_extraction.concatenate_waveforms(brf_list)
+                # print(brf_analysis.crest_factor(concatenated_brf))
+                # print(brf_analysis.kurtosis(concatenated_brf))
+                print(brf_analysis.skew(concatenated_brf))
+            print()
+
+    def brf_gradient_analysis(brf_database, single_or_double):
+        cwd = os.getcwd()
+        os.chdir(save_path)
+
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        comparison_list = []
+        name_list = []
+        type_list = []
+
+        for i in range(len(brf_database_list)):
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            waveform_list = brf_extraction(folder_name, single_or_double).brf_list
+
+            comparison_list.append(waveform_list[0])
+            name_list.append(brf_name + ' ' + str(0))
+            type_list.append(bulb_type)
+
+            comparison_list.append(waveform_list[1])
+            name_list.append(brf_name + ' ' + str(1))
+            type_list.append(bulb_type)
+
+        assert len(comparison_list) == len(name_list) and len(name_list) == len(type_list)
+
+        for i in range(len(comparison_list)):
+            print(name_list[i])
+            smoothed_brf = raw_waveform_processing.savgol(comparison_list[i], savgol_window)
+            averaged_brf = raw_waveform_processing.moving_average(smoothed_brf, mov_avg_w_size)
+            brf_analysis.gradient(averaged_brf, name_list[i])
+            print(f'{name_list[i]} + done')
+
+        os.chdir(cwd)
 
 
 class brf_classification():
@@ -457,8 +504,6 @@ class brf_classification():
                 tallied_matrix += temp_probabilities_matrix
                 total_matrix += temp_total_matrix
 
-                print(tallied_matrix)
-
             precision = true_positive/total
             print(f'Precision: {precision}')
             print()
@@ -478,5 +523,6 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    brf_classification.compare_brfs(brf_database, 3, 'double')
+    # brf_classification.compare_brfs(brf_database, 3, 'double')
     # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
+    brf_analysis.brf_gradient_analysis(brf_database, 'double')
