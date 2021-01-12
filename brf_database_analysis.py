@@ -25,6 +25,20 @@ class plots():
         plt.plot(waveform)
         plt.title(plot_name)
         plt.savefig(plot_name + '.png')
+        plt.clf()
+
+    def save_gradient_plot(orig_brf, gradient, plot_name):
+        fig, ax = plt.subplots(1, 2, constrained_layout = True)
+        ax[0].plot(orig_brf)
+        ax[0].set_title('Original, Smoothed BRF')
+
+        ax[1].plot(gradient)
+        ax[1].set_title('Smoothed Gradient')
+
+        fig.suptitle(plot_name)
+        fig.set_size_inches(12,6)
+        plt.savefig(plot_name + '.png')
+        plt.clf()
 
     def confusion_matrix_type(ground_list, predicted_list, bulb_types):
         bulb_types_list = list(bulb_types[:4])
@@ -232,7 +246,7 @@ class brf_analysis():
         # horizontal_gradient = np.array([1/12, -2/3, 0, 2/3, -1/12])
         gradient_x = signal.convolve(data, horizontal_gradient, mode = 'valid')
         smoothed_gradient = raw_waveform_processing.savgol(gradient_x, savgol_window)
-        plots.save_plot(smoothed_gradient, name)
+        plots.save_gradient_plot(data, smoothed_gradient, name)
         return gradient_x
 
     def NCC(data_1, data_2):
@@ -280,11 +294,11 @@ class brf_analysis():
             waveform_list = brf_extraction(folder_name, single_or_double).brf_list
 
             comparison_list.append(waveform_list[0])
-            name_list.append(brf_name + ' ' + str(0))
+            name_list.append(brf_name + ' (' + str(0) + ')')
             type_list.append(bulb_type)
 
             comparison_list.append(waveform_list[1])
-            name_list.append(brf_name + ' ' + str(1))
+            name_list.append(brf_name + ' (' + str(1) + ')')
             type_list.append(bulb_type)
 
         assert len(comparison_list) == len(name_list) and len(name_list) == len(type_list)
