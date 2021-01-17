@@ -10,7 +10,8 @@ import seaborn as sn
 
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
-save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests'
+gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests'
+raw_waveform_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Raw BRFs'
 savgol_window = 31
 mov_avg_w_size = 5
 
@@ -167,6 +168,7 @@ class raw_waveform_processing():
         self.brf = np.hstack(brf)
         self.voltage = np.hstack(voltage)
 
+#NOTE: 750 IS HARDCODED; NEEDS TO BE CHANGED/AUTOMATED EVENTUALLY
     def clean_brf(brf):
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
         cleaned_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
@@ -249,6 +251,7 @@ class brf_analysis():
         plots.save_gradient_plot(data, smoothed_gradient, name)
         return gradient_x
 
+    #this might not be the one we want (if we use NCC)
     def NCC(data_1, data_2):
         mean_subtracted_1 = data_1 - np.mean(data_1)
         min_1 = np.amin(mean_subtracted_1)
@@ -261,6 +264,53 @@ class brf_analysis():
         norm_2 = mean_subtracted_1/(np.sqrt(np.sum((data_2 - np.mean_data_2)**2)))
 
         return np.dot(norm_1, norm_2)
+
+    def integral_ratio(brf, single_or_double):
+        if single_or_double = 'single':
+            
+        elif single_or_double = 'double':
+
+    #need to double check this method; not sure if i'm messing up the lengths for comparison (might need to +1 for some things?)
+    def linearity(brf, single_or_double):
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+
+        if single_or_double = 'single':
+            peak_indice = peak_indices[1]
+
+            rising = brf[0:peak_indice+1]
+            falling = brf[peak_indice:len(brf)]
+
+            rising_line = np.linspace(brf[0], brf[peak_indice], peak_indice+1)
+            falling_line = np.linspace(brf[peak_indice], brf[len(brf)-1], len(brf)-peak_indice)
+
+            cc_1 = np.corrcoef(rising, rising_line)
+            cc_2 = np.corrcoef(falling, falling_line)
+
+            return (cc_1[0][1]+cc_2[0][1])/2
+
+        elif single_or_double = 'double':
+            peak_indice_1 = peak_indices[1]
+            peak_indice_2 = peak_indices[2]
+            nadir_indice_1 = nadir_indices[1]
+
+            rising_1 = brf[0:peak_indice_1+1]
+            falling_1 = brf[peak_indice_1:nadir_indice_1+1]
+            rising_2 = brf[nadir_indice_1:peak_indice_2+1]
+            falling_2 = brf[peak_indice_2:len(brf)]
+
+            rising_line_1 = np.linspace(brf[0], brf[peak_indice_1], peak_indice_1+1)
+            falling_line_1 = np.linspace(brf[peak_indice_1], brf[nadir_indice_1], nadir_indice_1-peak_indice_1)
+            rising_line_2 = np.linspace(brf[nadir_indice_1], brf[peak_indice_2], peak_indice_2-nadir_indice_1)
+            falling_line_2 = np.linspace(brf[peak_indice_2], brf[len(brf)-1], len(brf)-peak_indice_2)
+
+            cc_1 = np.corrcoef(rising_1, rising_line_1)
+            cc_2 = np.corrcoef(falling_1, falling_line_1)
+            cc_3 = np.corrcoef(rising_2, rising_line_2)
+            cc_4 = np.corrcoef(falling_2, falling_line_2)
+
+            return (cc_1[0][1] + cc_2[0][1] + cc_3[0][1] + cc_4[0][1])/4 #average of four correlation coefficients
+
 
     #for each bulb type, print out the stats for that particular concatenated waveform
     def for_type_print_stats(brf_database, single_or_double):
@@ -277,7 +327,7 @@ class brf_analysis():
                 print(brf_analysis.skew(concatenated_brf))
             print()
 
-    def brf_gradient_analysis(brf_database, single_or_double):
+    def brf_gradient_analysis(brf_database, single_or_double, save_path):
         cwd = os.getcwd()
         os.chdir(save_path)
 
@@ -539,4 +589,4 @@ if __name__ == "__main__":
 
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
-    brf_analysis.brf_gradient_analysis(brf_database, 'double')
+    brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
