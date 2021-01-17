@@ -265,10 +265,40 @@ class brf_analysis():
 
         return np.dot(norm_1, norm_2)
 
+    #this ratio is defined by the left side of the peak/right side of the peak (rising/falling)
+    '''
+    if ratio == 1, then peak is roughly in the middle
+    if ratio < 1, then peak is skewed left
+    if ratio > 1, then peak is skewed right
+    '''
     def integral_ratio(brf, single_or_double):
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+
         if single_or_double = 'single':
+            peak_indice = peak_indices[1]
+
+            rising = brf[0:peak_indice+1]
+            falling = brf[peak_indice:len(brf)]
+
+            ratio = np.sum(rising)/np.sum(falling)
             
         elif single_or_double = 'double':
+            peak_indice_1 = peak_indices[1]
+            peak_indice_2 = peak_indices[2]
+            nadir_indice_1 = nadir_indices[1]
+
+            rising_1 = brf[0:peak_indice_1+1]
+            falling_1 = brf[peak_indice_1:nadir_indice_1+1]
+            rising_2 = brf[nadir_indice_1:peak_indice_2+1]
+            falling_2 = brf[peak_indice_2:len(brf)]
+
+            ratio_1 = np.sum(rising_1)/np.sum(falling_1)
+            ratio_2 = np.sum(rising_2)/np.sum(falling_2)
+
+            average_ratio = (ratio_1 + ratio_2)/2
+
+            return average_ratio
 
     #need to double check this method; not sure if i'm messing up the lengths for comparison (might need to +1 for some things?)
     def linearity(brf, single_or_double):
