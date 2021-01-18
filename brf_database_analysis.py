@@ -13,7 +13,7 @@ base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
 gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests'
 raw_waveform_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Raw BRFs'
 savgol_window = 31
-mov_avg_w_size = 5
+mov_avg_w_size = 50
 
 brf_analysis_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
 
@@ -226,6 +226,43 @@ class brf_extraction():
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
+    def test_analysis_method(brf_database, method_name, single_or_double):
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        for i in range(len(brf_database_list)):
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            waveform_list = brf_extraction(folder_name, single_or_double).brf_list
+            print(brf_name)
+            mean = 0
+            values = np.array([])
+            std = 0
+
+            #below is for writing specific tests for a method
+            if method_name == 'integral_ratio':
+                for j in range(len(waveform_list)): #first 3 waveforms
+                    # smoothed = raw_waveform_processing.savgol(waveform_list[j], savgol_window)
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                    values = np.hstack((values, ratio))
+                    # print(ratio)
+                    # plots.show_plot(smoothed)
+                    # print()
+
+            elif method_name == 'linearity':
+                for j in range(len(waveform_list))
+                print(brf_analysis.linearity(brf, single_or_double))
+                plots.show_plot(brf)
+
+            mean = np.sum(values)/len(values)
+            std = math.sqrt(np.sum((values-mean)**2/(len(values)-1)))
+
+            print(mean)
+            print(std) #smaller the better/more reliable
+            print()
+
+
     def min_error(brf_1, brf_2):
         brf_1, brf_2 = raw_waveform_processing.truncate_longer(brf_1, brf_2)
         error = np.sum(np.square(np.absolute(np.array(brf_1) - np.array(brf_2))))
@@ -275,18 +312,29 @@ class brf_analysis():
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
 
-        if single_or_double = 'single':
-            peak_indice = peak_indices[1]
+        # print(f'Peaks: {peak_indices}')
+        # print(f'Nadirs: {nadir_indices}')
+
+        if single_or_double == 'single':
+            peak_indice = peak_indices[0]
 
             rising = brf[0:peak_indice+1]
             falling = brf[peak_indice:len(brf)]
 
             ratio = np.sum(rising)/np.sum(falling)
             
-        elif single_or_double = 'double':
-            peak_indice_1 = peak_indices[1]
-            peak_indice_2 = peak_indices[2]
-            nadir_indice_1 = nadir_indices[1]
+        elif single_or_double == 'double':
+            peak_indice_1 = peak_indices[0]
+            peak_indice_2 = peak_indices[1]
+            # nadir_indice_1 = nadir_indices[1]
+            nadir_indice_1 = 0
+
+            #NOTE: temporary solution to picking nadir; maybe better to get approx location of nadir through unsmoothed waveform
+            if nadir_indices[0] < 100:
+                nadir_indice_1 = nadir_indices[1]
+            else:
+                nadir_indice_1 = nadir_indices[0]
+
 
             rising_1 = brf[0:peak_indice_1+1]
             falling_1 = brf[peak_indice_1:nadir_indice_1+1]
@@ -305,7 +353,7 @@ class brf_analysis():
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
 
-        if single_or_double = 'single':
+        if single_or_double == 'single':
             peak_indice = peak_indices[1]
 
             rising = brf[0:peak_indice+1]
@@ -319,7 +367,7 @@ class brf_analysis():
 
             return (cc_1[0][1]+cc_2[0][1])/2
 
-        elif single_or_double = 'double':
+        elif single_or_double == 'double':
             peak_indice_1 = peak_indices[1]
             peak_indice_2 = peak_indices[2]
             nadir_indice_1 = nadir_indices[1]
@@ -619,4 +667,6 @@ if __name__ == "__main__":
 
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
-    brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
+    # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
+
+    brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
