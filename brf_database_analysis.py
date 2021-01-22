@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy import signal, stats
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import math
 import os
@@ -10,7 +11,7 @@ import seaborn as sn
 
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
-gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests'
+gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests\Savgol 31 Moving 50'
 raw_waveform_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Raw BRFs'
 savgol_window = 31
 mov_avg_w_size = 50
@@ -169,10 +170,11 @@ class raw_waveform_processing():
         self.voltage = np.hstack(voltage)
 
 #NOTE: 750 IS HARDCODED; NEEDS TO BE CHANGED/AUTOMATED EVENTUALLY
-    def clean_brf(brf):
+    def clean_brf(time, brf):
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+        corresponding_time = time[nadir_indices[0]:nadir_indices[2]]
         cleaned_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
-        return cleaned_brf
+        return corresponding_time, cleaned_brf
 
     def normalize(array):
         min = np.amin(array)
@@ -199,6 +201,7 @@ class raw_waveform_processing():
 class brf_extraction():
         def __init__(self, brf_folder_name, single_or_double):
             cwd = os.getcwd()
+            time_list = []
             brf_list = []
             path = base_path + '\\' + brf_folder_name
             os.chdir(path)
@@ -206,16 +209,22 @@ class brf_extraction():
             os.chdir(cwd)
             for i in range(num_files):
                 brf_path = path + '\\waveform_' + str(i) + '.csv'
-                brf = raw_waveform_processing(brf_path).brf
-                brf = raw_waveform_processing.normalize(raw_waveform_processing.clean_brf(brf))
+                processed = raw_waveform_processing(brf_path)
+                time = processed.time
+                brf = processed.brf
+                time, brf = raw_waveform_processing.normalize(raw_waveform_processing.clean_brf(time, brf))
                 nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
-                brf1 = brf[0:nadir_indices[1]]
-                brf2 = brf[nadir_indices[1]:len(brf)]
+                time1, brf1 = time[0:nadir_indices[1]], brf[0:nadir_indices[1]]
+                time2, brf2 = time[nadir_indices[1]:len(brf)], brf[nadir_indices[1]:len(brf)]
                 if single_or_double == 'double':
+                    time_list.append(time)
                     brf_list.append(brf)
                 elif single_or_double == 'single':
+                    time_list.append(time1)
+                    time_list.append(time2)
                     brf_list.append(brf1)
                     brf_list.append(brf2)
+            self.time_list = time_list
             self.brf_list = brf_list
 
         def concatenate_waveforms(waveform_list):
@@ -233,7 +242,9 @@ class brf_analysis():
             folder_name = brf_database_list[i][0]
             brf_name = brf_database_list[i][1]
             bulb_type = brf_database_list[i][2]
-            waveform_list = brf_extraction(folder_name, single_or_double).brf_list
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            waveform_list = extracted_lists.brf_list
+            time_list = extracted_lists.time_list
             print(brf_name)
             mean = 0
             values = np.array([])
@@ -247,13 +258,27 @@ class brf_analysis():
                     ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
                     values = np.hstack((values, ratio))
                     # print(ratio)
-                    # plots.show_plot(smoothed)
                     # print()
+                    # plots.show_plot(smoothed)
 
             elif method_name == 'linearity':
-                for j in range(len(waveform_list))
-                print(brf_analysis.linearity(brf, single_or_double))
-                plots.show_plot(brf)
+                for j in range(len(waveform_list)):
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    rising, falling = brf_analysis.linearity(smoothed, single_or_double)
+                    values = np.hstack((values, falling))
+                    # print(rising)
+                    # print()
+                    plots.show_plot(smoothed)
+
+            elif method_name == 'angle_of_inflection':
+                for j in range(len(waveform_list)):
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    peak_angle, nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double)
+                    values = np.hstack((values, nadir_angle))
+                    print(nadir_angle)
+                    print()
+                    plots.show_plot(smoothed)
+
 
             mean = np.sum(values)/len(values)
             std = math.sqrt(np.sum((values-mean)**2/(len(values)-1)))
@@ -261,7 +286,6 @@ class brf_analysis():
             print(mean)
             print(std) #smaller the better/more reliable
             print()
-
 
     def min_error(brf_1, brf_2):
         brf_1, brf_2 = raw_waveform_processing.truncate_longer(brf_1, brf_2)
@@ -285,7 +309,8 @@ class brf_analysis():
         # horizontal_gradient = np.array([1/12, -2/3, 0, 2/3, -1/12])
         gradient_x = signal.convolve(data, horizontal_gradient, mode = 'valid')
         smoothed_gradient = raw_waveform_processing.savgol(gradient_x, savgol_window)
-        plots.save_gradient_plot(data, smoothed_gradient, name)
+        # plots.save_gradient_plot(data, smoothed_gradient, name)
+        plots.save_gradient_plot(data, gradient_x, name)
         return gradient_x
 
     #this might not be the one we want (if we use NCC)
@@ -349,28 +374,38 @@ class brf_analysis():
             return average_ratio
 
     #need to double check this method; not sure if i'm messing up the lengths for comparison (might need to +1 for some things?)
+    #double check this
     def linearity(brf, single_or_double):
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
 
+        print(f'Peaks: {peak_indices}')
+        print(f'Nadirs: {nadir_indices}')
+
         if single_or_double == 'single':
-            peak_indice = peak_indices[1]
+            peak_indice = peak_indices[0]
 
             rising = brf[0:peak_indice+1]
             falling = brf[peak_indice:len(brf)]
 
             rising_line = np.linspace(brf[0], brf[peak_indice], peak_indice+1)
-            falling_line = np.linspace(brf[peak_indice], brf[len(brf)-1], len(brf)-peak_indice)
+            falling_line = np.linspace(brf[peak_indice], brf[len(brf)-1], len(brf)-peak_indice+1)
 
             cc_1 = np.corrcoef(rising, rising_line)
             cc_2 = np.corrcoef(falling, falling_line)
 
-            return (cc_1[0][1]+cc_2[0][1])/2
+            return cc_1[0][1], cc_2[0][1]
 
         elif single_or_double == 'double':
-            peak_indice_1 = peak_indices[1]
-            peak_indice_2 = peak_indices[2]
-            nadir_indice_1 = nadir_indices[1]
+            peak_indice_1 = peak_indices[0]
+            peak_indice_2 = peak_indices[1]
+            nadir_indice_1 = 0
+
+            #NOTE: temporary solution to picking nadir; maybe better to get approx location of nadir through unsmoothed waveform
+            if nadir_indices[0] < 100:
+                nadir_indice_1 = nadir_indices[1]
+            else:
+                nadir_indice_1 = nadir_indices[0]
 
             rising_1 = brf[0:peak_indice_1+1]
             falling_1 = brf[peak_indice_1:nadir_indice_1+1]
@@ -378,17 +413,81 @@ class brf_analysis():
             falling_2 = brf[peak_indice_2:len(brf)]
 
             rising_line_1 = np.linspace(brf[0], brf[peak_indice_1], peak_indice_1+1)
-            falling_line_1 = np.linspace(brf[peak_indice_1], brf[nadir_indice_1], nadir_indice_1-peak_indice_1)
-            rising_line_2 = np.linspace(brf[nadir_indice_1], brf[peak_indice_2], peak_indice_2-nadir_indice_1)
+            falling_line_1 = np.linspace(brf[peak_indice_1], brf[nadir_indice_1], nadir_indice_1-peak_indice_1+1)
+            rising_line_2 = np.linspace(brf[nadir_indice_1], brf[peak_indice_2], peak_indice_2-nadir_indice_1+1)
             falling_line_2 = np.linspace(brf[peak_indice_2], brf[len(brf)-1], len(brf)-peak_indice_2)
 
+            # print(f'{len(rising_1)}, {len(rising_line_1)}')
             cc_1 = np.corrcoef(rising_1, rising_line_1)
+            # print(f'{len(falling_1)}, {len(falling_line_1)}')
             cc_2 = np.corrcoef(falling_1, falling_line_1)
+            # print(f'{len(rising_2)}, {len(rising_line_2)}')
             cc_3 = np.corrcoef(rising_2, rising_line_2)
+            # print(f'{len(falling_2)}, {len(falling_line_2)}')
             cc_4 = np.corrcoef(falling_2, falling_line_2)
 
-            return (cc_1[0][1] + cc_2[0][1] + cc_3[0][1] + cc_4[0][1])/4 #average of four correlation coefficients
+            #return rising linearity, falling linearity
+            return (cc_1[0][1] + cc_3[0][1])/2, (cc_2[0][1] + cc_4[0][1])/2
 
+    def slope(x, y, n):
+        assert len(x) == len(y)
+        numerator = n*np.sum(x*y) - np.sum(x)*np.sum(y)
+        denominator = n*np.sum(x**2) - np.sum(x)**2
+        return numerator/denominator
+
+    #angle of inflection on peaks and nadir; angle of inflection doesn't really make too much sense for single cycled waveforms?
+    def angle_of_inflection(time, brf, single_or_double):
+        line_length = 75
+        
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+
+        # linear_line = np.arange(0, line_length, 1)
+
+        #this only gives angle of peak, which isn't that useful for us?
+        if single_or_double == 'single':
+            peak_indice = peak_indices[0]
+            pass
+
+        elif single_or_double == 'double':
+            peak_indice_1 = peak_indices[0]
+            peak_indice_2 = peak_indices[1]
+            nadir_indice_1 = 0
+
+            if nadir_indices[0] < 100:
+                nadir_indice_1 = nadir_indices[1]
+            else:
+                nadir_indice_1 = nadir_indices[0]
+
+            time_pr1 = time[peak_indice_1-line_length+1:peak_indice_1+1]
+            peak_rising_1 = brf[peak_indice_1-line_length+1:peak_indice_1+1]
+            time_pf1 = time[peak_indice_1+1:peak_indice_1+line_length+1]
+            peak_falling_1 = brf[peak_indice_1+1:peak_indice_1+line_length+1]
+
+            time_pr2 = time[peak_indice_2-line_length+1:peak_indice_2+1]
+            peak_rising_2 = brf[peak_indice_2-line_length+1:peak_indice_2+1]
+            time_pf2 = time[peak_indice_2+1:peak_indice_2+line_length+1]
+            peak_falling_2 = brf[peak_indice_2+1:peak_indice_2+line_length+1]
+
+            time_nf1 = time[nadir_indice_1-line_length+1:nadir_indice_1+1]
+            nadir_falling_1 = brf[nadir_indice_1-line_length+1:nadir_indice_1+1]
+            time_nr1 = time[nadir_indice_1+1:nadir_indice_1+line_length+1]
+            nadir_rising_1 = brf[nadir_indice_1+1:nadir_indice_1+line_length+1]
+
+            peak_rising_slope_1 = brf_analysis.slope(time_pr1, peak_rising_1, line_length)
+            peak_falling_slope_1 = brf_analysis.slope(time_pf1, peak_falling_1, line_length)
+
+            peak_rising_slope_2 = brf_analysis.slope(time_pr2, peak_rising_2, line_length)
+            peak_falling_slope_2 = brf_analysis.slope(time_pf2, peak_falling_2, line_length)
+            
+            nadir_falling_slope_1 = brf_analysis.slope(time_nf1, nadir_falling_1, line_length)
+            nadir_rising_slope_1 = brf_analysis.slope(time_nr1, nadir_rising_1, line_length)
+
+            peak_angle_1 = math.atan(peak_rising_slope_1) - math.atan(peak_falling_slope_1)
+            peak_angle_2 = math.atan(peak_rising_slope_2) - math.atan(peak_falling_slope_2)
+            nadir_angle_1 = math.atan(-1/nadir_falling_slope_1)+math.pi/2 - math.atan(nadir_rising_slope_1)
+
+            return math.degrees((peak_angle_1+peak_angle_2)/2), math.degrees(nadir_angle_1)
 
     #for each bulb type, print out the stats for that particular concatenated waveform
     def for_type_print_stats(brf_database, single_or_double):
@@ -669,4 +768,4 @@ if __name__ == "__main__":
     # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
-    brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
+    brf_analysis.test_analysis_method(brf_database, 'angle_of_inflection', 'double')
