@@ -284,8 +284,8 @@ class brf_analysis():
             brf_name = brf_database_list[i][1]
             bulb_type = brf_database_list[i][2]
             extracted_lists = brf_extraction(folder_name, single_or_double)
-            waveform_list = extracted_lists.brf_list
             time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
             print(brf_name)
             mean = 0
             values = np.array([])
@@ -314,7 +314,7 @@ class brf_analysis():
             elif method_name == 'angle_of_inflection':
                 for j in range(len(waveform_list)):
                     smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    peak_angle, nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double)
+                    peak_angle, nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
                     values = np.hstack((values, nadir_angle))
                     # print(nadir_angle)
                     # print()
@@ -322,6 +322,22 @@ class brf_analysis():
             # print(falling_slope)
             # print(rising_slope)
             # print(nadir)
+
+            elif method_name == 'test':
+                length_list = np.array([])
+                for j in range(len(waveform_list)):
+                    length_list = np.hstack((length_list, len(waveform_list[j])))
+
+                min_length = int(np.amin(length_list))
+
+                brf_list = np.ones((min_length))
+                for j in range(len(waveform_list)):
+                    brf = np.array([waveform_list[j][:min_length]])
+                    brf_list = np.vstack((brf_list, brf))
+                
+                brf_list = brf_list[1:len(brf_list)]
+                brf_analysis.PCA(brf_list, 25)
+                quit()
 
             mean = np.sum(values)/len(values)
             std = math.sqrt(np.sum((values-mean)**2/(len(values)-1)))
@@ -518,7 +534,7 @@ class brf_analysis():
         return numerator/denominator
 
     #angle of inflection on peaks and nadir; angle of inflection doesn't really make too much sense for single cycled waveforms?
-    def angle_of_inflection(time, brf, single_or_double):
+    def angle_of_inflection(time, brf, single_or_double, peak_or_nadir):
         line_length = 100
         
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
@@ -601,7 +617,10 @@ class brf_analysis():
             peak_angle_2 = math.atan(peak_rising_slope_2) - math.atan(peak_falling_slope_2)
             nadir_angle_1 = math.atan(nadir_falling_slope_1)+math.pi - math.atan(nadir_rising_slope_1)
 
-            return math.degrees((peak_angle_1+peak_angle_2)/2), math.degrees(nadir_angle_1)
+            if peak_or_nadir == 'peak':
+                return math.degrees((peak_angle_1+peak_angle_2)/2)
+            elif peak_or_nadir == 'nadir':
+                return math.degrees(nadir_angle_1)
 
     #for each bulb type, print out the stats for that particular concatenated waveform
     def for_type_print_stats(brf_database, single_or_double):
@@ -652,6 +671,28 @@ class brf_analysis():
             print(f'{name_list[i]} + done')
 
         os.chdir(cwd)
+
+    #brf is a column vector; len(brf) x 1 matrix
+    def PCA(brf_list, num_components):
+        row_mean = np.array([np.mean(brf_list, axis = 1)]).T
+        A = brf_list - row_mean
+        # print(A.shape)
+        U,S,V_T = np.linalg.svd(A, full_matrices = False)
+        V = V_T.T
+        # print(V.shape)
+        w = V[:,:num_components]
+        #do implementation in slides??
+
+        #could think about doing single cycles instead of double
+
+        reduced = w.T@brf_list.T
+
+        for i in range(len(reduced)):
+            plots.show_plot(reduced[i])
+
+        # plt.figure(figsize = (10,7))
+        # sn.heatmap(cov_brf, annot=True)
+        # plt.show()
 
 
 class brf_classification():
@@ -746,17 +787,25 @@ class brf_classification():
             folder_name = brf_database_list[i][0]
             brf_name = brf_database_list[i][1]
             bulb_type = brf_database_list[i][2]
-            waveform_list = brf_extraction(folder_name, single_or_double).brf_list
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
             #ignoring the first waveform – will use that for classification
             for i in range(len(waveform_list)):
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
+                # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
+                angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
+                integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
-                input_param = [crest_factor, kurtosis, skew]
+                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
+                input_param = [angle, integral_ratio, crest_factor, kurtosis, skew]
+                # input_param = [crest_factor, kurtosis, skew]
                 if i < num_test_waveforms: #determines number of test/training waveforms
-                    crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
-                    kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
-                    skew_prediction = np.append(skew_prediction, skew)
+                    # crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
+                    # kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
+                    # skew_prediction = np.append(skew_prediction, skew)
 
                     if classification_type == 'name':
                         KNN_prediction_list.append([input_param, brf_name])
@@ -765,9 +814,10 @@ class brf_classification():
                     # brf_name_output_label.append(brf_name)
                     # brf_name_output_label.append(bulb_type)
                 else:
-                    crest_factor_array = np.append(crest_factor_array, crest_factor)
-                    kurtosis_array = np.append(kurtosis_array, kurtosis)
-                    skew_array = np.append(skew_array, skew)
+                    # crest_factor_array = np.append(crest_factor_array, crest_factor)
+                    # kurtosis_array = np.append(kurtosis_array, kurtosis)
+                    # skew_array = np.append(skew_array, skew)
+
                     KNN_input.append(input_param)
                     if classification_type == 'name':
                         KNN_output.append(brf_name)
@@ -840,7 +890,7 @@ class brf_classification():
 
                 expected_index = same_type_name_list.index(expected_output)
 
-                #creating matrixs of same shape as tallied_matrix and tota_matrix to add matricies
+                #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
                 temp_probabilities_matrix = np.zeros(probabilities.shape)
                 temp_total_matrix = np.zeros(probabilities.shape)
                 zeros_row = np.zeros(probabilities.shape)
@@ -859,12 +909,14 @@ class brf_classification():
                 tallied_matrix += temp_probabilities_matrix
                 total_matrix += temp_total_matrix
 
+            tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
+
             precision = true_positive/total
             print(f'Precision: {precision}')
             print()
 
-            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)')
-            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)')
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
 
 if __name__ == "__main__":
@@ -882,4 +934,6 @@ if __name__ == "__main__":
     # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
-    brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
+    # brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
+
+    brf_analysis.test_analysis_method(brf_database, 'test', 'double')
