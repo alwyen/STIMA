@@ -674,21 +674,21 @@ class brf_analysis():
 
     #brf is a column vector; len(brf) x 1 matrix
     def PCA(brf_list, num_components):
-        row_mean = np.array([np.mean(brf_list, axis = 1)]).T
-        A = brf_list - row_mean
+        # row_mean = np.array([np.mean(brf_list, axis = 1)]).T
+
+        # A = brf_list - row_mean
         # print(A.shape)
-        U,S,V_T = np.linalg.svd(A, full_matrices = False)
-        V = V_T.T
-        # print(V.shape)
-        w = V[:,:num_components]
-        #do implementation in slides??
+        # U,S,V_T = np.linalg.svd(A, full_matrices = False)
+        # V = V_T.T
+        # # print(V.shape)
+        # w = V[:,:num_components]
+        # reduced = w.T@brf_list.T
 
-        #could think about doing single cycles instead of double
+        for i in range(len(brf_list)):
+            brf = np.array([brf_list[i]]).T
+            mean = np.mean(brf)
+            covar_brf = 1/(len(brf)-1)*
 
-        reduced = w.T@brf_list.T
-
-        for i in range(len(reduced)):
-            plots.show_plot(reduced[i])
 
         # plt.figure(figsize = (10,7))
         # sn.heatmap(cov_brf, annot=True)
@@ -918,6 +918,66 @@ class brf_classification():
             plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
             plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
+    def PCA_KNN(brf_database, single_or_double, num_training):
+        bulb_types = database_processing.return_bulb_types(brf_database)
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        bulb_type_list = database_processing.return_bulb_types(brf_database)
+
+        for bulb_type in bulb_type_list:
+            print(bulb_type)
+            same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
+            same_type_database_list = database_processing.database_to_list(same_type_database)
+            same_type_name_list = database_processing.database_to_list(database_processing.return_names(same_type_database))
+
+            brf_database_list = same_type_database_list
+
+            #right now, going to truncate all waveforms, but need to figure out how to interpolate later; maybe it doesn't matter because there's a lot of points?
+            length_list = np.array([])
+            
+            training_list = []
+            ground_list = []
+
+            test_list = []
+            prediction_list = []
+
+            for i in range(len(brf_database_list)):
+                folder_name = brf_database_list[i][0]
+                brf_name = brf_database_list[i][1]
+                bulb_type = brf_database_list[i][2]
+                extracted_lists = brf_extraction(folder_name, single_or_double)
+                time_list = extracted_lists.time_list
+                waveform_list = extracted_lists.brf_list
+
+                for j in range(len(waveform_list)):
+                    if j < num_training:
+                        length_list = np.hstack((length_list, len(waveform_list[j])))
+                        training_list.append(waveform_list[j])
+                        ground_list.append(brf_name)
+                    else:
+                        length_list = np.hstack((length_list, len(waveform_list[j])))
+                        test_list.append(wavefomr_list[j])
+                        prediction_list.append(brf_name)
+
+                min_length = np.amin(length_list)
+
+                mean_length = np.mean(length_list)
+                std_length = math.sqrt(np.sum((length_list-mean_length)**2/(len(length_list)-1)))
+
+                print(f'Mean length: {mean_length}')
+                print(f'STD: {std_length}')
+
+                for j in range(len(training_list)):
+                    training_list[j] = training_list[j][:min_length]
+
+                for j in range(len(test_list)):
+                    test_list[j] = test_list[j][:min_length]
+
+                #TODO: do PCA now?
+
+
+
+
 
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
@@ -936,4 +996,5 @@ if __name__ == "__main__":
 
     # brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
 
-    brf_analysis.test_analysis_method(brf_database, 'test', 'double')
+    # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
+    brf_classification.PCA_KNN()
