@@ -838,7 +838,7 @@ class brf_classification():
 
         return brf_KNN_model, KNN_prediction_list
 
-    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double):
+    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, Tallied): #True or False for tallied
         # brf_database = database_processing.drop_bulb_type_column(brf_database)
         # database_as_list = database_processing.database_to_list(brf_database)
 
@@ -851,6 +851,8 @@ class brf_classification():
             same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
+
+            print(same_type_name_list)
 
             brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
 
@@ -870,47 +872,74 @@ class brf_classification():
                 expected_output = prediction[1]
                 output = brf_KNN_model.predict([input_data])[0]
 
-                ground_list.append(expected_output)
-                predicted_list.append(output)
+                probabilities = brf_KNN_model.predict_proba([input_data])[0]
+                row_total = np.full(probabilities.shape, number_neighbors)
 
-                if expected_output == output:
-                    print(f'Expected: {expected_output}; Output: {output}')
+                index = same_type_name_list.index(expected_output)
+
+                #ISSUE: FIGURE OUT WHY THE MATRIX IS NOT SHOWING CORRECT VALUES OUTPUTED IN THE TERMINAL
+                print(expected_output)
+                print(f'Probability: {probabilities[index]}')
+
+                if probabilities[index] != 0:
                     true_positive += 1
+                    # ground_list.append(expected_output)
+                    ground_list.append(expected_output)
+                    predicted_list.append(expected_output)
+                    print(expected_output)
+                    print(probabilities)
+                    print(index)
+                    print(probabilities[index])
+                    print()
+                else:
+                    ground_list.append(expected_output)
+                    predicted_list.append(output)
 
-                probabilities = brf_KNN_model.predict_proba([input_data])
-                row_total = np.full(probabilities.shape,number_neighbors)
+                # if expected_output == output:
+                #     print(f'Expected: {expected_output}; Output: {output}')
+                #     true_positive += 1
 
-                expected_index = same_type_name_list.index(expected_output)
+                if Tallied:
 
-                #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
-                temp_probabilities_matrix = np.zeros(probabilities.shape)
-                temp_total_matrix = np.zeros(probabilities.shape)
-                zeros_row = np.zeros(probabilities.shape)
-                for i in range(len(tallied_matrix)):
-                    if i == expected_index:
-                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,probabilities))
-                        temp_total_matrix = np.vstack((temp_total_matrix,row_total))
-                    else:
-                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
-                        temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
+                    probabilities = brf_KNN_model.predict_proba([input_data])
+                    row_total = np.full(probabilities.shape,number_neighbors)
 
-                #removing first row
-                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
-                temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
+                    expected_index = same_type_name_list.index(expected_output)
 
-                tallied_matrix += temp_probabilities_matrix
-                total_matrix += temp_total_matrix
+                    #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
+                    temp_probabilities_matrix = np.zeros(probabilities.shape)
+                    temp_total_matrix = np.zeros(probabilities.shape)
+                    zeros_row = np.zeros(probabilities.shape)
+                    for i in range(len(tallied_matrix)):
+                        if i == expected_index:
+                            temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,probabilities))
+                            temp_total_matrix = np.vstack((temp_total_matrix,row_total))
+                        else:
+                            temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
+                            temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
 
-            tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
+                    #removing first row
+
+                    temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
+                    temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
+
+                    tallied_matrix += temp_probabilities_matrix
+                    total_matrix += temp_total_matrix
+
+            print(true_positive)
+            print(total)
 
             precision = true_positive/total
             print(f'Precision: {precision}')
             print()
 
-            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
-            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+            if Tallied:
+                tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
+                plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
 
-    #I AM REWRITING CODE AGAIN; FIX LATER ON FOR A GENERAL KNN MODEL
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+
+    #I AM REWRITING CODE AGAIN; FIX LATER FOR A GENERAL KNN MODEL
     def PCA_KNN(brf_database, single_or_double, num_training, num_components, num_neighbors): #num_training ==> number of waveforms for training
         bulb_types = database_processing.return_bulb_types(brf_database)
         brf_database_list = database_processing.database_to_list(brf_database)
@@ -928,13 +957,13 @@ class brf_classification():
             length_list = np.array([])
             
             training_list = []
-            ground_list = []
+            training_label_list = []
 
             test_list = []
-            prediction_list = []
+            test_label_list = []
 
-            new_ground_list = list([])
-            new_predicted_list = list([])
+            ground_list = list([])
+            predicted_list = list([])
 
             for i in range(len(brf_database_list)):
                 #right now, going to truncate all waveforms, but need to figure out how to interpolate later; maybe it doesn't matter because there's a lot of points?
@@ -952,11 +981,11 @@ class brf_classification():
                     if j < num_training:
                         length_list = np.hstack((length_list, len(waveform_list[j])))
                         training_list.append(waveform_list[j])
-                        ground_list.append(brf_name)
+                        training_label_list.append(brf_name)
                     else:
                         length_list = np.hstack((length_list, len(waveform_list[j])))
                         test_list.append(waveform_list[j])
-                        prediction_list.append(brf_name)
+                        test_label_list.append(brf_name)
 
             min_length = int(np.amin(length_list))
             max_length = int(np.amax(length_list))
@@ -991,25 +1020,28 @@ class brf_classification():
             pca_test_data = pca_test_data.T
 
             KNN_classifier = KNeighborsClassifier(n_neighbors = num_neighbors)
-            KNN_classifier.fit(pca_training_data, ground_list)
+            KNN_classifier.fit(pca_training_data, training_label_list)
+
+            true_positive = 0
+            total = len(pca_test_data)
 
             tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
             total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
 
             for j in range(len(pca_test_data)):
                 input_data = pca_test_data[j]
-                expected_output = prediction_list[j]
+                expected_output = test_label_list[j]
                 output = KNN_classifier.predict([input_data])[0]
 
-                new_ground_list.append(expected_output)
-                new_prediction_list.append(output)
+                ground_list.append(expected_output)
+                predicted_list.append(output)
 
                 if expected_output == output:
                     # print(f'Expected: {expected_output}; Output: {output}')
                     true_positive += 1
 
                 probabilities = KNN_classifier.predict_proba([input_data])
-                row_total = np.full(probabilities.shape,number_neighbors)
+                row_total = np.full(probabilities.shape,num_neighbors)
 
                 expected_index = same_type_name_list.index(expected_output)
 
@@ -1026,7 +1058,7 @@ class brf_classification():
                         temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
 
                 #removing first row
-                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
+                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*num_neighbors
                 temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
 
                 tallied_matrix += temp_probabilities_matrix
@@ -1038,11 +1070,8 @@ class brf_classification():
             print(f'Precision: {precision}')
             print()
 
-            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
-            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
-
-
-            
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
 
 if __name__ == "__main__":
@@ -1057,10 +1086,10 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
     # brf_classification.compare_brfs(brf_database, 3, 'double')
-    # brf_classification.KNN(brf_database, 7, 'name', 3, 'double')
+    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False)
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
     # brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
-    brf_classification.PCA_KNN(brf_database, 'double', 7, 25, 3)
+    # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
