@@ -9,6 +9,9 @@ import math
 import os
 import seaborn as sn
 
+
+#CODE IS GETTING MESSY; NEED TO DEDICATE TIME TO CLEAN UP
+
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
 gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests\Savgol 31 Moving 50'
@@ -27,6 +30,9 @@ x1 = None
 y1 = None
 x2 = None
 y2 = None
+
+x_pt1 = None
+y_pt1 = None
 
 def set_falling_slope_var(val):
     global falling_slope
@@ -55,6 +61,15 @@ def set_x2(data):
 def set_y2(data):
     global y2
     y2 = data
+
+def set_pt1(x, y):
+    global x_pt1
+    global y_pt1
+
+    x_pt1 = x
+    y_pt1 = y
+
+
 ############################################################
 
 class plots():
@@ -197,6 +212,55 @@ class database_processing():
         save_path = brf_analysis_save_path + '\\' + file_name
         df.to_csv(save_path)
 
+    def export_to_csv(brf_database, single_or_double):
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
+        name_list = list([])
+        type_list = list([])
+        integral_ratio_list = list([])
+        nadir_angle_list = list([])
+        crest_factor_list = list([])
+        kurtosis_list = list([])
+        skew_factor_list = list([])
+
+        for i in range(len(brf_database_list)):
+            smoothed = None
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
+
+            for j in range(len(waveform_list)):
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
+                crest_factor = brf_analysis.crest_factor(waveform_list[j])
+                kurtosis = brf_analysis.kurtosis(waveform_list[j])
+                skew_factor = brf_analysis.skew(waveform_list[j])
+
+                name_list.append(brf_name)
+                type_list.append(bulb_type)
+                integral_ratio_list.append(ratio)
+                nadir_angle_list.append(nadir_angle)
+                crest_factor_list.append(crest_factor)
+                kurtosis_list.append(kurtosis)
+                skew_factor_list.append(skew_factor)
+
+            print(brf_name)
+
+        d = {'BRF Name': name_list, 'Bulb Type': type_list, 'Integral Ratio': integral_ratio_list, 'Nadir Angle': nadir_angle_list, 'Crest Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
+        df = pd.DataFrame(data = d)
+        save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\stat_analysis.csv'
+
+        if os.path.exists(save_path):
+            print('File exists: do you want to overwrite? (Y/N):')
+            x = input()
+            if x == 'Y':
+                df.to_csv(save_path)
+
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
 class raw_waveform_processing():
@@ -314,9 +378,9 @@ class brf_analysis():
             elif method_name == 'angle_of_inflection':
                 for j in range(len(waveform_list)):
                     smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    peak_angle, nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
-                    values = np.hstack((values, nadir_angle))
-                    # print(nadir_angle)
+                    angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
+                    values = np.hstack((values, angle))
+                    # print(angle)
                     # print()
                     # plots.show_plot(smoothed)
             # print(falling_slope)
@@ -347,8 +411,8 @@ class brf_analysis():
             print()
 
             plt.plot(smoothed)
-            plt.plot(x1, y1, color = 'red')
-            plt.plot(x2, y2, color = 'red')
+            # plt.plot(x1, y1, color = 'red')
+            # plt.plot(x2, y2, color = 'red')
             plt.show()
 
     def min_error(brf_1, brf_2):
@@ -397,6 +461,12 @@ class brf_analysis():
     if ratio < 1, then peak is skewed left
     if ratio > 1, then peak is skewed right
     '''
+
+    def normalize_cycle(brf): #integral, or sum, is equal to 1
+        integral = np.sum(brf)
+        normalized = brf/integral
+        return normalized
+
     def integral_ratio(brf, single_or_double):
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
@@ -424,10 +494,15 @@ class brf_analysis():
             else:
                 nadir_indice_1 = nadir_indices[0]
 
-            rising_1 = brf[0:peak_indice_1+1]
-            falling_1 = brf[peak_indice_1:nadir_indice_1+1]
-            rising_2 = brf[nadir_indice_1:peak_indice_2+1]
-            falling_2 = brf[peak_indice_2:len(brf)]
+            integral_normalized_1 = brf_analysis.normalize_cycle(brf[0:nadir_indice_1])
+            integral_normalized_2 = brf_analysis.normalize_cycle(brf[nadir_indice_1+1:len(brf)])
+
+            new_brf = np.hstack((integral_normalized_1, integral_normalized_2))
+
+            rising_1 = new_brf[0:peak_indice_1+1]
+            falling_1 = new_brf[peak_indice_1:nadir_indice_1+1]
+            rising_2 = new_brf[nadir_indice_1:peak_indice_2+1]
+            falling_2 = new_brf[peak_indice_2:len(brf)]
 
             ratio_1 = np.sum(rising_1)/np.sum(falling_1)
             ratio_2 = np.sum(rising_2)/np.sum(falling_2)
@@ -559,19 +634,27 @@ class brf_analysis():
 
             set_nadir_var(nadir_indice_1)
 
+            new_time = np.linspace(0,2,len(time))
+
             time_pr1 = time[peak_indice_1-line_length+1:peak_indice_1+1]
+            # time_pr1 = new_time[peak_indice_1-line_length+1:peak_indice_1+1]
             peak_rising_1 = brf[peak_indice_1-line_length+1:peak_indice_1+1]
             time_pf1 = time[peak_indice_1+1:peak_indice_1+line_length+1]
+            # time_pf1 = new_time[peak_indice_1+1:peak_indice_1+line_length+1]
             peak_falling_1 = brf[peak_indice_1+1:peak_indice_1+line_length+1]
 
             time_pr2 = time[peak_indice_2-line_length+1:peak_indice_2+1]
+            # time_pr2 = new_time[peak_indice_2-line_length+1:peak_indice_2+1]
             peak_rising_2 = brf[peak_indice_2-line_length+1:peak_indice_2+1]
             time_pf2 = time[peak_indice_2+1:peak_indice_2+line_length+1]
+            # time_pf2 = new_time[peak_indice_2+1:peak_indice_2+line_length+1]
             peak_falling_2 = brf[peak_indice_2+1:peak_indice_2+line_length+1]
 
             time_nf1 = time[nadir_indice_1-line_length+1:nadir_indice_1+1]
+            # time_nf1 = new_time[nadir_indice_1-line_length+1:nadir_indice_1+1]
             nadir_falling_1 = brf[nadir_indice_1-line_length+1:nadir_indice_1+1]
             time_nr1 = time[nadir_indice_1+1:nadir_indice_1+line_length+1]
+            # time_nr1 = new_time[nadir_indice_1+1:nadir_indice_1+line_length+1]
             nadir_rising_1 = brf[nadir_indice_1+1:nadir_indice_1+line_length+1]
 
             peak_rising_slope_1 = brf_analysis.slope(time_pr1, peak_rising_1, line_length)
@@ -756,7 +839,7 @@ class brf_classification():
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
         
-        KNN_input = list([])
+        KNN_input = np.ones((5))
         KNN_output = list([])
 
         crest_factor_array = np.array([])
@@ -792,7 +875,7 @@ class brf_classification():
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                input_param = [angle, integral_ratio, crest_factor, kurtosis, skew]
+                input_param = np.array([angle, integral_ratio, crest_factor, kurtosis, skew])
                 # input_param = [crest_factor, kurtosis, skew]
                 if i < num_test_waveforms: #determines number of test/training waveforms
                     # crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
@@ -810,7 +893,7 @@ class brf_classification():
                     # kurtosis_array = np.append(kurtosis_array, kurtosis)
                     # skew_array = np.append(skew_array, skew)
 
-                    KNN_input.append(input_param)
+                    KNN_input = np.vstack((KNN_input, input_param))
                     if classification_type == 'name':
                         KNN_output.append(brf_name)
                     if classification_type == 'type':
@@ -834,6 +917,8 @@ class brf_classification():
         brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
         # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, weights = 'distance') #used 9 because about 9 waveforms for each BRF
 
+        KNN_input = KNN_input[1:len(KNN_input)]
+
         brf_KNN_model.fit(KNN_input, KNN_output)
 
         return brf_KNN_model, KNN_prediction_list
@@ -852,7 +937,7 @@ class brf_classification():
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
-            print(same_type_name_list)
+            print(same_type_database)
 
             brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
 
@@ -875,23 +960,29 @@ class brf_classification():
                 probabilities = brf_KNN_model.predict_proba([input_data])[0]
                 row_total = np.full(probabilities.shape, number_neighbors)
 
+                print(brf_KNN_model.kneighbors([input_data]))
+
                 index = same_type_name_list.index(expected_output)
 
-                #ISSUE: FIGURE OUT WHY THE MATRIX IS NOT SHOWING CORRECT VALUES OUTPUTED IN THE TERMINAL
-                print(expected_output)
-                print(f'Probability: {probabilities[index]}')
+                print(f'Expected: {expected_output}')
+                print(f'Output: {output}')
 
                 if probabilities[index] != 0:
-                    true_positive += 1
-                    # ground_list.append(expected_output)
-                    ground_list.append(expected_output)
-                    predicted_list.append(expected_output)
-                    print(expected_output)
+                    print('True')
                     print(probabilities)
                     print(index)
                     print(probabilities[index])
                     print()
+                    true_positive += 1
+                    # ground_list.append(expected_output)
+                    ground_list.append(expected_output)
+                    predicted_list.append(expected_output)
                 else:
+                    print('False')
+                    print(probabilities)
+                    print(index)
+                    print(probabilities[index])
+                    print()
                     ground_list.append(expected_output)
                     predicted_list.append(output)
 
@@ -925,6 +1016,8 @@ class brf_classification():
 
                     tallied_matrix += temp_probabilities_matrix
                     total_matrix += temp_total_matrix
+
+                    brf_KNN_model = None
 
             print(true_positive)
             print(total)
@@ -1089,7 +1182,9 @@ if __name__ == "__main__":
     brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False)
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
-    # brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
+    # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
+
+    # database_processing.export_to_csv(brf_database, 'double')
