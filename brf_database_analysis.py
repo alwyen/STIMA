@@ -261,20 +261,6 @@ class database_processing():
             if x == 'Y':
                 df.to_csv(save_path)
 
-'''
-three comparisons:
-    1) within a bulb type, mean and std of each BRF
-    2) bulb type means and stds of each type
-    3) mean and std of each BRF
-for each comparison, find way to minimize repeating of code written 
-
-(this part is really fuzzy for me)
-to generate each CSV file or dataframe, the code needs to be dynamic
-    1) for a particular comparison, need to run analysis on each BRF
-        a) need to have a condition to dynamically call methods and append values from methods to list
-
-'''
-
     #SCRATCH THE FOLLOWING METHOD; GARBAGE THAT SHOULD NOT EXIST
     #is there even a general method that I make for this...?
     def export_brf_mean_std_to_csv(brf_database, single_or_double):
@@ -880,6 +866,44 @@ class brf_analysis():
         pca_brf_list = w.T@brf_list.T
 
         return pca_brf_list, w
+
+    def feature_analysis(brf_database, method_list, method_name_list, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
+        brf_database_list = database_processing.database_to_list(brf_database)
+        
+        '''
+        ONE dataframe: (unique name)
+            1) all statistics for EACH waveform of a BRF
+                a) e.g. Eiko CFL 13W | CFL | Angle of Inflection | Integral Ratio | Crest Factor | Kurtosis | Skew | ... | etc.
+                b) for the column names, find a way to dynamically add names to the dataframe
+                c) create dataframe that only contains name and bulb type (so TWO columns initially)
+                d) for loop to add columns to dataframe
+        After dataframe is made:
+            1) mean and variance of each waveform for the WHOLE database
+            2) all BRFs within a bulb type, filter by bulb type (using for loop as done below)
+                a) of a bulb type, mean and variance of each waveform for bulb type database
+                b) for a specific BRF (e.g. Eiko CFL 13W), get unique names for bulb type database
+                    i) mean and variance for each BRF
+                c) mean and variance of ALL waveforms within bulb type
+        New dataframes:
+            e.g. Eiko CFL 13W | CFL | Angle of Inflection (Mean) | Angle of Inflection (STD) | Integral Ratio (Mean) | Integral Ratio (Mean) | ... | etc.
+            1) Mean and variance of each waveform for the ENTIRE database
+            2) Mean and variance of each waveform for BULB TYPE database
+            3) Mean and variance of each *BRF* for a BULB TYPE database
+            4) Mean and variance of each BULB TYPE for the ENTIRE database
+        Then, can do bar graphs with error bars in Excel or via matplotlib 
+        '''
+
+
+        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
+
+        for i in range(len(brf_database_list)):
+            smoothed = None
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
 
 class brf_classification():
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
