@@ -212,7 +212,7 @@ class database_processing():
         save_path = brf_analysis_save_path + '\\' + file_name
         df.to_csv(save_path)
 
-    def export_to_csv(brf_database, single_or_double):
+    def export_all_to_csv(brf_database, single_or_double):
         brf_database_list = database_processing.database_to_list(brf_database)
 
         #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
@@ -260,6 +260,117 @@ class database_processing():
             x = input()
             if x == 'Y':
                 df.to_csv(save_path)
+
+'''
+three comparisons:
+    1) within a bulb type, mean and std of each BRF
+    2) bulb type means and stds of each type
+    3) mean and std of each BRF
+for each comparison, find way to minimize repeating of code written 
+
+(this part is really fuzzy for me)
+to generate each CSV file or dataframe, the code needs to be dynamic
+    1) for a particular comparison, need to run analysis on each BRF
+        a) need to have a condition to dynamically call methods and append values from methods to list
+
+'''
+
+    #SCRATCH THE FOLLOWING METHOD; GARBAGE THAT SHOULD NOT EXIST
+    #is there even a general method that I make for this...?
+    def export_brf_mean_std_to_csv(brf_database, single_or_double):
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
+        name_list = list([])
+        type_list = list([])
+        integral_ratio_mean_list = list([])
+        integral_ratio_std_list = list([])
+        nadir_angle_mean_list = list([])
+        nadir_angle_std_list = list([])
+        crest_factor_mean_list = list([])
+        crest_factor_std_list = list([])
+        kurtosis_mean_list = list([])
+        kurtosis_std_list = list([])
+        skew_factor_mean_list = list([])
+        skew_factor_std_list = list([])
+
+        for i in range(len(brf_database_list)):
+            smoothed = None
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
+
+            integral_ratio_mean = 0
+            integral_ratio_std = 0
+            nadir_angle_mean = 0
+            nadir_angle_std = 0
+            crest_factor_mean = 0
+            crest_factor_std = 0
+            kurtosis_mean = 0
+            kurtosis_std = 0
+            skew_mean = 0
+            skew_std = 0
+
+            integral_ratio_values = np.array([])
+            nadir_angle_values = np.array([])
+            crest_factor_values = np.array([])
+            kurtosis_values = np.array([])
+            skew_values = np.array([])
+
+            for j in range(len(waveform_list)):
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
+                crest_factor = brf_analysis.crest_factor(waveform_list[j])
+                kurtosis = brf_analysis.kurtosis(waveform_list[j])
+                skew = brf_analysis.skew(waveform_list[j])
+
+                integral_ratio_values = np.hstack((integral_ratio_values, ratio))
+                nadir_angle_values = np.hstack((nadir_angle_values, nadir_angle))
+                crest_factor_values = np.hstack((crest_factor_values, crest_factor))
+                kurtosis_values = np.hstack((kurtosis_values, kurtosis))
+                skew_values = np.hstack((skew_values, skew))
+
+            integral_ratio_mean = np.mean(integral_ratio_values)
+            integral_ratio_std = np.std(integral_ratio_values)
+            nadir_angle_mean = np.mean(nadir_angle_values)
+            nadir_angle_std = np.std(nadir_angle_values)
+            crest_factor_mean = np.mean(crest_factor_values)
+            crest_factor_std = np.std(crest_factor_values)
+            kurtosis_mean = np.mean(kurtosis_values)
+            kurtosis_std = np.std(kurtosis_values)
+            skew_mean = np.mean(skew_values)
+            skew_std = np.mean(skew_values)
+
+            name_list.append(brf_name)
+            type_list.append(bulb_type)
+            integral_ratio_mean_list.append(integral_ratio_mean)
+            integral_ratio_std_list.append(integral_ratio_std)
+            nadir_angle_mean_list.append(nadir_angle_mean)
+            nadir_angle_std_list.append(nadir_angle_std)
+            crest_factor_mean_list.append(crest_factor_mean)
+            crest_factor_std_list.append(crest_factor_std)
+            kurtosis_mean_list.append(kurtosis_mean)
+            kurtosis_std_list.append(kurtosis_std)
+            skew_factor_mean_list.append(skew_mean)
+            skew_factor_std_list.append(skew_std)
+
+            print(brf_name)
+
+        d = {'BRF Name': name_list, 'Bulb Type': type_list, 'Integral Ratio Mean': integral_ratio_mean_list, 'Integral Ratio STD': integral_ratio_std_list, 'Nadir Angle Mean': nadir_angle_mean_list, 'Nadir Angle STD': nadir_angle_std_list, 'Crest Factor Mean': crest_factor_mean_list, 'Crest Factor STD': crest_factor_std_list, 'Kurtosis Mean': kurtosis_mean_list, 'Kurtosis STD': kurtosis_std_list, 'Skew Mean': skew_factor_mean_list, 'Skew': skew_factor_std_list}
+        df = pd.DataFrame(data = d)
+        save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\mean_std_analysis.csv'
+
+        if os.path.exists(save_path):
+            print('File exists: do you want to overwrite? (Y/N):')
+            x = input()
+            if x == 'Y':
+                df.to_csv(save_path)
+        else:
+            df.to_csv(save_path)
 
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
@@ -927,6 +1038,8 @@ class brf_classification():
         # brf_database = database_processing.drop_bulb_type_column(brf_database)
         # database_as_list = database_processing.database_to_list(brf_database)
 
+        no_match = True
+
         bulb_type_list = database_processing.return_bulb_types(brf_database)
         brf_recall_list = list([])
 
@@ -937,8 +1050,6 @@ class brf_classification():
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
-            print(same_type_database)
-
             brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
@@ -947,6 +1058,7 @@ class brf_classification():
             predicted_list = list([])
 
             true_positive = 0
+            false_neg = 0
             total = len(KNN_prediction_list)
 
             tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
@@ -960,31 +1072,34 @@ class brf_classification():
                 probabilities = brf_KNN_model.predict_proba([input_data])[0]
                 row_total = np.full(probabilities.shape, number_neighbors)
 
-                print(brf_KNN_model.kneighbors([input_data]))
+                neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
                 index = same_type_name_list.index(expected_output)
 
-                print(f'Expected: {expected_output}')
-                print(f'Output: {output}')
+                # print(f'Expected: {expected_output}')
+                # print(f'Output: {output}')
 
-                if probabilities[index] != 0:
-                    print('True')
-                    print(probabilities)
-                    print(index)
-                    print(probabilities[index])
-                    print()
-                    true_positive += 1
-                    # ground_list.append(expected_output)
-                    ground_list.append(expected_output)
-                    predicted_list.append(expected_output)
-                else:
-                    print('False')
-                    print(probabilities)
-                    print(index)
-                    print(probabilities[index])
-                    print()
+                print(f'{expected_output}; Index = {index}')
+                for model_index in neighbor_indices:
+                    same_type_name_list_index = brf_KNN_model._y[model_index]
+                    print(same_type_name_list_index)
+                    if same_type_name_list[same_type_name_list_index] == expected_output:
+                        true_positive += 1
+                        ground_list.append(expected_output)
+                        predicted_list.append(expected_output)
+                        no_match = False
+                        break
+                if no_match:
+                    if expected_output == output:
+                        print(f'Expected: {expected_output}')
+                        print(f'Output: {output}')
+                        false_neg += 1
                     ground_list.append(expected_output)
                     predicted_list.append(output)
+
+                no_match = True
+
+                print()
 
                 # if expected_output == output:
                 #     print(f'Expected: {expected_output}; Output: {output}')
@@ -1019,7 +1134,8 @@ class brf_classification():
 
                     brf_KNN_model = None
 
-            print(true_positive)
+            print(f'True Positive: {true_positive}')
+            print(f'False Negative: {false_neg}')
             print(total)
 
             precision = true_positive/total
@@ -1188,3 +1304,4 @@ if __name__ == "__main__":
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
 
     # database_processing.export_to_csv(brf_database, 'double')
+    # database_processing.export_brf_mean_std_to_csv(brf_database, 'double')
