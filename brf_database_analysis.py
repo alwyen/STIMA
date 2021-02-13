@@ -251,7 +251,7 @@ class database_processing():
 
             print(brf_name)
 
-        d = {'BRF Name': name_list, 'Bulb Type': type_list, 'Integral Ratio': integral_ratio_list, 'Nadir Angle': nadir_angle_list, 'Crest Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
+        d = {'BRF_Name': name_list, 'Bulb_Type': type_list, 'Integral_Ratio': integral_ratio_list, 'Nadir_Angle': nadir_angle_list, 'Crest_Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
         df = pd.DataFrame(data = d)
         save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\stat_analysis.csv'
 
@@ -260,6 +260,10 @@ class database_processing():
             x = input()
             if x == 'Y':
                 df.to_csv(save_path)
+        else:
+            df.to_csv(save_path)
+
+        return df
 
     #SCRATCH THE FOLLOWING METHOD; GARBAGE THAT SHOULD NOT EXIST
     #is there even a general method that I make for this...?
@@ -867,7 +871,7 @@ class brf_analysis():
 
         return pca_brf_list, w
 
-    def feature_analysis(brf_database, method_list, method_name_list, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
+    def feature_analysis(brf_database, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
         brf_database_list = database_processing.database_to_list(brf_database)
         
         '''
@@ -878,7 +882,7 @@ class brf_analysis():
                 c) create dataframe that only contains name and bulb type (so TWO columns initially)
                 d) for loop to add columns to dataframe
         After dataframe is made:
-            1) mean and variance of each waveform for the WHOLE database
+            1) mean and variance of each waveform of a BRF for the WHOLE database
             2) all BRFs within a bulb type, filter by bulb type (using for loop as done below)
                 a) of a bulb type, mean and variance of each waveform for bulb type database
                 b) for a specific BRF (e.g. Eiko CFL 13W), get unique names for bulb type database
@@ -893,17 +897,18 @@ class brf_analysis():
         Then, can do bar graphs with error bars in Excel or via matplotlib 
         '''
 
+        #to add more methods/columns, go to export_all_to_csv method
+        # df = database_processing.export_all_to_csv(brf_database, single_or_double)
 
-        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
+        load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\stat_analysis.csv'
 
-        for i in range(len(brf_database_list)):
-            smoothed = None
-            folder_name = brf_database_list[i][0]
-            brf_name = brf_database_list[i][1]
-            bulb_type = brf_database_list[i][2]
-            extracted_lists = brf_extraction(folder_name, single_or_double)
-            time_list = extracted_lists.time_list
-            waveform_list = extracted_lists.brf_list
+        df = pd.read_csv(load_path)
+
+        brf_names = df.BRF_Name.unique()
+
+        print(brf_names)
+        
+
 
 class brf_classification():
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
@@ -1319,7 +1324,7 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
     # brf_classification.compare_brfs(brf_database, 3, 'double')
-    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False)
+    # brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False)
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
     # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double')
@@ -1327,5 +1332,6 @@ if __name__ == "__main__":
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
 
-    # database_processing.export_to_csv(brf_database, 'double')
-    # database_processing.export_brf_mean_std_to_csv(brf_database, 'double')
+    # database_processing.export_all_to_csv(brf_database, 'double')
+
+    brf_analysis.feature_analysis(brf_database, 'double')
