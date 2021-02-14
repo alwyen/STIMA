@@ -20,7 +20,7 @@ savgol_window = 31
 mov_avg_w_size = 50
 
 brf_analysis_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
-
+feature_analysis_save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\Feature Analysis'
 ############################################################
 #debugging
 falling_slope = 0
@@ -69,8 +69,21 @@ def set_pt1(x, y):
     x_pt1 = x
     y_pt1 = y
 
-
 ############################################################
+
+def clear_lists(list0, list1, list2, list3, list4, list5, list6, list7, list8, list9, list10, list11):
+    list0.clear()
+    list1.clear()
+    list2.clear()
+    list3.clear()
+    list4.clear()
+    list5.clear()
+    list6.clear()
+    list7.clear()
+    list8.clear()
+    list9.clear()
+    list10.clear()
+    list11.clear()
 
 class plots():
     def show_plot(waveform):
@@ -917,13 +930,14 @@ class brf_analysis():
         # df = database_processing.export_all_to_csv(brf_database, single_or_double)
 
         load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\stat_analysis.csv'
-        save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
 
         df = pd.read_csv(load_path)
 
         brf_names = df.BRF_Name.unique()
         bulb_types = df.Bulb_Type.unique() #only do first four bulb types
 
+        #IS THERE A BETTER WAY TO DO THIS??
+        #VALUES ARE NOT CLEARING???
         brf_name_list = list([])
         bulb_type_list = list([])
         integral_mean = list([])
@@ -960,11 +974,12 @@ class brf_analysis():
             skew_mean.append(mean_list[4])
             skew_std.append(std_list[4])
 
+        #CHANGE THIS TO BE DYNAMIC
         d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
 
         stats_df = pd.DataFrame(data = d)
         file_name = 'mean_std_analysis_entire.csv'
-        save_path = save_directory + '\\' + file_name
+        save_path = feature_analysis_save_directory + '\\' + file_name
 
         if os.path.exists(save_path):
             print('File exists: do you want to overwrite? (Y/N):')
@@ -976,19 +991,91 @@ class brf_analysis():
         else:
             stats_df.to_csv(save_path)
 
-        #ABOVE PART WORKS; DO FOR THE REST
+        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
 
-        #mean and variance for a bulb type
-        for bulb_type in bulb_types:
-            pass
+        #mean and variance for a bulb type (should only be 4 rows)
+        for i in range(0, 4):
+            bulb_type = bulb_types[i]
+            new_df = df.loc[df['Bulb_Type'] == bulb_type]
 
-        for bulb_type in bulb_types:
-            pass
-            # type_dataframe = database_processing.return_bulb_type_waveforms(df, bulb_type)
+            mean_list, std_list = database_processing.return_mean_std_lists(new_df, method_name_list)
 
-            # brf_names_of_type = type_dataframe.BRF_Name.unique()
+            assert len(mean_list) == len(std_list)
 
-            # for name in brf_names_of_type:        
+            bulb_type_list.append(bulb_type)
+            integral_mean.append(mean_list[0])
+            integral_std.append(std_list[0])
+            angle_mean.append(mean_list[1])
+            angle_std.append(std_list[1])
+            crest_mean.append(mean_list[2])
+            crest_std.append(std_list[2])
+            kurtosis_mean.append(mean_list[3])
+            kurtosis_std.append(std_list[3])
+            skew_mean.append(mean_list[4])
+            skew_std.append(std_list[4])
+
+        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+
+        stats_df = pd.DataFrame(data = d)
+        file_name = 'mean_std_analysis_bulb_type.csv'
+        save_path = feature_analysis_save_directory + '\\' + file_name
+
+        if os.path.exists(save_path):
+            print('File exists: do you want to overwrite? (Y/N):')
+            print(file_name)
+
+            x = input()
+            if x == 'Y':
+                stats_df.to_csv(save_path)
+        else:
+            stats_df.to_csv(save_path)
+
+        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
+
+        for i in range(0,4):
+            bulb_type = bulb_types[i]
+            type_df = df.loc[df['Bulb_Type'] == bulb_type]
+
+            brf_names_of_type = type_df.BRF_Name.unique()
+
+            for name in brf_names_of_type:
+                brf_of_type_df = type_df.loc[type_df['BRF_Name'] == name]
+
+                mean_list, std_list = database_processing.return_mean_std_lists(brf_of_type_df, method_name_list)
+
+                assert len(mean_list) == len(std_list)
+
+                brf_name_list.append(name)
+                bulb_type_list.append(bulb_type)
+                integral_mean.append(mean_list[0])
+                integral_std.append(std_list[0])
+                angle_mean.append(mean_list[1])
+                angle_std.append(std_list[1])
+                crest_mean.append(mean_list[2])
+                crest_std.append(std_list[2])
+                kurtosis_mean.append(mean_list[3])
+                kurtosis_std.append(std_list[3])
+                skew_mean.append(mean_list[4])
+                skew_std.append(std_list[4])
+
+            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+
+            stats_df = pd.DataFrame(data = d)
+            file_name = 'mean_std_analysis_' + bulb_type + '.csv'
+            save_path = feature_analysis_save_directory + '\\' + file_name
+
+            if os.path.exists(save_path):
+                print('File exists: do you want to overwrite? (Y/N):')
+                print(file_name)
+
+                x = input()
+                if x == 'Y':
+                    stats_df.to_csv(save_path)
+            else:
+                stats_df.to_csv(save_path)
+
+            clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
+            
 
 
 class brf_classification():
