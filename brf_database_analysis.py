@@ -212,7 +212,7 @@ class database_processing():
         save_path = brf_analysis_save_path + '\\' + file_name
         df.to_csv(save_path)
 
-    def export_all_to_csv(brf_database, single_or_double):
+    def export_all_to_csv(brf_database, method_name_list, single_or_double):
         brf_database_list = database_processing.database_to_list(brf_database)
 
         #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
@@ -250,7 +250,7 @@ class database_processing():
                 skew_factor_list.append(skew_factor)
 
             print(brf_name)
-
+        
         d = {'BRF_Name': name_list, 'Bulb_Type': type_list, 'Integral_Ratio': integral_ratio_list, 'Nadir_Angle': nadir_angle_list, 'Crest_Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
         df = pd.DataFrame(data = d)
         save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\stat_analysis.csv'
@@ -361,6 +361,21 @@ class database_processing():
                 df.to_csv(save_path)
         else:
             df.to_csv(save_path)
+
+    def return_mean_std_lists(df, method_name_list):
+        mean_list = list([])
+        std_list = list([])
+
+        # print(df)
+
+        for method_name in method_name_list:
+            values = df[method_name].tolist()
+            mean = np.mean(values)
+            std = np.std(values)
+            mean_list.append(mean)
+            std_list.append(std)
+
+        return mean_list, std_list
 
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
@@ -871,7 +886,7 @@ class brf_analysis():
 
         return pca_brf_list, w
 
-    def feature_analysis(brf_database, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
+    def feature_analysis(brf_database, method_name_list, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
         brf_database_list = database_processing.database_to_list(brf_database)
         
         '''
@@ -889,9 +904,10 @@ class brf_analysis():
                     i) mean and variance for each BRF
                 c) mean and variance of ALL waveforms within bulb type
         New dataframes:
-            e.g. Eiko CFL 13W | CFL | Angle of Inflection (Mean) | Angle of Inflection (STD) | Integral Ratio (Mean) | Integral Ratio (Mean) | ... | etc.
-            1) Mean and variance of each waveform for the ENTIRE database
-            2) Mean and variance of each waveform for BULB TYPE database
+            e.g. BRF Name | Bulb Type | Angle of Inflection (Mean) | Angle of Inflection (STD) | Integral Ratio (Mean) | Integral Ratio (Mean) | ... | etc.
+            create general mean and variance list and add that list to an existing dataframe?? make this easy without having to do the crap above
+            1) Mean and variance of each waveform (for a BRF) for the ENTIRE database
+            2) Mean and variance of each waveform (for a BRF) for BULB TYPE database
             3) Mean and variance of each *BRF* for a BULB TYPE database
             4) Mean and variance of each BULB TYPE for the ENTIRE database
         Then, can do bar graphs with error bars in Excel or via matplotlib 
@@ -901,13 +917,78 @@ class brf_analysis():
         # df = database_processing.export_all_to_csv(brf_database, single_or_double)
 
         load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\stat_analysis.csv'
+        save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
 
         df = pd.read_csv(load_path)
 
         brf_names = df.BRF_Name.unique()
+        bulb_types = df.Bulb_Type.unique() #only do first four bulb types
 
-        print(brf_names)
-        
+        brf_name_list = list([])
+        bulb_type_list = list([])
+        integral_mean = list([])
+        integral_std = list([])
+        angle_mean = list([])
+        angle_std = list([])
+        crest_mean = list([])
+        crest_std = list([])
+        kurtosis_mean = list([])
+        kurtosis_std = list([])
+        skew_mean = list([])
+        skew_std = list([])
+
+        #all waveforms in a BRF
+        for name in brf_names:
+            new_df = df.loc[df['BRF_Name'] == name]
+            bulb_type = new_df['Bulb_Type'].tolist()[0]
+
+            #make a general method that spits out new dataframe (??)
+            mean_list, std_list = database_processing.return_mean_std_lists(new_df, method_name_list)
+
+            assert len(mean_list) == len(std_list)
+
+            brf_name_list.append(name)
+            bulb_type_list.append(bulb_type)
+            integral_mean.append(mean_list[0])
+            integral_std.append(std_list[0])
+            angle_mean.append(mean_list[1])
+            angle_std.append(std_list[1])
+            crest_mean.append(mean_list[2])
+            crest_std.append(std_list[2])
+            kurtosis_mean.append(mean_list[3])
+            kurtosis_std.append(std_list[3])
+            skew_mean.append(mean_list[4])
+            skew_std.append(std_list[4])
+
+        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+
+        stats_df = pd.DataFrame(data = d)
+        file_name = 'mean_std_analysis_entire.csv'
+        save_path = save_directory + '\\' + file_name
+
+        if os.path.exists(save_path):
+            print('File exists: do you want to overwrite? (Y/N):')
+            print(file_name)
+
+            x = input()
+            if x == 'Y':
+                stats_df.to_csv(save_path)
+        else:
+            stats_df.to_csv(save_path)
+
+        #ABOVE PART WORKS; DO FOR THE REST
+
+        #mean and variance for a bulb type
+        for bulb_type in bulb_types:
+            pass
+
+        for bulb_type in bulb_types:
+            pass
+            # type_dataframe = database_processing.return_bulb_type_waveforms(df, bulb_type)
+
+            # brf_names_of_type = type_dataframe.BRF_Name.unique()
+
+            # for name in brf_names_of_type:        
 
 
 class brf_classification():
@@ -1313,6 +1394,7 @@ class brf_classification():
 
 
 if __name__ == "__main__":
+    method_name_list = ['Integral_Ratio', 'Nadir_Angle', 'Crest_Factor', 'Kurtosis', 'Skew']
     brf_database = database_processing(database_path).brf_database
 
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
@@ -1332,6 +1414,6 @@ if __name__ == "__main__":
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
 
-    # database_processing.export_all_to_csv(brf_database, 'double')
+    # database_processing.export_all_to_csv(brf_database, method_name_list, 'double')
 
-    brf_analysis.feature_analysis(brf_database, 'double')
+    brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
