@@ -278,106 +278,9 @@ class database_processing():
 
         return df
 
-    #SCRATCH THE FOLLOWING METHOD; GARBAGE THAT SHOULD NOT EXIST
-    #is there even a general method that I make for this...?
-    def export_brf_mean_std_to_csv(brf_database, single_or_double):
-        brf_database_list = database_processing.database_to_list(brf_database)
-
-        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
-        name_list = list([])
-        type_list = list([])
-        integral_ratio_mean_list = list([])
-        integral_ratio_std_list = list([])
-        nadir_angle_mean_list = list([])
-        nadir_angle_std_list = list([])
-        crest_factor_mean_list = list([])
-        crest_factor_std_list = list([])
-        kurtosis_mean_list = list([])
-        kurtosis_std_list = list([])
-        skew_factor_mean_list = list([])
-        skew_factor_std_list = list([])
-
-        for i in range(len(brf_database_list)):
-            smoothed = None
-            folder_name = brf_database_list[i][0]
-            brf_name = brf_database_list[i][1]
-            bulb_type = brf_database_list[i][2]
-            extracted_lists = brf_extraction(folder_name, single_or_double)
-            time_list = extracted_lists.time_list
-            waveform_list = extracted_lists.brf_list
-
-            integral_ratio_mean = 0
-            integral_ratio_std = 0
-            nadir_angle_mean = 0
-            nadir_angle_std = 0
-            crest_factor_mean = 0
-            crest_factor_std = 0
-            kurtosis_mean = 0
-            kurtosis_std = 0
-            skew_mean = 0
-            skew_std = 0
-
-            integral_ratio_values = np.array([])
-            nadir_angle_values = np.array([])
-            crest_factor_values = np.array([])
-            kurtosis_values = np.array([])
-            skew_values = np.array([])
-
-            for j in range(len(waveform_list)):
-                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
-                nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
-                crest_factor = brf_analysis.crest_factor(waveform_list[j])
-                kurtosis = brf_analysis.kurtosis(waveform_list[j])
-                skew = brf_analysis.skew(waveform_list[j])
-
-                integral_ratio_values = np.hstack((integral_ratio_values, ratio))
-                nadir_angle_values = np.hstack((nadir_angle_values, nadir_angle))
-                crest_factor_values = np.hstack((crest_factor_values, crest_factor))
-                kurtosis_values = np.hstack((kurtosis_values, kurtosis))
-                skew_values = np.hstack((skew_values, skew))
-
-            integral_ratio_mean = np.mean(integral_ratio_values)
-            integral_ratio_std = np.std(integral_ratio_values)
-            nadir_angle_mean = np.mean(nadir_angle_values)
-            nadir_angle_std = np.std(nadir_angle_values)
-            crest_factor_mean = np.mean(crest_factor_values)
-            crest_factor_std = np.std(crest_factor_values)
-            kurtosis_mean = np.mean(kurtosis_values)
-            kurtosis_std = np.std(kurtosis_values)
-            skew_mean = np.mean(skew_values)
-            skew_std = np.mean(skew_values)
-
-            name_list.append(brf_name)
-            type_list.append(bulb_type)
-            integral_ratio_mean_list.append(integral_ratio_mean)
-            integral_ratio_std_list.append(integral_ratio_std)
-            nadir_angle_mean_list.append(nadir_angle_mean)
-            nadir_angle_std_list.append(nadir_angle_std)
-            crest_factor_mean_list.append(crest_factor_mean)
-            crest_factor_std_list.append(crest_factor_std)
-            kurtosis_mean_list.append(kurtosis_mean)
-            kurtosis_std_list.append(kurtosis_std)
-            skew_factor_mean_list.append(skew_mean)
-            skew_factor_std_list.append(skew_std)
-
-            print(brf_name)
-
-        d = {'BRF Name': name_list, 'Bulb Type': type_list, 'Integral Ratio Mean': integral_ratio_mean_list, 'Integral Ratio STD': integral_ratio_std_list, 'Nadir Angle Mean': nadir_angle_mean_list, 'Nadir Angle STD': nadir_angle_std_list, 'Crest Factor Mean': crest_factor_mean_list, 'Crest Factor STD': crest_factor_std_list, 'Kurtosis Mean': kurtosis_mean_list, 'Kurtosis STD': kurtosis_std_list, 'Skew Mean': skew_factor_mean_list, 'Skew': skew_factor_std_list}
-        df = pd.DataFrame(data = d)
-        save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\mean_std_analysis.csv'
-
-        if os.path.exists(save_path):
-            print('File exists: do you want to overwrite? (Y/N):')
-            x = input()
-            if x == 'Y':
-                df.to_csv(save_path)
-        else:
-            df.to_csv(save_path)
-
-    def return_mean_std_lists(df, method_name_list):
+    def return_mean_CI_lists(df, method_name_list):
         mean_list = list([])
-        std_list = list([])
+        CI95_list = list([])
 
         # print(df)
 
@@ -385,10 +288,12 @@ class database_processing():
             values = df[method_name].tolist()
             mean = np.mean(values)
             std = np.std(values)
-            mean_list.append(mean)
-            std_list.append(std)
+            CI95 = 1.96*std/math.sqrt(len(values))
 
-        return mean_list, std_list
+            mean_list.append(mean)
+            CI95.append(std)
+
+        return mean_list, CI95_list
 
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
@@ -957,25 +862,25 @@ class brf_analysis():
             bulb_type = new_df['Bulb_Type'].tolist()[0]
 
             #make a general method that spits out new dataframe (??)
-            mean_list, std_list = database_processing.return_mean_std_lists(new_df, method_name_list)
+            mean_list, CI_list = database_processing.return_mean_CI_lists(new_df, method_name_list)
 
-            assert len(mean_list) == len(std_list)
+            assert len(mean_list) == len(CI_list)
 
             brf_name_list.append(name)
             bulb_type_list.append(bulb_type)
             integral_mean.append(mean_list[0])
-            integral_std.append(std_list[0])
+            integral_std.append(CI_list[0])
             angle_mean.append(mean_list[1])
-            angle_std.append(std_list[1])
+            angle_std.append(CI_list[1])
             crest_mean.append(mean_list[2])
-            crest_std.append(std_list[2])
+            crest_std.append(CI_list[2])
             kurtosis_mean.append(mean_list[3])
-            kurtosis_std.append(std_list[3])
+            kurtosis_std.append(CI_list[3])
             skew_mean.append(mean_list[4])
-            skew_std.append(std_list[4])
+            skew_std.append(CI_list[4])
 
         #CHANGE THIS TO BE DYNAMIC
-        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
 
         stats_df = pd.DataFrame(data = d)
         file_name = 'mean_std_analysis_entire.csv'
@@ -998,23 +903,23 @@ class brf_analysis():
             bulb_type = bulb_types[i]
             new_df = df.loc[df['Bulb_Type'] == bulb_type]
 
-            mean_list, std_list = database_processing.return_mean_std_lists(new_df, method_name_list)
+            mean_list, CI_list = database_processing.return_mean_CI_lists(new_df, method_name_list)
 
-            assert len(mean_list) == len(std_list)
+            assert len(mean_list) == len(CI_list)
 
             bulb_type_list.append(bulb_type)
             integral_mean.append(mean_list[0])
-            integral_std.append(std_list[0])
+            integral_std.append(CI_list[0])
             angle_mean.append(mean_list[1])
-            angle_std.append(std_list[1])
+            angle_std.append(CI_list[1])
             crest_mean.append(mean_list[2])
-            crest_std.append(std_list[2])
+            crest_std.append(CI_list[2])
             kurtosis_mean.append(mean_list[3])
-            kurtosis_std.append(std_list[3])
+            kurtosis_std.append(CI_list[3])
             skew_mean.append(mean_list[4])
-            skew_std.append(std_list[4])
+            skew_std.append(CI_list[4])
 
-        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
 
         stats_df = pd.DataFrame(data = d)
         file_name = 'mean_std_analysis_bulb_type.csv'
@@ -1041,24 +946,24 @@ class brf_analysis():
             for name in brf_names_of_type:
                 brf_of_type_df = type_df.loc[type_df['BRF_Name'] == name]
 
-                mean_list, std_list = database_processing.return_mean_std_lists(brf_of_type_df, method_name_list)
+                mean_list, CI_list = database_processing.return_mean_CI_lists(brf_of_type_df, method_name_list)
 
-                assert len(mean_list) == len(std_list)
+                assert len(mean_list) == len(CI_list)
 
                 brf_name_list.append(name)
                 bulb_type_list.append(bulb_type)
                 integral_mean.append(mean_list[0])
-                integral_std.append(std_list[0])
+                integral_std.append(CI_list[0])
                 angle_mean.append(mean_list[1])
-                angle_std.append(std_list[1])
+                angle_std.append(CI_list[1])
                 crest_mean.append(mean_list[2])
-                crest_std.append(std_list[2])
+                crest_std.append(CI_list[2])
                 kurtosis_mean.append(mean_list[3])
-                kurtosis_std.append(std_list[3])
+                kurtosis_std.append(CI_list[3])
                 skew_mean.append(mean_list[4])
-                skew_std.append(std_list[4])
+                skew_std.append(CI_list[4])
 
-            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (STD)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (STD)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (STD)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (STD)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (STD)': skew_std}
+            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
 
             stats_df = pd.DataFrame(data = d)
             file_name = 'mean_std_analysis_' + bulb_type + '.csv'
