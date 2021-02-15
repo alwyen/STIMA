@@ -177,6 +177,17 @@ class plots():
         plt.tight_layout()
         plt.show()
 
+    def feature_analysis_bar_graphs(x_labels, mean_list, CI_list, plot_title, save_path):
+        plt.figure(figsize = (15,8))
+        plt.bar(x_labels, mean_list)
+        plt.errorbar(x_labels, mean_list, yerr = CI_list, fmt = 'o', color = 'r')
+        plt.xticks(rotation = 45, ha = 'right')
+        plt.tight_layout()
+        plt.title(plot_title)
+        plt.savefig(save_path)
+        plt.close()
+
+
 #this class does all the processing on the database side from the master CSV file
 class database_processing():
     '''
@@ -291,7 +302,7 @@ class database_processing():
             CI95 = 1.96*std/math.sqrt(len(values))
 
             mean_list.append(mean)
-            CI95.append(std)
+            CI95_list.append(CI95)
 
         return mean_list, CI95_list
 
@@ -804,6 +815,7 @@ class brf_analysis():
 
         return pca_brf_list, w
 
+    #this method almost turned out just as ugly as the previous one...
     def feature_analysis(brf_database, method_name_list, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
         brf_database_list = database_processing.database_to_list(brf_database)
         
@@ -836,6 +848,8 @@ class brf_analysis():
 
         load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\stat_analysis.csv'
 
+        figure_save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\Feature Analysis\Feature Analysis Figures'
+
         df = pd.read_csv(load_path)
 
         brf_names = df.BRF_Name.unique()
@@ -846,15 +860,15 @@ class brf_analysis():
         brf_name_list = list([])
         bulb_type_list = list([])
         integral_mean = list([])
-        integral_std = list([])
+        integral_CI = list([])
         angle_mean = list([])
-        angle_std = list([])
+        angle_CI = list([])
         crest_mean = list([])
-        crest_std = list([])
+        crest_CI = list([])
         kurtosis_mean = list([])
-        kurtosis_std = list([])
+        kurtosis_CI = list([])
         skew_mean = list([])
-        skew_std = list([])
+        skew_CI = list([])
 
         #all waveforms in a BRF
         for name in brf_names:
@@ -869,21 +883,41 @@ class brf_analysis():
             brf_name_list.append(name)
             bulb_type_list.append(bulb_type)
             integral_mean.append(mean_list[0])
-            integral_std.append(CI_list[0])
+            integral_CI.append(CI_list[0])
             angle_mean.append(mean_list[1])
-            angle_std.append(CI_list[1])
+            angle_CI.append(CI_list[1])
             crest_mean.append(mean_list[2])
-            crest_std.append(CI_list[2])
+            crest_CI.append(CI_list[2])
             kurtosis_mean.append(mean_list[3])
-            kurtosis_std.append(CI_list[3])
+            kurtosis_CI.append(CI_list[3])
             skew_mean.append(mean_list[4])
-            skew_std.append(CI_list[4])
+            skew_CI.append(CI_list[4])
+
+        #I think I can make this more automated with the method_name_list parameter...
+        integral_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\integral_analysis_entire_database.png'
+        angle_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\angle_analysis_entire_database.png'
+        crest_factor_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\crest_factor_analysis_entire_database.png'
+        kurtosis_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\kurtosis_analysis_entire_database.png'
+        skew_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\skew_analysis_entire_database.png'
+
+        string = 'for Entire Database'
+        integral_title = 'Integral Ratio Analysis ' + string
+        angle_title = 'Angle of Inflection Analysis' + string
+        crest_factor_title = 'Crest Factor Analysis ' + string
+        kurtosis_title = 'Kurtosis Analysis ' + string
+        skew_title = 'Skew Analysis ' + string
+        
+        plots.feature_analysis_bar_graphs(brf_name_list, integral_mean, integral_CI, integral_title, integral_save_path)
+        plots.feature_analysis_bar_graphs(brf_name_list, angle_mean, angle_CI, angle_title, angle_save_path)
+        plots.feature_analysis_bar_graphs(brf_name_list, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
+        plots.feature_analysis_bar_graphs(brf_name_list, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
+        plots.feature_analysis_bar_graphs(brf_name_list, skew_mean, skew_CI, skew_title, skew_save_path)
 
         #CHANGE THIS TO BE DYNAMIC
-        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
+        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
 
         stats_df = pd.DataFrame(data = d)
-        file_name = 'mean_std_analysis_entire.csv'
+        file_name = 'mean_CI95_analysis_entire.csv'
         save_path = feature_analysis_save_directory + '\\' + file_name
 
         if os.path.exists(save_path):
@@ -896,7 +930,7 @@ class brf_analysis():
         else:
             stats_df.to_csv(save_path)
 
-        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
+        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
 
         #mean and variance for a bulb type (should only be 4 rows)
         for i in range(0, 4):
@@ -909,20 +943,39 @@ class brf_analysis():
 
             bulb_type_list.append(bulb_type)
             integral_mean.append(mean_list[0])
-            integral_std.append(CI_list[0])
+            integral_CI.append(CI_list[0])
             angle_mean.append(mean_list[1])
-            angle_std.append(CI_list[1])
+            angle_CI.append(CI_list[1])
             crest_mean.append(mean_list[2])
-            crest_std.append(CI_list[2])
+            crest_CI.append(CI_list[2])
             kurtosis_mean.append(mean_list[3])
-            kurtosis_std.append(CI_list[3])
+            kurtosis_CI.append(CI_list[3])
             skew_mean.append(mean_list[4])
-            skew_std.append(CI_list[4])
+            skew_CI.append(CI_list[4])
 
-        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
+        integral_save_path = figure_save_directory + '\\Comparison of Bulb Types\\integral_analysis_bulb_types.png'
+        angle_save_path = figure_save_directory + '\\Comparison of Bulb Types\\angle_analysis_bulb_types.png'
+        crest_factor_save_path = figure_save_directory + '\\Comparison of Bulb Types\\crest_factor_analysis_bulb_types.png'
+        kurtosis_save_path = figure_save_directory + '\\Comparison of Bulb Types\\kurtosis_analysis_bulb_types.png'
+        skew_save_path = figure_save_directory + '\\Comparison of Bulb Types\\skew_analysis_bulb_types.png'
+
+        string = 'for Bulb Types'
+        integral_title = 'Integral Ratio Analysis ' + string
+        angle_title = 'Angle of Inflection Analysis' + string
+        crest_factor_title = 'Crest Factor Analysis ' + string
+        kurtosis_title = 'Kurtosis Analysis ' + string
+        skew_title = 'Skew Analysis ' + string
+
+        plots.feature_analysis_bar_graphs(bulb_type_list, integral_mean, integral_CI, integral_title, integral_save_path)
+        plots.feature_analysis_bar_graphs(bulb_type_list, angle_mean, angle_CI, angle_title, angle_save_path)
+        plots.feature_analysis_bar_graphs(bulb_type_list, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
+        plots.feature_analysis_bar_graphs(bulb_type_list, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
+        plots.feature_analysis_bar_graphs(bulb_type_list, skew_mean, skew_CI, skew_title, skew_save_path)
+
+        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
 
         stats_df = pd.DataFrame(data = d)
-        file_name = 'mean_std_analysis_bulb_type.csv'
+        file_name = 'mean_CI95_analysis_bulb_type.csv'
         save_path = feature_analysis_save_directory + '\\' + file_name
 
         if os.path.exists(save_path):
@@ -935,8 +988,9 @@ class brf_analysis():
         else:
             stats_df.to_csv(save_path)
 
-        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
+        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
 
+        #within a bulb type, compare BRFs
         for i in range(0,4):
             bulb_type = bulb_types[i]
             type_df = df.loc[df['Bulb_Type'] == bulb_type]
@@ -953,20 +1007,39 @@ class brf_analysis():
                 brf_name_list.append(name)
                 bulb_type_list.append(bulb_type)
                 integral_mean.append(mean_list[0])
-                integral_std.append(CI_list[0])
+                integral_CI.append(CI_list[0])
                 angle_mean.append(mean_list[1])
-                angle_std.append(CI_list[1])
+                angle_CI.append(CI_list[1])
                 crest_mean.append(mean_list[2])
-                crest_std.append(CI_list[2])
+                crest_CI.append(CI_list[2])
                 kurtosis_mean.append(mean_list[3])
-                kurtosis_std.append(CI_list[3])
+                kurtosis_CI.append(CI_list[3])
                 skew_mean.append(mean_list[4])
-                skew_std.append(CI_list[4])
+                skew_CI.append(CI_list[4])
 
-            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_std, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_std, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_std, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_std, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_std}
+            integral_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\integral_analysis_bulb_types.png'
+            angle_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\angle_analysis_bulb_types.png'
+            crest_factor_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\crest_factor_analysis_bulb_types.png'
+            kurtosis_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\kurtosis_analysis_bulb_types.png'
+            skew_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\skew_analysis_bulb_types.png'
+
+            string = 'for ' + bulb_type + ' Bulbs'
+            integral_title = 'Integral Ratio Analysis ' + string
+            angle_title = 'Angle of Inflection Analysis' + string
+            crest_factor_title = 'Crest Factor Analysis ' + string
+            kurtosis_title = 'Kurtosis Analysis ' + string
+            skew_title = 'Skew Analysis ' + string
+            
+            plots.feature_analysis_bar_graphs(brf_names_of_type, integral_mean, integral_CI, integral_title, integral_save_path)
+            plots.feature_analysis_bar_graphs(brf_names_of_type, angle_mean, angle_CI, angle_title, angle_save_path)
+            plots.feature_analysis_bar_graphs(brf_names_of_type, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
+            plots.feature_analysis_bar_graphs(brf_names_of_type, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
+            plots.feature_analysis_bar_graphs(brf_names_of_type, skew_mean, skew_CI, skew_title, skew_save_path)
+
+            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
 
             stats_df = pd.DataFrame(data = d)
-            file_name = 'mean_std_analysis_' + bulb_type + '.csv'
+            file_name = 'mean_CI95_analysis_' + bulb_type + '.csv'
             save_path = feature_analysis_save_directory + '\\' + file_name
 
             if os.path.exists(save_path):
@@ -979,7 +1052,7 @@ class brf_analysis():
             else:
                 stats_df.to_csv(save_path)
 
-            clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_std, angle_mean, angle_std, crest_mean, crest_std, kurtosis_mean, kurtosis_std, skew_mean, skew_std)
+            clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
             
 
 
