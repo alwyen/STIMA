@@ -154,9 +154,9 @@ class plots():
         sn.heatmap(df_cm)
         plt.title(title)
         plt.xlabel('Predicted', fontsize = 16)
-        plt.xticks(rotation = 45, ha = 'right') #why is alignment 'right'...?
+        plt.xticks(rotation = 45, ha = 'right', fontsize = 8) #why is alignment 'right'...?
         plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(rotation = 45, va = 'top') #why is alignment 'top'...?
+        plt.yticks(rotation = 45, va = 'top', fontsize = 8) #why is alignment 'top'...?
         plt.tight_layout()
         plt.show()
 
@@ -384,17 +384,28 @@ class brf_extraction():
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
-    def test_analysis_method(brf_database, method_name, single_or_double):
+    def test_analysis_method(brf_database, method_name, single_or_double, specific_brf = None):
         brf_database_list = database_processing.database_to_list(brf_database)
 
         for i in range(len(brf_database_list)):
-            smoothed = None
-            folder_name = brf_database_list[i][0]
-            brf_name = brf_database_list[i][1]
-            bulb_type = brf_database_list[i][2]
-            extracted_lists = brf_extraction(folder_name, single_or_double)
-            time_list = extracted_lists.time_list
-            waveform_list = extracted_lists.brf_list
+            if specific_brf == None:
+                smoothed = None
+                folder_name = brf_database_list[i][0]
+                brf_name = brf_database_list[i][1]
+                bulb_type = brf_database_list[i][2]
+                extracted_lists = brf_extraction(folder_name, single_or_double)
+                time_list = extracted_lists.time_list
+                waveform_list = extracted_lists.brf_list
+            else:
+                # print(brf_database)
+                # print(specific_brf)
+                specific_brf = database_processing.database_to_list(brf_database.loc[brf_database['Name'] == specific_brf])[0]
+                folder_name = specific_brf[0]
+                brf_name = specific_brf[1]
+                bulb_type = specific_brf[2]
+                extracted_lists = brf_extraction(folder_name, single_or_double)
+                time_list = extracted_lists.time_list
+                waveform_list = extracted_lists.brf_list
             print(brf_name)
             mean = 0
             values = np.array([])
@@ -427,7 +438,10 @@ class brf_analysis():
                     values = np.hstack((values, angle))
                     # print(angle)
                     # print()
-                    # plots.show_plot(smoothed)
+                    plt.plot(smoothed)
+                    plt.plot(x1, y1, color = 'red')
+                    plt.plot(x2, y2, color = 'red')
+                    plt.show()
             # print(falling_slope)
             # print(rising_slope)
             # print(nadir)
@@ -455,10 +469,13 @@ class brf_analysis():
             print(std) #smaller the better/more reliable
             print()
 
-            plt.plot(smoothed)
+            # plt.plot(smoothed)
             # plt.plot(x1, y1, color = 'red')
             # plt.plot(x2, y2, color = 'red')
-            plt.show()
+            # plt.show()
+
+            if specific_brf != None:
+                break
 
     def min_error(brf_1, brf_2):
         brf_1, brf_2 = raw_waveform_processing.truncate_longer(brf_1, brf_2)
@@ -651,6 +668,7 @@ class brf_analysis():
         assert len(x) == len(y)
         numerator = n*np.sum(x*y) - np.sum(x)*np.sum(y)
         denominator = n*np.sum(x**2) - np.sum(x)**2
+        #https://stackoverflow.com/questions/27784528/numpy-division-with-runtimewarning-invalid-value-encountered-in-double-scalars
         return numerator/denominator
 
     #angle of inflection on peaks and nadir; angle of inflection doesn't really make too much sense for single cycled waveforms?
@@ -838,9 +856,8 @@ class brf_analysis():
             create general mean and variance list and add that list to an existing dataframe?? make this easy without having to do the crap above
             1) Mean and variance of each waveform (for a BRF) for the ENTIRE database
             2) Mean and variance of each waveform (for a BRF) for BULB TYPE database
-            3) Mean and variance of each *BRF* for a BULB TYPE database
-            4) Mean and variance of each BULB TYPE for the ENTIRE database
-        Then, can do bar graphs with error bars in Excel or via matplotlib 
+            3) Mean and variance of each BULB TYPE for the ENTIRE database
+        Bar graphs with error bars via matplotlib 
         '''
 
         #to add more methods/columns, go to export_all_to_csv method
@@ -856,7 +873,6 @@ class brf_analysis():
         bulb_types = df.Bulb_Type.unique() #only do first four bulb types
 
         #IS THERE A BETTER WAY TO DO THIS??
-        #VALUES ARE NOT CLEARING???
         brf_name_list = list([])
         bulb_type_list = list([])
         integral_mean = list([])
@@ -1209,7 +1225,7 @@ class brf_classification():
 
         return brf_KNN_model, KNN_prediction_list
 
-    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, Tallied): #True or False for tallied
+    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, Tallied, Entire): #True or False for tallied
         # brf_database = database_processing.drop_bulb_type_column(brf_database)
         # database_as_list = database_processing.database_to_list(brf_database)
 
@@ -1220,12 +1236,17 @@ class brf_classification():
 
         #requires and input list and output list to train the model
         for bulb_type in bulb_type_list:
-            print(bulb_type)
+            if Entire == False:
+                print(bulb_type)
             same_type_database = database_processing.return_bulb_type_waveforms(brf_database,str(bulb_type))
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
-            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
+            if Entire:
+                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
+                entire_name_list = database_processing.database_to_list(brf_database.Name)
+            else:
+                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
 
@@ -1236,8 +1257,12 @@ class brf_classification():
             false_neg = 0
             total = len(KNN_prediction_list)
 
-            tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
-            total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+            if Entire:
+                tallied_matrix = np.zeros((len(same_type_name_list), len(entire_name_list)))
+                total_matrix = np.zeros((len(same_type_name_list), len(entire_name_list)))
+            else:
+                tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+                total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
 
             for prediction in KNN_prediction_list:
                 input_data = prediction[0]
@@ -1249,32 +1274,46 @@ class brf_classification():
 
                 neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
-                index = same_type_name_list.index(expected_output)
+                # if Entire:
+                #     index = entire_name_list.index(expected_output)
+                # else:
+                #     index = same_type_name_list.index(expected_output)
 
                 # print(f'Expected: {expected_output}')
                 # print(f'Output: {output}')
 
-                print(f'{expected_output}; Index = {index}')
+                # print(f'{expected_output}; Index = {index}')
                 for model_index in neighbor_indices:
-                    same_type_name_list_index = brf_KNN_model._y[model_index]
-                    print(same_type_name_list_index)
-                    if same_type_name_list[same_type_name_list_index] == expected_output:
-                        true_positive += 1
-                        ground_list.append(expected_output)
-                        predicted_list.append(expected_output)
-                        no_match = False
-                        break
+                    if Entire:
+                        entire_name_list_index = brf_KNN_model._y[model_index]
+                    else:
+                        same_type_name_list_index = brf_KNN_model._y[model_index]
+                    # print(same_type_name_list_index)
+                    if Entire:
+                        if entire_name_list[entire_name_list_index] == expected_output:
+                            true_positive += 1
+                            ground_list.append(expected_output)
+                            predicted_list.append(expected_output)
+                            no_match = False
+                            break
+                    else:
+                        if same_type_name_list[same_type_name_list_index] == expected_output:
+                            true_positive += 1
+                            ground_list.append(expected_output)
+                            predicted_list.append(expected_output)
+                            no_match = False
+                            break
                 if no_match:
                     if expected_output == output:
-                        print(f'Expected: {expected_output}')
-                        print(f'Output: {output}')
-                        false_neg += 1
+                        # print(f'Expected: {expected_output}')
+                        # print(f'Output: {output}')
+                        true_positive += 1
                     ground_list.append(expected_output)
                     predicted_list.append(output)
 
                 no_match = True
 
-                print()
+                # print()
 
                 # if expected_output == output:
                 #     print(f'Expected: {expected_output}; Output: {output}')
@@ -1309,9 +1348,9 @@ class brf_classification():
 
                     brf_KNN_model = None
 
-            print(f'True Positive: {true_positive}')
-            print(f'False Negative: {false_neg}')
-            print(total)
+            # print(f'True Positive: {true_positive}')
+            # print(f'False Negative: {false_neg}')
+            # print(total)
 
             precision = true_positive/total
             print(f'Precision: {precision}')
@@ -1321,7 +1360,11 @@ class brf_classification():
                 tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
                 plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
 
-            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+            if Entire:
+                plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+                break
+            else:
+                plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
     #I AM REWRITING CODE AGAIN; FIX LATER FOR A GENERAL KNN MODEL
     def PCA_KNN(brf_database, single_or_double, num_training, num_components, num_neighbors): #num_training ==> number of waveforms for training
@@ -1471,14 +1514,17 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
     # brf_classification.compare_brfs(brf_database, 3, 'double')
-    # brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False)
+    
+    #'Entire' is for the entire database
+    # brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False, Entire = True)
+    
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
-    # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double')
+    brf_analysis.test_analysis_method(brf_database, 'angle_of_inflection', 'double', 'Satco LED 9.8W')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
 
     # database_processing.export_all_to_csv(brf_database, method_name_list, 'double')
 
-    brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
+    # brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
