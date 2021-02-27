@@ -34,6 +34,9 @@ y2 = None
 x_pt1 = None
 y_pt1 = None
 
+x_pt2 = None
+y_pt2 = None
+
 def set_falling_slope_var(val):
     global falling_slope
     falling_slope = val
@@ -68,6 +71,13 @@ def set_pt1(x, y):
 
     x_pt1 = x
     y_pt1 = y
+
+def set_pt2(x, y):
+    global x_pt2
+    global y_pt2
+
+    x_pt2 = x
+    y_pt2 = y
 
 ############################################################
 
@@ -275,6 +285,7 @@ class database_processing():
 
             print(brf_name)
         
+        # geeksforgeeks.org/create-a-pandas-dataframe-from-lists/ --> USE THIS WAY INSTEAD
         d = {'BRF_Name': name_list, 'Bulb_Type': type_list, 'Integral_Ratio': integral_ratio_list, 'Nadir_Angle': nadir_angle_list, 'Crest_Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
         df = pd.DataFrame(data = d)
         save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\stat_analysis.csv'
@@ -420,7 +431,10 @@ class brf_analysis():
                     values = np.hstack((values, ratio))
                     # print(ratio)
                     # print()
-                    # plots.show_plot(smoothed)
+                    plt.plot(x_pt1, smoothed[x_pt1], 'X')
+                    plt.plot(x_pt2, smoothed[x_pt2], 'X')
+                    plt.plot(smoothed)
+                    plt.show()
 
             elif method_name == 'linearity':
                 for j in range(len(waveform_list)):
@@ -446,6 +460,21 @@ class brf_analysis():
             # print(rising_slope)
             # print(nadir)
 
+            elif method_name == 'peak_location':
+                for j in range(len(waveform_list)):
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    ratio = brf_analysis.peak_location(smoothed, single_or_double)
+                    values = np.hstack((values, ratio))
+                    # plots.show_plot(smoothed)
+
+            elif method_name == 'cycle_integral_avg':
+                for j in range(len(waveform_list)):
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    brf_analysis.cycle_integral_avg(smoothed, single_or_double)
+                    # avg = brf_analysis.cycle_integral_avg(waveform_list[j], single_or_double)
+                    values = np.hstack((values, avg))
+                    # plots.show_plot(waveform_list[j])
+
             elif method_name == 'test':
                 length_list = np.array([])
                 for j in range(len(waveform_list)):
@@ -469,10 +498,10 @@ class brf_analysis():
             print(std) #smaller the better/more reliable
             print()
 
-            # plt.plot(smoothed)
+            plt.plot(smoothed)
             # plt.plot(x1, y1, color = 'red')
             # plt.plot(x2, y2, color = 'red')
-            # plt.show()
+            plt.show()
 
             if specific_brf != None:
                 break
@@ -568,6 +597,9 @@ class brf_analysis():
 
             ratio_1 = np.sum(rising_1)/np.sum(falling_1)
             ratio_2 = np.sum(rising_2)/np.sum(falling_2)
+
+            set_pt1(peak_indice_1, new_brf[peak_indice_1])
+            set_pt2(peak_indice_2, new_brf[peak_indice_2])
 
             average_ratio = (ratio_1 + ratio_2)/2
 
@@ -768,6 +800,55 @@ class brf_analysis():
             elif peak_or_nadir == 'nadir':
                 return math.degrees(nadir_angle_1)
 
+    def peak_location(brf, single_or_double):
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+
+        if single_or_double == 'single':
+            peak_indice = peak_indices[0]
+            pass
+
+        elif single_or_double == 'double':
+            peak_indice_1 = peak_indices[0]
+            peak_indice_2 = peak_indices[1]
+
+            if nadir_indices[0] < 100:
+                nadir_indice_1 = nadir_indices[1]
+            else:
+                nadir_indice_1 = nadir_indices[0]
+
+            ratio_1 = peak_indice_1/nadir_indice_1
+            ratio_2 = (peak_indice_2-nadir_indice_1)/(len(brf) - nadir_indice_1)
+
+            print(ratio_1)
+            print(ratio_2)
+
+    def cycle_integral_avg(brf, single_or_double): #sum of cycle/length of cycle
+        # smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
+        # peak_indices = signal.find_peaks(smoothed, distance = 750)[0]
+        # nadir_indices = signal.find_peaks(smoothed, distance = 750)[0]
+
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(brf, distance = 750)[0]
+        
+        if single_or_double == 'single':
+            peak_indice = peak_indices[0]
+            pass
+
+        elif single_or_double == 'double':
+            peak_indice_1 = peak_indices[0]
+            peak_indice_2 = peak_indices[1]
+
+            if nadir_indices[0] < 100:
+                nadir_indice_1 = nadir_indices[1]
+            else:
+                nadir_indice_1 = nadir_indices[0]
+
+            int_avg_1 = np.sum(brf[:nadir_indice_1])/nadir_indice_1
+            int_avg_2 = np.sum(brf[nadir_indice_1:len(brf)])/(len(brf) - nadir_indice_1)
+
+            return((int_avg_1 + int_avg_2)/2)
+
     #for each bulb type, print out the stats for that particular concatenated waveform
     def for_type_print_stats(brf_database, single_or_double):
         bulb_types = database_processing.return_bulb_types(brf_database)
@@ -837,6 +918,8 @@ class brf_analysis():
     def feature_analysis(brf_database, method_name_list, single_or_double): #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
         brf_database_list = database_processing.database_to_list(brf_database)
         
+        # geeksforgeeks.org/create-a-pandas-dataframe-from-lists/ --> USE THIS WAY INSTEAD
+
         '''
         ONE dataframe: (unique name)
             1) all statistics for EACH waveform of a BRF
@@ -1137,11 +1220,11 @@ class brf_classification():
         return weights
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
-    def train_KNN(brf_database, n, classification_type, num_test_waveforms, single_or_double):
+    def train_KNN(brf_database, n, classification_type, num_test_waveforms, single_or_double, num_features):
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
         
-        KNN_input = np.ones((5))
+        KNN_input = np.ones((num_features))
         KNN_output = list([])
 
         crest_factor_array = np.array([])
@@ -1173,11 +1256,15 @@ class brf_classification():
                 # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
                 angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                input_param = np.array([angle, integral_ratio, crest_factor, kurtosis, skew])
+                input_param = np.array([angle, integral_ratio, int_avg, crest_factor, kurtosis, skew])
+                
+                assert len(input_param) == num_features
+
                 # input_param = [crest_factor, kurtosis, skew]
                 if i < num_test_waveforms: #determines number of test/training waveforms
                     # crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
@@ -1225,7 +1312,7 @@ class brf_classification():
 
         return brf_KNN_model, KNN_prediction_list
 
-    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, Tallied, Entire): #True or False for tallied
+    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire): #True or False for tallied
         # brf_database = database_processing.drop_bulb_type_column(brf_database)
         # database_as_list = database_processing.database_to_list(brf_database)
 
@@ -1243,10 +1330,10 @@ class brf_classification():
             # same_type_database = database_processing.drop_bulb_type_column(same_type_database)
 
             if Entire:
-                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
+                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
                 entire_name_list = database_processing.database_to_list(brf_database.Name)
             else:
-                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double)
+                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
 
@@ -1358,13 +1445,13 @@ class brf_classification():
 
             if Tallied:
                 tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
-                plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
+                plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, int_avg, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
 
             if Entire:
-                plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+                plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, int_avg, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
                 break
             else:
-                plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+                plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, int_avg, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
     #I AM REWRITING CODE AGAIN; FIX LATER FOR A GENERAL KNN MODEL
     def PCA_KNN(brf_database, single_or_double, num_training, num_components, num_neighbors): #num_training ==> number of waveforms for training
@@ -1516,15 +1603,18 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    # brf_classification.KNN(brf_database, 3, 'name', 3, 'double', Tallied = False, Entire = True)
+    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 6, Tallied = False, Entire = True)
     
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
-    brf_analysis.test_analysis_method(brf_database, 'angle_of_inflection', 'double', 'Satco LED 9.8W')
+    # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double', 'TCP LED 9.5W')
+
+    # brf_analysis.test_analysis_method(brf_database, 'cycle_integral_avg', 'double')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
 
+    # #export stats to csv
     # database_processing.export_all_to_csv(brf_database, method_name_list, 'double')
-
+    # #generate stats figures with 95% CIs
     # brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
