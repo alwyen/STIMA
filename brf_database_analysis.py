@@ -49,6 +49,7 @@ def set_nadir_var(val):
     global nadir
     nadir = val
 
+#these methods are for showing lines on a graph
 def set_x1(data):
     global x1
     x1 = data
@@ -65,6 +66,7 @@ def set_y2(data):
     global y2
     y2 = data
 
+#set_pt1 and set_pt2 are for displaying a point on a graph
 def set_pt1(x, y):
     global x_pt1
     global y_pt1
@@ -499,8 +501,10 @@ class brf_analysis():
             print()
 
             plt.plot(smoothed)
-            # plt.plot(x1, y1, color = 'red')
-            # plt.plot(x2, y2, color = 'red')
+            # plt.plot(x_pt1, y_pt1, 'X')
+            # plt.plot(x_pt2, y_pt2, 'X')
+            plt.plot(x1, y1, color = 'red')
+            plt.plot(x2, y2, color = 'red')
             plt.show()
 
             if specific_brf != None:
@@ -608,8 +612,8 @@ class brf_analysis():
     #need to double check this method; not sure if i'm messing up the lengths for comparison (might need to +1 for some things?)
     #double check this
     def linearity(time, brf, single_or_double, rising_or_falling):
-        nadir_clipping_length = 25
-        peak_clipping_length = 125
+        nadir_clipping_length = 0
+        peak_clipping_length = 0
 
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
@@ -694,6 +698,19 @@ class brf_analysis():
                 set_y2(y_falling_2)
 
                 return (cc_2[0][1] + cc_4[0][1])/2 #return the average of falling correlations
+
+    def linearity_v2(time, brf, single_or_double, rising_or_falling):
+        peak_indice_1 = peak_indices[0]
+        peak_indice_2 = peak_indices[1]
+        nadir_indice_1 = 0
+
+        #NOTE: temporary solution to picking nadir; maybe better to get approx location of nadir through unsmoothed waveform
+        if nadir_indices[0] < 100:
+            nadir_indice_1 = nadir_indices[1]
+        else:
+            nadir_indice_1 = nadir_indices[0]
+
+        
 
 
     def slope(x, y, n):
@@ -820,8 +837,10 @@ class brf_analysis():
             ratio_1 = peak_indice_1/nadir_indice_1
             ratio_2 = (peak_indice_2-nadir_indice_1)/(len(brf) - nadir_indice_1)
 
-            print(ratio_1)
-            print(ratio_2)
+            set_pt1(peak_indice_1, brf[peak_indice_1])
+            set_pt2(peak_indice_2, brf[peak_indice_2])
+            
+            return (ratio_1 + ratio_2)/2
 
     def cycle_integral_avg(brf, single_or_double): #sum of cycle/length of cycle
         # smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
@@ -1603,13 +1622,13 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 6, Tallied = False, Entire = True)
+    # brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 6, Tallied = False, Entire = True)
     
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
     # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double', 'TCP LED 9.5W')
 
-    # brf_analysis.test_analysis_method(brf_database, 'cycle_integral_avg', 'double')
+    brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
