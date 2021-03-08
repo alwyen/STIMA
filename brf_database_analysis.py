@@ -447,6 +447,24 @@ class brf_analysis():
                     # print()
                     # plots.show_plot(smoothed)
 
+            elif method_name == 'linearity_v2':
+                for j in range(len(waveform_list)):
+                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
+                    correlation = brf_analysis.linearity_v2(time_list[j], smoothed, single_or_double, 'falling')
+                    #NOTE: Eiko Halogen 72W got mad issues; jk linearity_v2 got mad issues
+                    if correlation == None:
+                        plt.plot(smoothed)
+                        plt.plot(x_pt1, y_pt1, 'X')
+                        plt.plot(x_pt2, y_pt2, 'X')
+                        plt.plot(x1, y1, color = 'red')
+                        plt.plot(x2, y2, color = 'red')
+                        plt.show()
+                    else:
+                        values = np.hstack((values, correlation))
+                    # print(correlation)
+                    # print()
+                    # plots.show_plot(smoothed)
+
             elif method_name == 'angle_of_inflection':
                 for j in range(len(waveform_list)):
                     smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
@@ -699,7 +717,11 @@ class brf_analysis():
 
                 return (cc_2[0][1] + cc_4[0][1])/2 #return the average of falling correlations
 
+    #single cycle isn't implemented
     def linearity_v2(time, brf, single_or_double, rising_or_falling):
+        peak_indices = signal.find_peaks(brf, distance = 750)[0]
+        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+
         peak_indice_1 = peak_indices[0]
         peak_indice_2 = peak_indices[1]
         nadir_indice_1 = 0
@@ -710,7 +732,52 @@ class brf_analysis():
         else:
             nadir_indice_1 = nadir_indices[0]
 
-        
+            x_rising_1 = np.arange(0, peak_indice_1+1, 1)
+            y_rising_1 = np.linspace(brf[0], brf[peak_indice_1], peak_indice_1+1)
+            rising_1 = brf[0:peak_indice_1+1]
+            
+            x_falling_1 = np.arange(peak_indice_1, nadir_indice_1+1, 1)
+            y_falling_1 = np.linspace(brf[peak_indice_1], brf[nadir_indice_1], nadir_indice_1-peak_indice_1+1)
+            falling_1 = brf[peak_indice_1:nadir_indice_1+1]
+
+            x_rising_2 = np.arange(nadir_indice_1, peak_indice_2+1, 1)
+            y_rising_2 = np.linspace(brf[nadir_indice_1], brf[peak_indice_2], peak_indice_2-nadir_indice_1+1)
+            rising_2 = brf[nadir_indice_1:peak_indice_2+1]
+
+            x_falling_2 = np.arange(peak_indice_2, len(brf), 1)
+            y_falling_2 = np.linspace(brf[peak_indice_2], brf[len(brf)-1], len(brf)-peak_indice_2)
+            falling_2 = brf[peak_indice_2:len(brf)]
+
+            cc_1 = np.corrcoef(rising_1, y_rising_1)
+            cc_2 = np.corrcoef(falling_1, y_falling_1)
+            cc_3 = np.corrcoef(rising_2, y_rising_2)
+            cc_4 = np.corrcoef(falling_2, y_falling_2)
+
+            if rising_or_falling == 'rising':
+                set_x1(x_rising_1)
+                set_y1(y_rising_1)
+                
+                set_x2(x_rising_2)
+                set_y2(y_rising_2)
+
+                avg_cc = (cc_1[0][1] + cc_3[0][1])/2
+
+                return avg_cc #return the average of rising correlations
+
+            elif rising_or_falling == 'falling':
+                set_x1(x_falling_1)
+                set_y1(y_falling_1)
+
+                set_x2(x_falling_2)
+                set_y2(y_falling_2)
+
+                set_pt1(peak_indice_1, brf[peak_indice_1])
+                set_pt2(peak_indice_2, brf[peak_indice_2])
+
+                avg_cc = (cc_2[0][1] + cc_4[0][1])/2
+                print(avg_cc)
+
+                return avg_cc #return the average of falling correlations
 
 
     def slope(x, y, n):
@@ -1628,7 +1695,7 @@ if __name__ == "__main__":
 
     # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double', 'TCP LED 9.5W')
 
-    brf_analysis.test_analysis_method(brf_database, 'linearity', 'double')
+    brf_analysis.test_analysis_method(brf_database, 'linearity_v2', 'double')
 
     # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
     # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
