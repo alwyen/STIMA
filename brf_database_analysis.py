@@ -10,7 +10,12 @@ import os
 import seaborn as sn
 
 
-#CODE IS GETTING MESSY; NEED TO DEDICATE TIME TO CLEAN UP
+#CLEAN UP TIME
+#TODO: feature_analysis: condense and make it so that I can just include different feature names and they'll spit out the right graphs; clear_lists has gotta go
+#fix all the global methods/variable names
+#remove data_processing class methods that aren't being used; just look up pandas methods dude
+#make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
+#check is "train_KNN" and "KNN" can be simplified
 
 database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
 base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
@@ -233,7 +238,7 @@ class database_processing():
     def database_to_list(brf_database):
         return brf_database.values.tolist()
 
-    #for every waveform, export each feature (peak_location and integral_average not includes) into a single CSV file
+    #for every waveform, export each feature (peak_location and integral_average not included) into a single CSV file
     def export_all_to_csv(brf_database, method_name_list, single_or_double):
         brf_database_list = database_processing.database_to_list(brf_database)
 
@@ -977,6 +982,7 @@ class brf_analysis():
 
         return pca_brf_list, w
 
+    #redo this method – make it cleaner
     #this method almost turned out just as ugly as the previous one...
     #spits out bar graphs of the mean of each feature with 95% confidence intervals
     #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
@@ -1058,6 +1064,7 @@ class brf_analysis():
             kurtosis_CI.append(CI_list[3])
             skew_mean.append(mean_list[4])
             skew_CI.append(CI_list[4])
+            #need to do 
 
         #I think I can make this more automated with the method_name_list parameter...
         integral_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\integral_analysis_entire_database.png'
@@ -1290,7 +1297,7 @@ class brf_classification():
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
         
-        KNN_input = np.ones((num_features))
+        KNN_input = list()
         KNN_output = list([])
 
         crest_factor_array = np.array([])
@@ -1328,9 +1335,10 @@ class brf_classification():
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                # input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                input_param = np.array([crest_factor, kurtosis, skew])
                 
-                assert len(input_param) == num_features
+                # assert len(input_param) == num_features
 
                 # input_param = [crest_factor, kurtosis, skew]
                 if i < num_test_waveforms: #determines number of test/training waveforms
@@ -1349,12 +1357,14 @@ class brf_classification():
                     # kurtosis_array = np.append(kurtosis_array, kurtosis)
                     # skew_array = np.append(skew_array, skew)
 
-                    KNN_input = np.vstack((KNN_input, input_param))
+                    KNN_input.append(input_param)
                     if classification_type == 'name':
                         KNN_output.append(brf_name)
                     if classification_type == 'type':
                         KNN_output.append(bulb_type)
             print(f'{brf_name} Finished') #this is just to make sure the program is running properly
+
+        KNN_input = np.vstack((KNN_input))
 
         '''
         # crest_factor_array_normalized = raw_waveform_processing.normalize(crest_factor_array)
@@ -1370,14 +1380,26 @@ class brf_classification():
         # KNN_input = np.vstack((crest_factor_array_normalized, kurtosis_array_normalized, skew_array_normalized)).T
         '''
 
+        # https://stackoverflow.com/questions/50064632/weighted-distance-in-sklearn-knn
+        #angle of inflection, integral ratio, integral average, peak location, crest factor, kurtosis, skew
+        weights = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        # weights = np.array([0, 0, 0, 0, 1, 1, 1])
+        # weights = np.array([0.001, 0.001, 0.001, 0.001, 100, 100, 100])
+        weights = np.array([0, 0, 0, 0, 100, 100, 100])
+        #try more integer values
+        #small grid search (e.g. 5, 10, 15)
+        #try to set weights so that the "best" feature weighs more and worse is less and vice versa to prove that the weights are doing something
+
+        assert len(weights) == num_features
+
+        # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, p = 2, metric = 'wminkowski', metric_params = {'w': weights}) #used 9 because about 9 waveforms for each BRF
+        # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, metric = 'minkowski') #used 9 because about 9 waveforms for each BRF
         brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
         # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, weights = 'distance') #used 9 because about 9 waveforms for each BRF
 
-        KNN_input = KNN_input[1:len(KNN_input)]
-
         brf_KNN_model.fit(KNN_input, KNN_output)
 
-        return brf_KNN_model, KNN_prediction_list
+        return brf_KNN_model, KNN_prediction_list, weights
 
     def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire): #True or False for tallied
         no_match = True
@@ -1393,10 +1415,10 @@ class brf_classification():
             same_type_name_list = database_processing.database_to_list(same_type_database.Name)
 
             if Entire:
-                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
+                brf_KNN_model, KNN_prediction_list, weights = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
                 entire_name_list = database_processing.database_to_list(brf_database.Name)
             else:
-                brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
+                brf_KNN_model, KNN_prediction_list, weights = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
 
@@ -1509,12 +1531,11 @@ class brf_classification():
             if Tallied:
                 tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
                 plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
-
             if Entire:
-                plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+                plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
                 break
             else:
-                plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+                plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
     #I AM REWRITING CODE AGAIN; FIX LATER FOR A GENERAL KNN MODEL
     def PCA_KNN(brf_database, single_or_double, num_training, num_components, num_neighbors): #num_training ==> number of waveforms for training
