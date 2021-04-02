@@ -1476,6 +1476,7 @@ class brf_classification():
                             no_match = False
                             break
                 if no_match:
+                    #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
                     if expected_output == output:
                         # print(f'Expected: {expected_output}')
                         # print(f'Output: {output}')
