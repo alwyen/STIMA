@@ -484,9 +484,6 @@ class brf_analysis():
                     plt.plot(x1, y1, color = 'red')
                     plt.plot(x2, y2, color = 'red')
                     plt.show()
-            # print(falling_slope)
-            # print(rising_slope)
-            # print(nadir)
 
             elif method_name == 'peak_location':
                 for j in range(len(waveform_list)):
@@ -906,10 +903,6 @@ class brf_analysis():
     #cycle integral (so just the sum of the cycle), but need to divide by the cycle length to account of differences in cycle length
     #(integral/cycle length)
     def cycle_integral_avg(brf, single_or_double):
-        # smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
-        # peak_indices = signal.find_peaks(smoothed, distance = 750)[0]
-        # nadir_indices = signal.find_peaks(smoothed, distance = 750)[0]
-
         peak_indices = signal.find_peaks(brf, distance = 750)[0]
         nadir_indices = signal.find_peaks(brf, distance = 750)[0]
         
@@ -1335,17 +1328,13 @@ class brf_classification():
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                # input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
-                input_param = np.array([crest_factor, kurtosis, skew])
+                # input_param = np.array([crest_factor, kurtosis, skew])
+                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
                 
-                # assert len(input_param) == num_features
+                assert len(input_param) == num_features
 
                 # input_param = [crest_factor, kurtosis, skew]
                 if i < num_test_waveforms: #determines number of test/training waveforms
-                    # crest_factor_prediction = np.append(crest_factor_prediction, crest_factor)
-                    # kurtosis_prediction = np.append(kurtosis_prediction, kurtosis)
-                    # skew_prediction = np.append(skew_prediction, skew)
-
                     if classification_type == 'name':
                         KNN_prediction_list.append([input_param, brf_name])
                     elif classification_type == 'type':
@@ -1353,10 +1342,6 @@ class brf_classification():
                     # brf_name_output_label.append(brf_name)
                     # brf_name_output_label.append(bulb_type)
                 else:
-                    # crest_factor_array = np.append(crest_factor_array, crest_factor)
-                    # kurtosis_array = np.append(kurtosis_array, kurtosis)
-                    # skew_array = np.append(skew_array, skew)
-
                     KNN_input.append(input_param)
                     if classification_type == 'name':
                         KNN_output.append(brf_name)
@@ -1366,35 +1351,21 @@ class brf_classification():
 
         KNN_input = np.vstack((KNN_input))
 
-        '''
-        # crest_factor_array_normalized = raw_waveform_processing.normalize(crest_factor_array)
-        # kurtosis_array_normalized = raw_waveform_processing.normalize(kurtosis_array)
-        # skew_array_normalized = raw_waveform_processing.normalize(skew_array)
-
-        # crest_factor_prediction_normalized = raw_waveform_processing.normalize(crest_factor_prediction)
-        # kurtosis_prediction_normalized = raw_waveform_processing.normalize(kurtosis_prediction)
-        # skew_prediction_normalized = raw_waveform_processing.normalize(skew_prediction)
-
-        # KNN_prediction_values = np.vstack((crest_factor_prediction_normalized, kurtosis_prediction_normalized, skew_prediction_normalized)).T
-        # KNN_prediction_list = list(zip(KNN_prediction_values, brf_name_output_label))
-        # KNN_input = np.vstack((crest_factor_array_normalized, kurtosis_array_normalized, skew_array_normalized)).T
-        '''
-
         # https://stackoverflow.com/questions/50064632/weighted-distance-in-sklearn-knn
         #angle of inflection, integral ratio, integral average, peak location, crest factor, kurtosis, skew
-        weights = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        # weights = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         # weights = np.array([0, 0, 0, 0, 1, 1, 1])
         # weights = np.array([0.001, 0.001, 0.001, 0.001, 100, 100, 100])
-        weights = np.array([0, 0, 0, 0, 100, 100, 100])
+        weights = np.array([0, 0, 0, 1, 1, 1, 0])
         #try more integer values
         #small grid search (e.g. 5, 10, 15)
         #try to set weights so that the "best" feature weighs more and worse is less and vice versa to prove that the weights are doing something
 
         assert len(weights) == num_features
 
-        # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, p = 2, metric = 'wminkowski', metric_params = {'w': weights}) #used 9 because about 9 waveforms for each BRF
+        brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, p = 2, metric = 'wminkowski', metric_params = {'w': weights}) #used 9 because about 9 waveforms for each BRF
         # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, metric = 'minkowski') #used 9 because about 9 waveforms for each BRF
-        brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
+        # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors) #used 9 because about 9 waveforms for each BRF
         # brf_KNN_model = KNeighborsClassifier(n_neighbors = number_neighbors, weights = 'distance') #used 9 because about 9 waveforms for each BRF
 
         brf_KNN_model.fit(KNN_input, KNN_output)
@@ -1446,14 +1417,6 @@ class brf_classification():
 
                 neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
-                # if Entire:
-                #     index = entire_name_list.index(expected_output)
-                # else:
-                #     index = same_type_name_list.index(expected_output)
-
-                # print(f'Expected: {expected_output}')
-                # print(f'Output: {output}')
-
                 # print(f'{expected_output}; Index = {index}')
                 for model_index in neighbor_indices:
                     if Entire:
@@ -1478,19 +1441,11 @@ class brf_classification():
                 if no_match:
                     #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
                     if expected_output == output:
-                        # print(f'Expected: {expected_output}')
-                        # print(f'Output: {output}')
                         true_positive += 1
                     ground_list.append(expected_output)
                     predicted_list.append(output)
 
                 no_match = True
-
-                # print()
-
-                # if expected_output == output:
-                #     print(f'Expected: {expected_output}; Output: {output}')
-                #     true_positive += 1
 
                 if Tallied:
 
@@ -1511,8 +1466,6 @@ class brf_classification():
                             temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
                             temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
 
-                    #removing first row
-
                     temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
                     temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
 
@@ -1520,10 +1473,6 @@ class brf_classification():
                     total_matrix += temp_total_matrix
 
                     brf_KNN_model = None
-
-            # print(f'True Positive: {true_positive}')
-            # print(f'False Negative: {false_neg}')
-            # print(total)
 
             precision = true_positive/total
             print(f'Precision: {precision}')
