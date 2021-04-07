@@ -4,6 +4,7 @@ import pandas as pd
 from scipy import signal, stats
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LinearRegression
+from itertools import product
 import matplotlib.pyplot as plt
 import math
 import os
@@ -881,7 +882,8 @@ class brf_analysis():
 
         if single_or_double == 'single':
             peak_indice = peak_indices[0]
-            pass
+            ratio = peak_indice/len(brf)
+            return ratio
 
         elif single_or_double == 'double':
             peak_indice_1 = peak_indices[0]
@@ -1286,7 +1288,7 @@ class brf_classification():
             print()
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
-    def train_KNN(brf_database, n, classification_type, num_test_waveforms, single_or_double, num_features):
+    def train_KNN(brf_database, n, classification_type, num_test_waveforms, single_or_double, num_features, weights):
         number_neighbors = n
         brf_database_list = database_processing.database_to_list(brf_database)
         
@@ -1356,7 +1358,8 @@ class brf_classification():
         # weights = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         # weights = np.array([0, 0, 0, 0, 1, 1, 1])
         # weights = np.array([0.001, 0.001, 0.001, 0.001, 100, 100, 100])
-        weights = np.array([0, 0, 0, 1, 1, 1, 0])
+        # weights = np.array([0, 0, 0, 1, 1, 1, 1])
+
         #try more integer values
         #small grid search (e.g. 5, 10, 15)
         #try to set weights so that the "best" feature weighs more and worse is less and vice versa to prove that the weights are doing something
@@ -1372,7 +1375,7 @@ class brf_classification():
 
         return brf_KNN_model, KNN_prediction_list, weights
 
-    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire): #True or False for tallied
+    def KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire, weights, GridSearch): #True or False for tallied
         no_match = True
 
         bulb_type_list = database_processing.return_bulb_types(brf_database)
@@ -1389,7 +1392,7 @@ class brf_classification():
                 brf_KNN_model, KNN_prediction_list, weights = brf_classification.train_KNN(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
                 entire_name_list = database_processing.database_to_list(brf_database.Name)
             else:
-                brf_KNN_model, KNN_prediction_list, weights = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
+                brf_KNN_model, KNN_prediction_list, weights = brf_classification.train_KNN(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights)
 
         # brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(brf_database, number_neighbors, classification_type)
 
@@ -1477,6 +1480,10 @@ class brf_classification():
             precision = true_positive/total
             print(f'Precision: {precision}')
             print()
+
+            if GridSearch:
+                assert Entire == True
+                return precision
 
             if Tallied:
                 tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
@@ -1621,6 +1628,28 @@ class brf_classification():
             plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
             plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
+    def grid_search(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire, end_weight, step_length):
+        num_best = 3
+        weights = np.arange(0, end_weight+step_length, step_length)
+        weights_list = list()
+        for i in range(num_features):
+            weights_list.append(weights)
+        weight_combinations = list(product(*weights_list))
+        precision_list = list(np.zeros((num_best)))
+        weights_list = list(np.zeros((num_best)))
+        for i in range(len(weight_combinations)):
+            weight = weight_combinations[i]
+            precision = brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 7, Tallied = False, Entire = False, weight, True)
+            for i in range(len(precision_list)):
+                if precision > precision_list[i]:
+                    precision_list[i] = precision
+                    weights_list[i] = weight
+                    break
+        for i in range(len(precision_list)):
+            print(f'Precision: {precision_list[i]}')
+            print(f'Weights: {weights_list[i]}')
+            print()
+
 
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
@@ -1636,7 +1665,7 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 7, Tallied = False, Entire = False)
+    brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 7, Tallied = False, Entire = False, GridSearch = False)
     
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
