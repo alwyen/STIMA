@@ -146,6 +146,7 @@ class plots():
         plt.ylabel('Expected', fontsize = 16)
         plt.show()
 
+    #issues with the ticks for a confusion matrix of the entire BRF database
     #show the confusion matrix for unique BRFs
     def confusion_matrix_unique(ground_list, predicted_list, unique_brf_names, title):
         prediction_matrix = np.zeros((len(unique_brf_names),len(unique_brf_names)))
@@ -166,9 +167,9 @@ class plots():
         sn.heatmap(df_cm)
         plt.title(title)
         plt.xlabel('Predicted', fontsize = 16)
-        plt.xticks(rotation = 45, ha = 'right', fontsize = 8)
+        plt.xticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, ha = 'right', fontsize = 8)
         plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(rotation = 45, va = 'top', fontsize = 8)
+        plt.yticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, va = 'top', fontsize = 8)
         plt.tight_layout()
         plt.show()
 
@@ -1398,8 +1399,6 @@ class brf_classification():
         total = len(KNN_prediction_list)
 
         if Entire:
-            # tallied_matrix = np.zeros((len(same_type_name_list), len(entire_name_list)))
-            # total_matrix = np.zeros((len(same_type_name_list), len(entire_name_list)))
             tallied_matrix = np.zeros((len(entire_name_list), len(entire_name_list)))
             total_matrix = np.zeros((len(entire_name_list), len(entire_name_list)))
         else:
@@ -1659,7 +1658,6 @@ class brf_classification():
             print(f'Weights: {weights_list[i]}')
             print()
 
-
 if __name__ == "__main__":
     brf_database = database_processing(database_path).brf_database
 
@@ -1674,7 +1672,7 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    weights = np.array([0, 0, 0, 0, 1, 1, 1])
+    weights = np.array([0, 0, 0, 1, 1, 1, 1])
     brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
     
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
