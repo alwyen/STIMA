@@ -1473,8 +1473,6 @@ class brf_classification():
                 brf_KNN_model = None
 
         precision = true_positive/total
-        print(f'Precision: {precision}')
-        print()
 
         if GridSearch:
             assert Entire == True
@@ -1635,24 +1633,30 @@ class brf_classification():
             plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
             plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
-    def grid_search(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, Tallied, Entire, end_weight, step_length):
-        num_best = 3
+    def grid_search(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, end_weight, step_length, Tallied, Entire):
+        num_best = 10
         weights = np.arange(0, end_weight+step_length, step_length)
         weights_list = list()
+        
+        KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
+        print()
+        
         for i in range(num_features):
             weights_list.append(weights)
         weight_combinations = list(product(*weights_list))
         precision_list = list(np.zeros((num_best)))
         weights_list = list(np.zeros((num_best)))
         for i in range(len(weight_combinations)):
-            weight = weight_combinations[i]
-            precision = brf_classification.KNN(brf_database, 3, 'name', 3, 'double', 7, weight, Tallied = False, Entire = False, GridSearch = True)
-            for i in range(len(precision_list)):
-                if precision > precision_list[i]:
-                    precision_list[i] = precision
-                    weights_list[i] = weight
+            weights = weight_combinations[i]
+            precision = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, True)
+            for j in range(len(precision_list)):
+                if precision > precision_list[j]:
+                    precision_list[j] = precision
+                    weights_list[j] = weights
                     break
+            print(f'Precision: {precision}')
             print(f'{i+1}/{len(weight_combinations)} Combinations Completed')
+            print()
         for i in range(len(precision_list)):
             print(f'Precision: {precision_list[i]}')
             print(f'Weights: {weights_list[i]}')
@@ -1672,9 +1676,12 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    weights = np.array([0, 0, 0, 1, 1, 1, 1])
+    weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
     
+    # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
+
+    '''
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
 
     # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double', 'TCP LED 9.5W')
@@ -1689,3 +1696,4 @@ if __name__ == "__main__":
     # database_processing.export_all_to_csv(brf_database, method_name_list, 'double')
     # #generate stats figures with 95% CIs
     # brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
+    '''
