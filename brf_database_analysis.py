@@ -1677,7 +1677,7 @@ if __name__ == "__main__":
     
     #'Entire' is for the entire database
     weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
-    brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
+    brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = False, GridSearch = False)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
