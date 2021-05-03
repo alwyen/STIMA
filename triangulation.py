@@ -35,8 +35,10 @@ def reference_to_first(baseline, f, near, far):
     X_near, Z_near = world_coord(baselines, f, X_l_near, X_r_near, 1)
     X_far, Z_far = world_coord(baselines, f, X_l_far, X_r_far, 1)
 
-    print(Z_near)
-    print(Z_far)
+    print('Reference to First Image:')
+    print(f'Near: {Z_near}')
+    print(f'Far: {Z_far}')
+    print()
 
 #first & second, second & third, third & fourth, ... , n & n + 1
 def consecutive_images(baseline, f, near, far):
@@ -55,8 +57,10 @@ def consecutive_images(baseline, f, near, far):
     X_near, Z_near = world_coord(baselines, f, X_l_near, X_r_near, 0)
     X_far, Z_far = world_coord(baselines, f, X_l_far, X_r_far, 0)
 
-    print(Z_near)
-    print(Z_far)
+    print('Consecutive Images:')
+    print(f'Near: {Z_near}')
+    print(f'Far: {Z_far}')
+    print()
 
 if __name__ == '__main__':
     baseline = 1.625
