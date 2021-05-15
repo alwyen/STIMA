@@ -1440,6 +1440,7 @@ class brf_classification():
             probabilities = brf_KNN_model.predict_proba([input_data])[0]
             row_total = np.full(probabilities.shape, number_neighbors)
 
+            #kneighbors or use NearestNeighbors?
             neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
             # print(f'{expected_output}; Index = {index}')
