@@ -314,6 +314,62 @@ class database_processing():
 
         return mean_list, CI95_list
 
+    def pickle_KNN_in_out(brf_database, single_or_double, num_features):
+        brf_database_list = database_processing.database_to_list(brf_database)
+        
+        KNN_input = list()
+        KNN_output_type = list([])
+        KNN_output_name = list([])
+
+        #index 0: Folder Name
+        #index 1: BRF Name
+        #index 2: Bulb Type
+        for i in range(len(brf_database_list)):
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
+            #ignoring the first waveform – will use that for classification
+            for i in range(len(waveform_list)):
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
+                # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
+                angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
+                integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
+                peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
+                crest_factor = brf_analysis.crest_factor(waveform_list[i])
+                kurtosis = brf_analysis.kurtosis(waveform_list[i])
+                skew = brf_analysis.skew(waveform_list[i])
+                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
+                # input_param = np.array([crest_factor, kurtosis, skew])
+                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                
+                assert len(input_param) == num_features
+
+                KNN_input.append(input_param)
+                KNN_output_type.append(bulb_type)
+                KNN_output_name.append(brf_name)
+            print(f'{brf_name} Finished') #this is just to make sure the program is running properly
+
+        d = {'Features': KNN_input, 'Bulb_Type': KNN_output_type, 'Name': KNN_output_name}
+        df = pd.DataFrame(data = d)
+        df.to_pickle()
+
+    def load_KNN_pickle(pkl_path, type_or_name):
+        KNN_df = pd.read_pickle(pkl_path)
+        KNN_input = KNN_df.Features.tolist()
+        if type_or_name == 'type':
+            KNN_output = KNN_df.Bulb_Type.tolist()
+        elif type_or_name == 'name':
+            KNN_output = KNN_df.Name.tolist()
+        
+        print(KNN_input)
+        print()
+        print(KNN_output)
+
+
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
 class raw_waveform_processing():
@@ -1341,7 +1397,7 @@ class brf_classification():
                 if i < num_test_waveforms: #determines number of test/training waveforms
                     if classification_type == 'name':
                         input_param_list.append(input_param)
-                        output_param_list.append(bulb_type)                        
+                        output_param_list.append(bulb_type)
                         # KNN_prediction_list.append([input_param, brf_name])
                     elif classification_type == 'type':
                         input_param_list.append(input_param)
@@ -1370,7 +1426,6 @@ class brf_classification():
         else:
             KNN_prediction_list = list(zip(input_param_list, output_param_list))
             return KNN_input, KNN_output, KNN_prediction_list
-
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
     def train_KNN(KNN_input, KNN_output, KNN_prediction_list, number_neighbors, classification_type, single_or_double, num_features, weights):
@@ -1404,11 +1459,15 @@ class brf_classification():
         
         no_match = True
 
+        # grabs first bulb...?
         bulb_type = brf_database.Bulb_Type.tolist()[0]
         # same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
         name_list = database_processing.database_to_list(brf_database.Name)
 
         #requires and input list and output list to train the model
+        # classification_list is either:
+        # 1) all unique BRFs, or
+        # 2) Bulb types
         if Entire:
             brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, single_or_double, num_features, weights)
             if classification_type == 'name':
@@ -1429,6 +1488,7 @@ class brf_classification():
             tallied_matrix = np.zeros((len(classification_list), len(classification_list)))
             total_matrix = np.zeros((len(classification_list), len(classification_list)))
         else:
+            # get rid of tallied matrix stuff?? this was just for debugging initially
             tallied_matrix = np.zeros((len(name_list), len(name_list)))
             total_matrix = np.zeros((len(name_list), len(name_list)))
 
@@ -1695,6 +1755,7 @@ class brf_classification():
             print()
 
 if __name__ == "__main__":
+    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
     brf_database = database_processing(database_path).brf_database
 
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
@@ -1715,7 +1776,9 @@ if __name__ == "__main__":
     weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
 
-    brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
+    # database_processing.pickle_KNN_in_out(brf_database, 'double', 7, pkl_path)
+    database_processing.load_KNN_pickle(pkl_path, 'type')
+    # brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
