@@ -3,14 +3,13 @@ import numpy as np
 import pandas as pd
 from scipy import signal, stats
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
 from itertools import product
 import matplotlib.pyplot as plt
 import math
 import os
 import seaborn as sn
+
 
 #CLEAN UP TIME
 #TODO: feature_analysis: condense and make it so that I can just include different feature names and they'll spit out the right graphs; clear_lists has gotta go
@@ -122,7 +121,7 @@ class plots():
         plt.clf()
 
     #confusion matrix for bulb types only
-    def confusion_matrix_type(ground_list, predicted_list, bulb_types, title):
+    def confusion_matrix_type(ground_list, predicted_list, bulb_types):
         bulb_types_list = list(bulb_types[:4])
         bulb_types = list(bulb_types)
         prediction_matrix = np.zeros((len(bulb_types_list),len(bulb_types_list)))
@@ -136,17 +135,15 @@ class plots():
             if ground_index < 4 and predicted_index < 4: #excluding halogen-xenon and halogen-incandescent
                 prediction_matrix[ground_index][predicted_index] += 1
                 total[ground_index][:] += 1
-
+        
         confusion_matrix = np.divide(prediction_matrix, total)
         
         df_cm = pd.DataFrame(confusion_matrix, index = [i for i in bulb_types_list], columns = [i for i in bulb_types_list])
-        #(12,7) if just figure title
-        plt.figure(figsize = (13,9))
+        plt.figure(figsize = (10,7))
         sn.heatmap(df_cm, annot=True)
-        plt.title(title)
+        plt.title('Confusion Matrix of Bulb Types')
         plt.xlabel('Predicted', fontsize = 16)
         plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(va = 'center')
         plt.show()
 
     #issues with the ticks for a confusion matrix of the entire BRF database
@@ -205,14 +202,6 @@ class plots():
         plt.savefig(save_path)
         plt.close()
 
-    def misclass_bar_graph(name_list, misclassification_array, plot_title):
-        # plt.figure(figsize = (15,8))
-        plt.figure(figsize = (15,5))
-        plt.bar(name_list, misclassification_array)
-        plt.xticks(rotation = 45, ha = 'right', fontsize = 8)
-        plt.tight_layout()
-        plt.title(plot_title)
-        plt.show()
 
 #this class does all the processing on the database side from the master CSV file
 class database_processing():
@@ -322,87 +311,6 @@ class database_processing():
             CI95_list.append(CI95)
 
         return mean_list, CI95_list
-
-    '''
-    #pkl file with both the bulb type and the name for output labels
-    #ordered by: Input | Bulb_Type | Name
-
-    INPUT:
-        brf_database        Entire BRF database
-        single_or_double    Single cycle or double cycle?
-        num_features        Double check to see if using the right number of features
-
-    OUTPUT:
-        pkl file of dataframe that is ordered by:
-        
-        Features | Bulb_Type | Name
-                    ...
-    '''
-    def pkl_KNN_in_out(brf_database, single_or_double, num_features, save_path):
-        brf_database_list = database_processing.database_to_list(brf_database)
-        
-        KNN_input = list()
-        KNN_output_type = list([])
-        KNN_output_name = list([])
-
-        #index 0: Folder Name
-        #index 1: BRF Name
-        #index 2: Bulb Type
-        for i in range(len(brf_database_list)):
-            folder_name = brf_database_list[i][0]
-            brf_name = brf_database_list[i][1]
-            bulb_type = brf_database_list[i][2]
-            extracted_lists = brf_extraction(folder_name, single_or_double)
-            time_list = extracted_lists.time_list
-            waveform_list = extracted_lists.brf_list
-            #ignoring the first waveform – will use that for classification
-            for i in range(len(waveform_list)):
-                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
-                # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
-                angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
-                integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
-                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
-                peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
-                crest_factor = brf_analysis.crest_factor(waveform_list[i])
-                kurtosis = brf_analysis.kurtosis(waveform_list[i])
-                skew = brf_analysis.skew(waveform_list[i])
-                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                # input_param = np.array([crest_factor, kurtosis, skew])
-                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
-                
-                assert len(input_param) == num_features
-
-                KNN_input.append(input_param)
-                KNN_output_type.append(bulb_type)
-                KNN_output_name.append(brf_name)
-            print(f'{brf_name} Finished') #this is just to make sure the program is running properly
-
-        d = {'Features': KNN_input, 'Bulb_Type': KNN_output_type, 'Name': KNN_output_name}
-        df = pd.DataFrame(data = d)
-        df.to_pickle(save_path + '//KNN.pkl')
-        df.to_csv(save_path + '//KNN.csv')
-
-    '''
-    loads the pkl file and makes a dataframe of the inputs and the outputs ("type" or "name" is specified)
-
-    INPUT:
-        pkl_path                pkl file path
-        classification_type     "type" or "name" output classification
-
-    OUTPUT:
-        KNN_input               list of feature inputs
-        KNN_output              feature labels (either "type" or "name")
-    '''
-    def load_KNN_pkl(pkl_path, classification_type):
-        KNN_df = pd.read_pickle(pkl_path)
-        KNN_input = KNN_df.Features.tolist()
-        if classification_type == 'type':
-            KNN_output = KNN_df.Bulb_Type.tolist()
-        elif classification_type == 'name':
-            KNN_output = KNN_df.Name.tolist()
-
-        return KNN_input, KNN_output
-
 
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
@@ -1054,6 +962,21 @@ class brf_analysis():
 
         os.chdir(cwd)
 
+    #brf is a column vector; len(brf) x 1 matrix
+    def PCA(brf_list, num_components):
+        row_mean = np.array([np.mean(brf_list, axis = 1)]).T
+
+        A = brf_list - row_mean
+        print(f'A Shape: {A.shape}')
+        U,S,V_T = np.linalg.svd(A, full_matrices = False)
+        V = V_T.T
+        print(f'V Shape: {V.shape}')
+        w = V[:,:num_components]
+        print(f'w Shape: {w.shape}')
+        pca_brf_list = w.T@brf_list.T
+
+        return pca_brf_list, w
+
     #redo this method – make it cleaner
     #this method almost turned out just as ugly as the previous one...
     #spits out bar graphs of the mean of each feature with 95% confidence intervals
@@ -1302,6 +1225,7 @@ class brf_analysis():
             clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
             
 
+
 class brf_classification():
     #Sheinin et al. BRF comparison method 
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
@@ -1363,155 +1287,71 @@ class brf_classification():
             predicted_list = list([])
             print()
 
-    '''
-    processes the input and output list for training, in addition to the prediction_list (aka testing set)
+    def KNN_in_out(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features):
+        brf_database_list = database_processing.database_to_list(brf_database)
+        
+        KNN_input = list()
+        KNN_output = list([])
 
-    INPUT:
-        pkl_path                path for pickle file
-        type                    bulb type; used if the confusion matrix is for unique BRFs w.r.t. a bulb type
-        classification_type     'name' or 'type' classification
-        num_test_waveforms      number of waveforms to form the test set (it not using k-fold cross validation)
-        num_features            number of features used for KNN; used for assertion statement
-        k_fold_CV               True or False for whether to use k-fold or not
+        #for each element:
+        #   index 0: [crest factor, kurtosis, skew]
+        #   index 1: BRF name
+        crest_factor_prediction = np.array([])
+        kurtosis_prediction = np.array([])
+        skew_prediction = np.array([])
+        # brf_name_output_label = list([])
+        KNN_prediction_list = list([])
 
-    OUTPUT:
-        KNN_input               training input for KNN
-        KNN_output              training output for KNN
-        KNN_prediction_list     test set for KNN
+        #index 0: Folder Name
+        #index 1: BRF Name
+        #index 2: Bulb Type
+        for i in range(len(brf_database_list)):
+            folder_name = brf_database_list[i][0]
+            brf_name = brf_database_list[i][1]
+            bulb_type = brf_database_list[i][2]
+            extracted_lists = brf_extraction(folder_name, single_or_double)
+            time_list = extracted_lists.time_list
+            waveform_list = extracted_lists.brf_list
+            #ignoring the first waveform – will use that for classification
+            for i in range(len(waveform_list)):
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
+                # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
+                angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
+                integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
+                peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
+                crest_factor = brf_analysis.crest_factor(waveform_list[i])
+                kurtosis = brf_analysis.kurtosis(waveform_list[i])
+                skew = brf_analysis.skew(waveform_list[i])
+                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
+                # input_param = np.array([crest_factor, kurtosis, skew])
+                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                
+                assert len(input_param) == num_features
 
-    THIS METHOD NEEDS TO BE CHANGED TO JUST INCLUDE THE BULB TYPE AND NAME OUTPUT IN KNN_prediction_list
-    '''
+                # input_param = [crest_factor, kurtosis, skew]
+                if i < num_test_waveforms: #determines number of test/training waveforms
+                    if classification_type == 'name':
+                        KNN_prediction_list.append([input_param, brf_name])
+                    elif classification_type == 'type':
+                        KNN_prediction_list.append([input_param, bulb_type])
+                    # brf_name_output_label.append(brf_name)
+                    # brf_name_output_label.append(bulb_type)
+                else:
+                    KNN_input.append(input_param)
+                    if classification_type == 'name':
+                        KNN_output.append(brf_name)
+                    if classification_type == 'type':
+                        KNN_output.append(bulb_type)
+            print(f'{brf_name} Finished') #this is just to make sure the program is running properly
 
-    def KNN_in_out_pkl(pkl_path, type, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, split_number):
-        if k_fold_CV:
-            #for now, only using k-fold with 'type'; identifying BRFs uniquely isn't ready yet
-            assert classification_type == 'type'
+        KNN_input = np.vstack((KNN_input))
 
-            KNN_df = pd.read_pickle(pkl_path)
-            name_list = KNN_df.Name.unique()
-            type_list = list()
-            feature_list = list()
-            for name in name_list:
-                name_df = KNN_df.loc[KNN_df['Name'] == name]
-                bulb_type = name_df.Bulb_Type.tolist()[0] #grab the first item; they all should be the same
-                feature_list.append(list(name_df.Features.tolist()))
-                type_list.append(bulb_type)
+        return KNN_input, KNN_output, KNN_prediction_list
 
-            assert len(name_list) == len(feature_list)
-
-            unique_type_list = list(set(type_list))
-            
-            '''
-            temp_input_train        array of arrays; [[[num_features], [num_features], ... , [num_features]], ...
-                                                        , [[num_features], [num_features], ... , [num_features]]]
-                                    [num_features] is an array of length num_features
-            temp_output_train       zipped list of list of name_list and type_list
-
-            temp_input_test         format is same as temp_input_train, but size is smaller
-            temp_output_test        zipped list of list of name_list and type_list
-            '''
-
-            #order for classification_list is (name, type)
-            classification_list = list(zip(name_list, type_list))
-
-            temp_input_train, temp_input_test, temp_output_train, temp_output_test = train_test_split(feature_list, classification_list, test_size=0.2, random_state=split_number)
-            # temp_input_train, temp_input_test, temp_output_train, temp_output_test = train_test_split(feature_list, type_list, test_size=0.2, random_state=2)
-            
-            output_train_unzipped = list(zip(*temp_output_train))
-            output_test_unzipped = list(zip(*temp_output_test))
-
-            # for now, only using bulb types (hence 'output_train_unzipped[1]')
-            temp_output_train = output_train_unzipped[1]
-            temp_output_test = output_test_unzipped[1]
-            
-            temp_output_train_name = output_train_unzipped[0]
-            temp_output_test_name = output_test_unzipped[0]
-
-            assert list(set(temp_output_train_name) & set(temp_output_test_name)) == []
-            assert len(temp_input_train) == len(temp_output_train)
-            assert len(temp_input_test) == len(temp_output_test)
-
-            KNN_input_train = list()
-            KNN_output_train = list()
-
-            KNN_input_test = list()
-            KNN_output_test = list()
-            KNN_prediction_name_list = list()
-
-            for i in range(len(temp_input_train)):
-                num_items = len(temp_input_train[i])
-                KNN_input_train.extend(temp_input_train[i])
-                KNN_output_train.extend(list([temp_output_train[i]]) * num_items)
-
-            for i in range(len(temp_input_test)):
-                num_items = len(temp_input_test[i])
-                KNN_input_test.extend(temp_input_test[i])
-                KNN_output_test.extend(list([temp_output_test[i]]) * num_items)
-                KNN_prediction_name_list.extend(list([temp_output_test_name[i]]) * num_items)
-
-            assert len(KNN_input_train) == len(KNN_output_train)
-            assert len(KNN_input_test) == len(KNN_output_test)
-
-            # print(f'Number of training samples: {len(KNN_output_train)}')
-
-            # KNN_input, KNN_output = database_processing.load_KNN_pkl(pkl_path, classification_type)
-            # KNN_input_train, KNN_input_test, KNN_output_train, KNN_output_test = train_test_split(KNN_input, KNN_output, test_size=0.2, random_state=0)
-            
-            KNN_prediction_list = list(zip(KNN_input_test, KNN_output_test, KNN_prediction_name_list))
-            return KNN_input_train, KNN_output_train, KNN_prediction_list
-        else:
-            KNN_df = pd.read_pickle(pkl_path)
-
-            if type != None:
-                KNN_df = KNN_df.loc[KNN_df['Bulb_Type'] == type]
-
-            KNN_input = list()
-            KNN_output = list()
-
-            input_param_list = list()
-            output_param_list = list()
-            name_param_list = list()
-
-            unique_outputs = KNN_df.Name.unique()
-
-            for output in unique_outputs:
-                brf_df = KNN_df.loc[KNN_df['Name'] == output]
-
-                input_list = brf_df.Features.tolist()
-                type_list = brf_df.Bulb_Type.tolist()
-                name_list = brf_df.Name.tolist()
-
-                assert len(input_list) == len(type_list)
-                assert len(type_list) == len(name_list)
-
-                for i in range(len(input_list)):
-                    if i < num_test_waveforms: #determines number of test/training waveforms
-                        if classification_type == 'name':
-                            input_param_list.append(input_list[i])
-                            output_param_list.append(name_list[i])
-                            name_param_list.append(name_list[i])
-                            # KNN_prediction_list.append([input_param, brf_name])
-                        elif classification_type == 'type':
-                            input_param_list.append(input_list[i])
-                            output_param_list.append(type_list[i])
-                            name_param_list.append(name_list[i])
-                            # KNN_prediction_list.append([input_param, bulb_type])
-                    else:
-                        KNN_input.append(input_list[i])
-                        if classification_type == 'name':
-                            KNN_output.append(name_list[i])
-                        if classification_type == 'type':
-                            KNN_output.append(type_list[i])
-
-            KNN_input = np.vstack((KNN_input))
-            KNN_prediction_list = list(zip(input_param_list, output_param_list, name_param_list))
-
-            assert len(KNN_input[0]) == num_features
-
-            return KNN_input, KNN_output, KNN_prediction_list
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
-    def train_KNN(KNN_input, KNN_output, number_neighbors, classification_type, single_or_double, num_features, weights):
+    def train_KNN(KNN_input, KNN_output, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights):
 
         # https://stackoverflow.com/questions/50064632/weighted-distance-in-sklearn-knn
         #angle of inflection, integral ratio, integral average, peak location, crest factor, kurtosis, skew
@@ -1533,123 +1373,74 @@ class brf_classification():
 
         brf_KNN_model.fit(KNN_input, KNN_output)
 
-        return brf_KNN_model
+        return brf_KNN_model, KNN_prediction_list
 
-    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, MisClass): #True or False for tallied
-        #this assert statement should always hold because the pairing does not make sense
-        if classification_type == 'type':
-            assert Entire == True
-
+    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch): #True or False for tallied
         no_match = True
 
-        # grabs first bulb
         bulb_type = brf_database.Bulb_Type.tolist()[0]
-        # same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
-        name_list = database_processing.database_to_list(brf_database.Name)
+        same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
+        same_type_name_list = database_processing.database_to_list(same_type_database.Name)
 
         #requires and input list and output list to train the model
-        # classification_list is either:
-        # 1) all unique BRFs, or
-        # 2) Bulb types
         if Entire:
-            brf_KNN_model = brf_classification.train_KNN(KNN_in, KNN_out, number_neighbors, classification_type, single_or_double, num_features, weights)
-            if classification_type == 'name':
-                classification_list = database_processing.database_to_list(brf_database.Name)
-            elif classification_type == 'type':
-                classification_list = brf_database.Bulb_Type.unique()
-        #this statement is for the case that we want to see how BRFs are classified w.r.t. their bulb type category
+            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights)
+            entire_name_list = database_processing.database_to_list(brf_database.Name)
         else:
-            brf_KNN_model = brf_classification.train_KNN(KNN_in, KNN_out, number_neighbors, classification_type, single_or_double, num_features, weights)
-
-        # only doing misclassification graphs for bulb type at the moment
-        if classification_type == 'type':
-            misclassification_array = np.zeros(len(name_list))
-            total_misclass_array = np.zeros(len(classification_list))
+            KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
+            brf_KNN_model, KNN_prediction_list = brf_classification.train_KNN(KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights)
 
         ground_list = list([])
         predicted_list = list([])
 
         true_positive = 0
-        num_wrong = 0
         false_neg = 0
         total = len(KNN_prediction_list)
 
         if Entire:
-            tallied_matrix = np.zeros((len(classification_list), len(classification_list)))
-            total_matrix = np.zeros((len(classification_list), len(classification_list)))
+            tallied_matrix = np.zeros((len(entire_name_list), len(entire_name_list)))
+            total_matrix = np.zeros((len(entire_name_list), len(entire_name_list)))
         else:
-            # get rid of tallied matrix stuff?? this was just for debugging initially
-            tallied_matrix = np.zeros((len(name_list), len(name_list)))
-            total_matrix = np.zeros((len(name_list), len(name_list)))
+            tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+            total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
 
-        '''
-        index 0: feature array
-        index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
-        index 2: brf name
-        '''
-        
-        # GROUND LIST IS APPENDING WRONG LABEL
         for prediction in KNN_prediction_list:
             input_data = prediction[0]
             expected_output = prediction[1]
-            brf_name = prediction[2]
+            output = brf_KNN_model.predict([input_data])[0]
 
-            # output = brf_KNN_model.predict([input_data])[0]
-
-            # probabilities = brf_KNN_model.predict_proba([input_data])[0]
-            # row_total = np.full(probabilities.shape, number_neighbors)
+            probabilities = brf_KNN_model.predict_proba([input_data])[0]
+            row_total = np.full(probabilities.shape, number_neighbors)
 
             neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
-            neighbor_indices = neighbor_indices[:1]
-
-            #CHECKING k CLOSEST NEIGHBORS
-            # nearest neighbors approach
+            # print(f'{expected_output}; Index = {index}')
             for model_index in neighbor_indices:
-                # print(model_index)
                 if Entire:
-                    classification_list_index = brf_KNN_model._y[model_index]
-                    
-                    if classification_list[classification_list_index] == expected_output:
-                        # print(classification_list[classification_list_index])
-                        # print(expected_output)
-                        # print()
-                        true_positive += 1
-                        ground_list.append(expected_output)
-                        predicted_list.append(expected_output)
-                        no_match = False
-                        break
-
+                    entire_name_list_index = brf_KNN_model._y[model_index]
                 else:
-                    name_list_index = brf_KNN_model._y[model_index]
-
-                    if name_list[name_list_index] == expected_output:
+                    same_type_name_list_index = brf_KNN_model._y[model_index]
+                # print(same_type_name_list_index)
+                if Entire:
+                    if entire_name_list[entire_name_list_index] == expected_output:
                         true_positive += 1
                         ground_list.append(expected_output)
                         predicted_list.append(expected_output)
                         no_match = False
                         break
-
-            #fall back on the default "predict" method 
-            # if no_match:
-            #     #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
-            #     if expected_output == output:
-            #         print('Predict catch:')
-            #         print(expected_output)
-            #         print(output)
-            #         print()
-            #         true_positive += 1
-            #     #else the match is wrong
-            #     else:
-            #         if classification_type == 'type':
-            #             num_wrong = num_wrong + 1
-            #             index_output = name_list.index(brf_name)
-            #             misclassification_array[index_output] = misclassification_array[index_output] + 1
-            #     ground_list.append(expected_output)
-            #     predicted_list.append(output)
-
-            # index_expected = classification_list.index(expected_output)
-            # total_misclass_array[index_expected] += 1
+                else:
+                    if same_type_name_list[same_type_name_list_index] == expected_output:
+                        true_positive += 1
+                        ground_list.append(expected_output)
+                        predicted_list.append(expected_output)
+                        no_match = False
+                        break
+            if no_match:
+                #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
+                if expected_output == output:
+                    true_positive += 1
+                ground_list.append(expected_output)
+                predicted_list.append(output)
 
             no_match = True
 
@@ -1658,7 +1449,7 @@ class brf_classification():
                 probabilities = brf_KNN_model.predict_proba([input_data])
                 row_total = np.full(probabilities.shape,number_neighbors)
 
-                expected_index = name_list.index(expected_output)
+                expected_index = same_type_name_list.index(expected_output)
 
                 #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
                 temp_probabilities_matrix = np.zeros(probabilities.shape)
@@ -1680,87 +1471,167 @@ class brf_classification():
 
                 brf_KNN_model = None
 
-        # this should be accuracy...?
-        accuracy = true_positive/total
+        precision = true_positive/total
 
-        #GridSearch parameter is just used to return overall accuracy
         if GridSearch:
             assert Entire == True
-            return accuracy
-        if not MisClass:
-            if Tallied:
-                tallied_accuracy = np.trace(tallied_matrix)/np.trace(total_matrix)
-                plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_accuracy}')
-            if Entire:
-                if classification_type == 'name':
-                    plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
-                elif classification_type == 'type':
-                    # plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
-                    plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\nAccuracy: {accuracy}')
-            else:
-                plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+            return precision
 
-        if MisClass and classification_type == 'type':
-            # print('Current fold misclassification')
-            # plots.misclass_bar_graph(name_list, misclassification_array, 'Misclassification Bar Graph')
-            return misclassification_array, true_positive, total
+        if Tallied:
+            tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
+        if Entire:
+            plots.confusion_matrix_unique(ground_list, predicted_list, entire_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+        else:
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
 
     #get different KNN_in, KNN_out, KNN_prediction_list, and then RUN THE METHOD
-    #not meant for 'name' yet(?)
-    def KNN_analysis_pkl(pkl_path, brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, num_splits, MisClass):
+    def KNN_analysis(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch):
         if Entire:
-            name_list = database_processing.database_to_list(brf_database.Name)
-            k_fold_misclassification = np.zeros(len(name_list))
-            num_true_positive = 0
-            total = 0
-            random_state = 0
-            split_number = 0
-            for number_neighbors in range(2, 11, 1):
-                print(f'Number of Neighbors: {number_neighbors}')
-                while split_number < num_splits:
-                    # print(f'Split Number: {split_number + 1}')
-                    KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
-                    if classification_type == 'type':
-                        '''
-                        index 0: feature array
-                        index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
-                        index 2: brf name
-                        '''
-                        unique_type_list = list(set(list(zip(*KNN_prediction_list))[1]))
-                        if len(unique_type_list) < 4:
-                            random_state = random_state + 1
-                            continue
-                    misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, MisClass)
-                    # print('Accumulative misclassification')
-                    k_fold_misclassification = k_fold_misclassification + misclassification_array
-                    # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
-                    
-                    num_true_positive = num_true_positive + k_true_positive
-                    total = total + k_total
-                    random_state = random_state + 1
-                    split_number = split_number + 1
-                
-                # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
-                print(f'Accuracy after {num_splits} folds: {num_true_positive / total}')
-                
-                k_fold_misclassification = np.zeros(len(name_list))
-                num_true_positive = 0
-                total = 0
-                random_state = 0
-                split_number = 0
+            KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out(brf_database, 3, 'name', 3, 'double', 7)
+            brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch)
         else:
             bulb_type_list = database_processing.return_bulb_types(brf_database)
             for bulb_type in bulb_type_list:
                 print(bulb_type)
                 same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
-                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, bulb_type, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV)
+                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out(same_type_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features)
                 brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch)
-                print()
 
-    '''
-    THIS METHOD IS OUTDATED
-    uses old "KNN_in_out" method
-    '''
+    #I AM REWRITING CODE AGAIN; FIX LATER FOR A GENERAL KNN MODEL
+    def PCA_KNN(brf_database, single_or_double, num_training, num_components, num_neighbors): #num_training ==> number of waveforms for training
+        bulb_types = database_processing.return_bulb_types(brf_database)
+        brf_database_list = database_processing.database_to_list(brf_database)
+
+        bulb_type_list = database_processing.return_bulb_types(brf_database)
+
+        for bulb_type in bulb_type_list:
+            print(bulb_type)
+            same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
+            same_type_database_list = database_processing.database_to_list(same_type_database)
+            same_type_name_list = database_processing.database_to_list(database_processing.return_names(same_type_database))
+
+            brf_database_list = same_type_database_list
+            
+            length_list = np.array([])
+            
+            training_list = []
+            training_label_list = []
+
+            test_list = []
+            test_label_list = []
+
+            ground_list = list([])
+            predicted_list = list([])
+
+            for i in range(len(brf_database_list)):
+                #right now, going to truncate all waveforms, but need to figure out how to interpolate later; maybe it doesn't matter because there's a lot of points?
+
+                folder_name = brf_database_list[i][0]
+                brf_name = brf_database_list[i][1]
+                bulb_type = brf_database_list[i][2]
+                extracted_lists = brf_extraction(folder_name, single_or_double)
+                time_list = extracted_lists.time_list
+                waveform_list = extracted_lists.brf_list
+
+                print(brf_name)
+
+                for j in range(len(waveform_list)):
+                    if j < num_training:
+                        length_list = np.hstack((length_list, len(waveform_list[j])))
+                        training_list.append(waveform_list[j])
+                        training_label_list.append(brf_name)
+                    else:
+                        length_list = np.hstack((length_list, len(waveform_list[j])))
+                        test_list.append(waveform_list[j])
+                        test_label_list.append(brf_name)
+
+            min_length = int(np.amin(length_list))
+            max_length = int(np.amax(length_list))
+
+            mean_length = np.mean(length_list)
+            std_length = math.sqrt(np.sum((length_list-mean_length)**2/(len(length_list)-1)))
+
+            training_data = np.ones((min_length))
+            test_data = np.ones((min_length))
+
+            print(f'Min length: {min_length}')
+            print(f'Max length: {max_length}')
+            print(f'Mean length: {mean_length}')
+            print(f'STD: {std_length}')
+
+            #FIGURE OUT SOME WAY FOR INTERPOLATION
+
+            for j in range(len(training_list)):
+                training_data = np.vstack((training_data, training_list[j][:min_length]))
+
+            for j in range(len(test_list)):
+                test_data = np.vstack((test_data, test_list[j][:min_length]))
+
+            training_data = training_data[1:len(training_data)]
+            test_data = test_data[1:len(test_data)]
+
+            pca_training_data, w = brf_analysis.PCA(training_data, num_components)
+
+            pca_test_data = w.T@test_data.T
+
+            pca_training_data = pca_training_data.T
+            pca_test_data = pca_test_data.T
+
+            KNN_classifier = KNeighborsClassifier(n_neighbors = num_neighbors)
+            KNN_classifier.fit(pca_training_data, training_label_list)
+
+            true_positive = 0
+            total = len(pca_test_data)
+
+            tallied_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+            total_matrix = np.zeros((len(same_type_name_list), len(same_type_name_list)))
+
+            for j in range(len(pca_test_data)):
+                input_data = pca_test_data[j]
+                expected_output = test_label_list[j]
+                output = KNN_classifier.predict([input_data])[0]
+
+                ground_list.append(expected_output)
+                predicted_list.append(output)
+
+                if expected_output == output:
+                    # print(f'Expected: {expected_output}; Output: {output}')
+                    true_positive += 1
+
+                probabilities = KNN_classifier.predict_proba([input_data])
+                row_total = np.full(probabilities.shape,num_neighbors)
+
+                expected_index = same_type_name_list.index(expected_output)
+
+                #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
+                temp_probabilities_matrix = np.zeros(probabilities.shape)
+                temp_total_matrix = np.zeros(probabilities.shape)
+                zeros_row = np.zeros(probabilities.shape)
+                for i in range(len(tallied_matrix)):
+                    if i == expected_index:
+                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,probabilities))
+                        temp_total_matrix = np.vstack((temp_total_matrix,row_total))
+                    else:
+                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
+                        temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
+
+                #removing first row
+                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*num_neighbors
+                temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
+
+                tallied_matrix += temp_probabilities_matrix
+                total_matrix += temp_total_matrix
+
+            tallied_precision = np.trace(tallied_matrix)/np.trace(total_matrix)
+
+            precision = true_positive/total
+            print(f'Precision: {precision}')
+            print()
+
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, same_type_name_list, f'Tallied Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_precision}')
+            plots.confusion_matrix_unique(ground_list, predicted_list, same_type_name_list, f'Confusion Matrix for {bulb_type} Bulb Type Using PCA KNN with {num_components} Features \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {precision}')
+
     def grid_search(brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, end_weight, step_length, Tallied, Entire):
         num_best = 10
         weights = np.arange(0, end_weight+step_length, step_length)
@@ -1772,27 +1643,25 @@ class brf_classification():
         for i in range(num_features):
             weights_list.append(weights)
         weight_combinations = list(product(*weights_list))
-        accuracy_list = list(np.zeros((num_best)))
+        precision_list = list(np.zeros((num_best)))
         weights_list = list(np.zeros((num_best)))
         for i in range(len(weight_combinations)):
             weights = weight_combinations[i]
-            accuracy = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, True)
-            for j in range(len(accuracy_list)):
-                if accuracy > accuracy_list[j]:
-                    accuracy_list[j] = accuracy
+            precision = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, True)
+            for j in range(len(precision_list)):
+                if precision > precision_list[j]:
+                    precision_list[j] = precision
                     weights_list[j] = weights
                     break
-            print(f'Accuracy: {accuracy}')
+            print(f'Precision: {precision}')
             print(f'{i+1}/{len(weight_combinations)} Combinations Completed')
             print()
-        for i in range(len(accuracy_list)):
-            print(f'Accuracy: {accuracy_list[i]}')
+        for i in range(len(precision_list)):
+            print(f'Precision: {precision_list[i]}')
             print(f'Weights: {weights_list[i]}')
             print()
 
 if __name__ == "__main__":
-    csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
-    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
     brf_database = database_processing(database_path).brf_database
 
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
@@ -1803,22 +1672,12 @@ if __name__ == "__main__":
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
 
-    #taking out these BRFs increased accuracy
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_halogenxenon_39w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_halogenincandescent_65w'].index)
-
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
     weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-    # brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
-
-    # brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
-    
-    # database_processing.pkl_KNN_in_out(brf_database, 'double', 7, csv_pkl_save_path)
-    #TODO: something is wrong with evaluating entire KNN
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = False, num_splits = 12, MisClass = True)
+    brf_classification.KNN_analysis(brf_database, 400, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
