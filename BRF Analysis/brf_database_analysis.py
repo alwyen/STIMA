@@ -1535,10 +1535,12 @@ class brf_classification():
 
         return brf_KNN_model
 
-    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, MisClass): #True or False for tallied
+    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass): #True or False for tallied
         #this assert statement should always hold because the pairing does not make sense
         if classification_type == 'type':
             assert Entire == True
+        elif classification_type == 'name':
+            assert MisClass == False
 
         no_match = True
 
@@ -1562,7 +1564,7 @@ class brf_classification():
             brf_KNN_model = brf_classification.train_KNN(KNN_in, KNN_out, number_neighbors, classification_type, single_or_double, num_features, weights)
 
         # only doing misclassification graphs for bulb type at the moment
-        if classification_type == 'type':
+        if MisClass and classification_type == 'type':
             misclassification_array = np.zeros(len(name_list))
             total_misclass_array = np.zeros(len(classification_list))
 
@@ -1587,21 +1589,20 @@ class brf_classification():
         index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
         index 2: brf name
         '''
-        
-        # GROUND LIST IS APPENDING WRONG LABEL
+
         for prediction in KNN_prediction_list:
             input_data = prediction[0]
             expected_output = prediction[1]
             brf_name = prediction[2]
 
-            # output = brf_KNN_model.predict([input_data])[0]
+            output = brf_KNN_model.predict([input_data])[0]
 
             # probabilities = brf_KNN_model.predict_proba([input_data])[0]
             # row_total = np.full(probabilities.shape, number_neighbors)
 
             neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
 
-            neighbor_indices = neighbor_indices[:1]
+            # neighbor_indices = neighbor_indices[:1]
 
             #CHECKING k CLOSEST NEIGHBORS
             # nearest neighbors approach
@@ -1631,25 +1632,33 @@ class brf_classification():
                         break
 
             #fall back on the default "predict" method 
-            # if no_match:
-            #     #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
-            #     if expected_output == output:
-            #         print('Predict catch:')
-            #         print(expected_output)
-            #         print(output)
-            #         print()
-            #         true_positive += 1
-            #     #else the match is wrong
-            #     else:
-            #         if classification_type == 'type':
-            #             num_wrong = num_wrong + 1
-            #             index_output = name_list.index(brf_name)
-            #             misclassification_array[index_output] = misclassification_array[index_output] + 1
-            #     ground_list.append(expected_output)
-            #     predicted_list.append(output)
+            if no_match:
+                #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
+                if expected_output == output:
+                    # print('Predict catch:')
+                    # print(expected_output)
+                    # print(output)
+                    # print()
+                    true_positive += 1
+                #else the match is wrong
+                else:
+                    if MisClass and classification_type == 'type':
+                        num_wrong = num_wrong + 1
+                        index_output = name_list.index(brf_name)
+                        misclassification_array[index_output] = misclassification_array[index_output] + 1
+                ground_list.append(expected_output)
+                predicted_list.append(output)
 
-            # index_expected = classification_list.index(expected_output)
-            # total_misclass_array[index_expected] += 1
+
+            # if no_match:
+            #     num_wrong = num_wrong + 1
+            #     index_output = name_list.index(brf_name)
+            #     if MisClass and classification_type == 'type':
+            #         misclassification_array[index_output] = misclassification_array[index_output] + 1
+            #     ground_list.append(expected_output)
+            #     closest_neighbor_index = brf_KNN_model._y[neighbor_indices[0]] #closest neighbor indice
+            #     closest_neighbor = classification_list[closest_neighbor_index]
+            #     predicted_list.append(closest_neighbor)
 
             no_match = True
 
@@ -1687,20 +1696,20 @@ class brf_classification():
         if GridSearch:
             assert Entire == True
             return accuracy
-        if not MisClass:
-            if Tallied:
-                tallied_accuracy = np.trace(tallied_matrix)/np.trace(total_matrix)
-                plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_accuracy}')
-            if Entire:
-                if classification_type == 'name':
-                    plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
-                elif classification_type == 'type':
-                    # plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
-                    plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\nAccuracy: {accuracy}')
-            else:
-                plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+        # if not MisClass:
+        if Tallied:
+            tallied_accuracy = np.trace(tallied_matrix)/np.trace(total_matrix)
+            plots.KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nTallied Confusion Matrix for {bulb_type} Bulb Type Using KNN \n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {tallied_accuracy}')
+        if Entire:
+            if classification_type == 'name':
+                plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+            elif classification_type == 'type':
+                # plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+                plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\nAccuracy: {accuracy}')
+        else:
+            plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
 
-        if MisClass and classification_type == 'type':
+        if k_fold_CV and MisClass and classification_type == 'type':
             # print('Current fold misclassification')
             # plots.misclass_bar_graph(name_list, misclassification_array, 'Misclassification Bar Graph')
             return misclassification_array, true_positive, total
@@ -1730,7 +1739,7 @@ class brf_classification():
                         if len(unique_type_list) < 4:
                             random_state = random_state + 1
                             continue
-                    misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, MisClass)
+                    misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
                     # print('Accumulative misclassification')
                     k_fold_misclassification = k_fold_misclassification + misclassification_array
                     # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
@@ -1754,7 +1763,7 @@ class brf_classification():
                 print(bulb_type)
                 same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
                 KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, bulb_type, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV)
-                brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch)
+                brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
                 print()
 
     '''
@@ -1818,7 +1827,7 @@ if __name__ == "__main__":
     
     # database_processing.pkl_KNN_in_out(brf_database, 'double', 7, csv_pkl_save_path)
     #TODO: something is wrong with evaluating entire KNN
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = False, num_splits = 12, MisClass = True)
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = False, num_splits = 12, MisClass = False)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
