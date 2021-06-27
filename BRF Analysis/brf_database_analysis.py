@@ -1595,14 +1595,20 @@ class brf_classification():
             expected_output = prediction[1]
             brf_name = prediction[2]
 
-            output = brf_KNN_model.predict([input_data])[0]
+            # output = brf_KNN_model.predict([input_data])[0]
 
             # probabilities = brf_KNN_model.predict_proba([input_data])[0]
             # row_total = np.full(probabilities.shape, number_neighbors)
 
             neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
+            neighbor_list = list()
 
-            # neighbor_indices = neighbor_indices[:1]
+            for model_index in neighbor_indices:
+                classification_list_index = brf_KNN_model._y[model_index]
+                neighbor = classification_list[classification_list_index]
+                neighbor_list.append(neighbor)
+
+            neighbor_indices = neighbor_indices[:1]
 
             #CHECKING k CLOSEST NEIGHBORS
             # nearest neighbors approach
@@ -1611,6 +1617,9 @@ class brf_classification():
                 if Entire:
                     classification_list_index = brf_KNN_model._y[model_index]
                     
+                    # neighbor = classification_list[classification_list_index]
+                    # neighbor_list.append(neighbor)
+
                     if classification_list[classification_list_index] == expected_output:
                         # print(classification_list[classification_list_index])
                         # print(expected_output)
@@ -1633,19 +1642,38 @@ class brf_classification():
 
             #fall back on the default "predict" method 
             if no_match:
-                #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
-                if expected_output == output:
-                    # print('Predict catch:')
-                    # print(expected_output)
-                    # print(output)
-                    # print()
-                    true_positive += 1
+                output = ''
+                neighbor_labels = list(set(neighbor_list))
+                output_list = list()
+                max_num_labels = 0
+                for label in neighbor_labels:
+                    num_labels = neighbor_list.index(label)
+                    if num_labels > max_num_labels:
+                        output_list.clear()
+                        max_num_labels = num_labels
+                        output_list.append(label)
+                    elif num_labels == max_num_labels:
+                        output_list.append(label)
+
+                for predicted in output_list:
+                    #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
+                    if expected_output == predicted:
+                    # if expected_output == output:
+                        print(expected_output)
+                        print(neighbor_list)
+                        print()
+                        true_positive += 1
+                        output = predicted
+                        break
                 #else the match is wrong
-                else:
-                    if MisClass and classification_type == 'type':
-                        num_wrong = num_wrong + 1
-                        index_output = name_list.index(brf_name)
-                        misclassification_array[index_output] = misclassification_array[index_output] + 1
+                # else:
+                if MisClass and classification_type == 'type':
+                    num_wrong = num_wrong + 1
+                    index_output = name_list.index(brf_name)
+                    misclassification_array[index_output] = misclassification_array[index_output] + 1
+                
+                output = output_list[0]
+
                 ground_list.append(expected_output)
                 predicted_list.append(output)
 
@@ -1726,37 +1754,44 @@ class brf_classification():
             split_number = 0
             for number_neighbors in range(2, 11, 1):
                 print(f'Number of Neighbors: {number_neighbors}')
-                while split_number < num_splits:
-                    # print(f'Split Number: {split_number + 1}')
-                    KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
-                    if classification_type == 'type':
-                        '''
-                        index 0: feature array
-                        index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
-                        index 2: brf name
-                        '''
-                        unique_type_list = list(set(list(zip(*KNN_prediction_list))[1]))
-                        if len(unique_type_list) < 4:
-                            random_state = random_state + 1
-                            continue
-                    misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
-                    # print('Accumulative misclassification')
-                    k_fold_misclassification = k_fold_misclassification + misclassification_array
+                # while split_number < num_splits:
+                #     # print(f'Split Number: {split_number + 1}')
+                #     KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
+                #     if classification_type == 'type':
+                #         '''
+                #         index 0: feature array
+                #         index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
+                #         index 2: brf name
+                #         '''
+                #         unique_type_list = list(set(list(zip(*KNN_prediction_list))[1]))
+                #         if len(unique_type_list) < 4:
+                #             random_state = random_state + 1
+                #             continue
+                #     if classification_type == 'type':
+                #         misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+                #         # print('Accumulative misclassification')
+                #         k_fold_misclassification = k_fold_misclassification + misclassification_array
+                #         # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
+                        
+                #         num_true_positive = num_true_positive + k_true_positive
+                #         total = total + k_total
+                #         random_state = random_state + 1
+                #         split_number = split_number + 1
+                #     elif classification_type == 'name':
+                #         brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+
+                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
+                brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+                
+                if MisClass:
                     # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
+                    print(f'Accuracy after {num_splits} folds: {num_true_positive / total}')
                     
-                    num_true_positive = num_true_positive + k_true_positive
-                    total = total + k_total
-                    random_state = random_state + 1
-                    split_number = split_number + 1
-                
-                # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
-                print(f'Accuracy after {num_splits} folds: {num_true_positive / total}')
-                
-                k_fold_misclassification = np.zeros(len(name_list))
-                num_true_positive = 0
-                total = 0
-                random_state = 0
-                split_number = 0
+                    k_fold_misclassification = np.zeros(len(name_list))
+                    num_true_positive = 0
+                    total = 0
+                    random_state = 0
+                    split_number = 0
         else:
             bulb_type_list = database_processing.return_bulb_types(brf_database)
             for bulb_type in bulb_type_list:
