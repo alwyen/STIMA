@@ -78,21 +78,6 @@ def set_pt2(x, y):
 
 ############################################################
 
-#this method is for clearing lists for the entire database confusion matrix...
-def clear_lists(list0, list1, list2, list3, list4, list5, list6, list7, list8, list9, list10, list11):
-    list0.clear()
-    list1.clear()
-    list2.clear()
-    list3.clear()
-    list4.clear()
-    list5.clear()
-    list6.clear()
-    list7.clear()
-    list8.clear()
-    list9.clear()
-    list10.clear()
-    list11.clear()
-
 #plotting
 class plots():
     #show plot
@@ -104,20 +89,6 @@ class plots():
     def save_plot(waveform, plot_name):
         plt.plot(waveform)
         plt.title(plot_name)
-        plt.savefig(plot_name + '.png')
-        plt.clf()
-
-    #gradient plot
-    def save_gradient_plot(orig_brf, gradient, plot_name):
-        fig, ax = plt.subplots(1, 2, constrained_layout = True)
-        ax[0].plot(orig_brf)
-        ax[0].set_title('Original, Smoothed BRF')
-
-        ax[1].plot(gradient)
-        ax[1].set_title('Smoothed Gradient')
-
-        fig.suptitle(plot_name)
-        fig.set_size_inches(12,6)
         plt.savefig(plot_name + '.png')
         plt.clf()
 
@@ -176,35 +147,6 @@ class plots():
         plt.tight_layout()
         plt.show()
 
-    #confusion matrix of the matches within EACH cluster (e.g. cluster of 9 neighbors); doesn't work well/right, LED matrix looks really wrong
-    def KNN_confusion_matrix_tallies(tallied_matrix, total_matrix, unique_brf_names, title):
-        
-        assert tallied_matrix.shape == total_matrix.shape
-
-        confusion_matrix = np.divide(tallied_matrix, total_matrix)
-
-        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in unique_brf_names], columns = [i for i in unique_brf_names])
-        plt.figure(figsize = (8,7)).tight_layout()
-        sn.heatmap(df_cm)
-        plt.title(title)
-        plt.xlabel('Predicted', fontsize = 16)
-        plt.xticks(rotation = 45, ha = 'right')
-        plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(rotation = 45, va = 'top')
-        plt.tight_layout()
-        plt.show()
-
-    #feature analysis bar graph plotting
-    def feature_analysis_bar_graphs(x_labels, mean_list, CI_list, plot_title, save_path):
-        plt.figure(figsize = (15,8))
-        plt.bar(x_labels, mean_list)
-        plt.errorbar(x_labels, mean_list, yerr = CI_list, fmt = 'o', color = 'r')
-        plt.xticks(rotation = 45, ha = 'right')
-        plt.tight_layout()
-        plt.title(plot_title)
-        plt.savefig(save_path)
-        plt.close()
-
     def misclass_bar_graph(name_list, misclassification_array, plot_title):
         # plt.figure(figsize = (15,8))
         plt.figure(figsize = (15,5))
@@ -247,14 +189,6 @@ class database_processing():
     def __init__(self, database_path):
         whole_database = pd.read_csv(database_path)
         self.brf_database = whole_database.loc[:,['Folder_Name', 'Name', 'Bulb_Type']]
-
-    #returns the names of the names of the database; already unique
-    def return_names(brf_database):
-        return brf_database.Name
-
-    #returns bulb types
-    def return_bulb_types(brf_database):
-        return brf_database.Bulb_Type.unique()
 
     #returns dataframe of a specific bulb type
     def same_type_df(brf_database, bulb_type):
@@ -320,24 +254,6 @@ class database_processing():
 
         return df
 
-    #gets the 95% confidence interval of a feature; features are embedded within the dataframe, which is extracted from the export_all_to_csv method
-    def return_mean_CI_lists(df, method_name_list):
-        mean_list = list([])
-        CI95_list = list([])
-
-        # print(df)
-
-        for method_name in method_name_list:
-            values = df[method_name].tolist()
-            mean = np.mean(values)
-            std = np.std(values)
-            CI95 = 1.96*std/math.sqrt(len(values))
-
-            mean_list.append(mean)
-            CI95_list.append(CI95)
-
-        return mean_list, CI95_list
-
     '''
     #pkl file with both the bulb type and the name for output labels
     #ordered by: Input | Bulb_Type | Name
@@ -360,6 +276,12 @@ class database_processing():
         KNN_output_type = list([])
         KNN_output_name = list([])
 
+        row_list = list()
+
+        max_val = -9999
+        min_val = 9999
+        down_list = list()
+
         #index 0: Folder Name
         #index 1: BRF Name
         #index 2: Bulb Type
@@ -372,30 +294,78 @@ class database_processing():
             waveform_list = extracted_lists.brf_list
             #ignoring the first waveform – will use that for classification
             for i in range(len(waveform_list)):
+                downsampled_BRF = raw_waveform_processing.normalize(signal.resample(waveform_list[i], 1600))
+
+                # smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(downsampled_BRF, savgol_window), mov_avg_w_size)
+                # # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
+                # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
+                # integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+                # int_avg = brf_analysis.cycle_integral_avg(downsampled_BRF, single_or_double)
+                # peak_loc = brf_analysis.peak_location(downsampled_BRF, single_or_double)
+                # crest_factor = brf_analysis.crest_factor(downsampled_BRF)
+                # kurtosis = brf_analysis.kurtosis(downsampled_BRF)
+                # skew = brf_analysis.skew(downsampled_BRF)
+
+                
                 smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
                 # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
-                angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
+                # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
-                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
+                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)                
                 peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
                 # input_param = np.array([crest_factor, kurtosis, skew])
-                input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                
+
+                # input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
                 
                 assert len(input_param) == num_features
 
                 KNN_input.append(input_param)
                 KNN_output_type.append(bulb_type)
                 KNN_output_name.append(brf_name)
+
+                item_list = list()
+                item_list.append(brf_name)
+                item_list.append(bulb_type)
+                for param in input_param:
+                    item_list.append(param)
+                for pt in downsampled_BRF:
+                    item_list.append(pt)
+
+                row_list.append(item_list)
+
+                downsample_amount = len(waveform_list[i]) - len(downsampled_BRF)
+                if downsample_amount < min_val:
+                    min_val = downsample_amount
+                if downsample_amount > max_val:
+                    max_val = downsample_amount
+                down_list.append(downsample_amount)
+
+
+                # plots.show_plot(waveform_list[i])
+                # plots.show_plot(downsampled_BRF)
+
             print(f'{brf_name} Finished') #this is just to make sure the program is running properly
+
+        print(f'Min: {min_val}')
+        print(f'Max: {max_val}')
+        average = np.sum(np.array(down_list)) / len(down_list)
+        print(f'Average: {average}')
 
         d = {'Features': KNN_input, 'Bulb_Type': KNN_output_type, 'Name': KNN_output_name}
         df = pd.DataFrame(data = d)
-        df.to_pickle(save_path + '//KNN.pkl')
-        df.to_csv(save_path + '//KNN.csv')
+
+        df_zeal = pd.DataFrame(row_list)
+
+        df.to_pickle(save_path + '//KNN_downsized.pkl')
+        # df.to_csv(save_path + '//KNN.csv')
+        df_zeal.to_pickle(save_path + '//Zeal_stats.pkl', protocol = 4)
+        df_zeal.to_csv(save_path + '//Zeal_stats.csv')
 
     '''
     loads the pkl file and makes a dataframe of the inputs and the outputs ("type" or "name" is specified)
@@ -512,135 +482,6 @@ class brf_extraction():
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
-    #method for quick testing of feature methods
-    def test_analysis_method(brf_database, method_name, single_or_double, specific_brf = None):
-        brf_database_list = database_processing.database_to_list(brf_database)
-
-        for i in range(len(brf_database_list)):
-            if specific_brf == None:
-                smoothed = None
-                folder_name = brf_database_list[i][0]
-                brf_name = brf_database_list[i][1]
-                bulb_type = brf_database_list[i][2]
-                extracted_lists = brf_extraction(folder_name, single_or_double)
-                time_list = extracted_lists.time_list
-                waveform_list = extracted_lists.brf_list
-            else:
-                # print(brf_database)
-                # print(specific_brf)
-                specific_brf = database_processing.database_to_list(brf_database.loc[brf_database['Name'] == specific_brf])[0]
-                folder_name = specific_brf[0]
-                brf_name = specific_brf[1]
-                bulb_type = specific_brf[2]
-                extracted_lists = brf_extraction(folder_name, single_or_double)
-                time_list = extracted_lists.time_list
-                waveform_list = extracted_lists.brf_list
-            print(brf_name)
-            mean = 0
-            values = np.array([])
-            std = 0
-
-            #below is for writing specific tests for a method
-            if method_name == 'integral_ratio':
-                for j in range(len(waveform_list)): #first 3 waveforms
-                    # smoothed = raw_waveform_processing.savgol(waveform_list[j], savgol_window)
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
-                    values = np.hstack((values, ratio))
-                    # print(ratio)
-                    # print()
-                    plt.plot(x_pt1, smoothed[x_pt1], 'X')
-                    plt.plot(x_pt2, smoothed[x_pt2], 'X')
-                    plt.plot(smoothed)
-                    plt.show()
-
-            elif method_name == 'linearity':
-                for j in range(len(waveform_list)):
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    correlation = brf_analysis.linearity(time_list[j], smoothed, single_or_double, 'falling')
-                    values = np.hstack((values, correlation))
-                    # print(correlation)
-                    # print()
-                    # plots.show_plot(smoothed)
-
-            elif method_name == 'linearity_v2':
-                for j in range(len(waveform_list)):
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    correlation = brf_analysis.linearity_v2(time_list[j], smoothed, single_or_double, 'falling')
-                    #NOTE: Eiko Halogen 72W got mad issues; jk linearity_v2 got mad issues
-                    if correlation == None:
-                        plt.plot(smoothed)
-                        plt.plot(x_pt1, y_pt1, 'X')
-                        plt.plot(x_pt2, y_pt2, 'X')
-                        plt.plot(x1, y1, color = 'red')
-                        plt.plot(x2, y2, color = 'red')
-                        plt.show()
-                    else:
-                        values = np.hstack((values, correlation))
-                    # print(correlation)
-                    # print()
-                    # plots.show_plot(smoothed)
-
-            elif method_name == 'angle_of_inflection':
-                for j in range(len(waveform_list)):
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
-                    values = np.hstack((values, angle))
-                    # print(angle)
-                    # print()
-                    plt.plot(smoothed)
-                    plt.plot(x1, y1, color = 'red')
-                    plt.plot(x2, y2, color = 'red')
-                    plt.show()
-
-            elif method_name == 'peak_location':
-                for j in range(len(waveform_list)):
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    ratio = brf_analysis.peak_location(smoothed, single_or_double)
-                    values = np.hstack((values, ratio))
-                    # plots.show_plot(smoothed)
-
-            elif method_name == 'cycle_integral_avg':
-                for j in range(len(waveform_list)):
-                    smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                    brf_analysis.cycle_integral_avg(smoothed, single_or_double)
-                    # avg = brf_analysis.cycle_integral_avg(waveform_list[j], single_or_double)
-                    values = np.hstack((values, avg))
-                    # plots.show_plot(waveform_list[j])
-
-            elif method_name == 'test':
-                length_list = np.array([])
-                for j in range(len(waveform_list)):
-                    length_list = np.hstack((length_list, len(waveform_list[j])))
-
-                min_length = int(np.amin(length_list))
-
-                brf_list = np.ones((min_length))
-                for j in range(len(waveform_list)):
-                    brf = np.array([waveform_list[j][:min_length]])
-                    brf_list = np.vstack((brf_list, brf))
-                
-                brf_list = brf_list[1:len(brf_list)]
-                brf_analysis.PCA(brf_list, 25)
-                quit()
-
-            mean = np.sum(values)/len(values)
-            std = math.sqrt(np.sum((values-mean)**2/(len(values)-1)))
-
-            print(mean)
-            print(std) #smaller the better/more reliable
-            print()
-
-            plt.plot(smoothed)
-            # plt.plot(x_pt1, y_pt1, 'X')
-            # plt.plot(x_pt2, y_pt2, 'X')
-            plt.plot(x1, y1, color = 'red')
-            plt.plot(x2, y2, color = 'red')
-            plt.show()
-
-            if specific_brf != None:
-                break
-
     #gets distance squared of two BRFs; not euclidean distance (did not sqrt the result)
     #this is the method used in Sheinin's paper
     def min_error(brf_1, brf_2):
@@ -1069,264 +910,18 @@ class brf_analysis():
 
         os.chdir(cwd)
 
-    #redo this method – make it cleaner
-    #this method almost turned out just as ugly as the previous one...
-    #spits out bar graphs of the mean of each feature with 95% confidence intervals
-    #method_list vs method_name_list: 'angle_of_inflection' vs. 'Angle of Inflection'
-    def feature_analysis(brf_database, method_name_list, single_or_double):
-        brf_database_list = database_processing.database_to_list(brf_database)
-        
-        # geeksforgeeks.org/create-a-pandas-dataframe-from-lists/ --> USE THIS WAY INSTEAD (eventually...)
-
-        '''
-        ONE dataframe: (unique name)
-            1) all statistics for EACH waveform of a BRF
-                a) e.g. Eiko CFL 13W | CFL | Angle of Inflection | Integral Ratio | Crest Factor | Kurtosis | Skew | ... | etc.
-                b) for the column names, find a way to dynamically add names to the dataframe
-                c) create dataframe that only contains name and bulb type (so TWO columns initially)
-                d) for loop to add columns to dataframe
-        After dataframe is made:
-            1) mean and variance of each waveform of a BRF for the WHOLE database
-            2) all BRFs within a bulb type, filter by bulb type (using for loop as done below)
-                a) of a bulb type, mean and variance of each waveform for bulb type database
-                b) for a specific BRF (e.g. Eiko CFL 13W), get unique names for bulb type database
-                    i) mean and variance for each BRF
-                c) mean and variance of ALL waveforms within bulb type
-        New dataframes:
-            e.g. BRF Name | Bulb Type | Angle of Inflection (Mean) | Angle of Inflection (STD) | Integral Ratio (Mean) | Integral Ratio (Mean) | ... | etc.
-            create general mean and variance list and add that list to an existing dataframe?? make this easy without having to do the crap above
-            1) Mean and variance of each waveform (for a BRF) for the ENTIRE database
-            2) Mean and variance of each waveform (for a BRF) for BULB TYPE database
-            3) Mean and variance of each BULB TYPE for the ENTIRE database
-        Bar graphs with error bars via matplotlib 
-        '''
-
-        #to add more methods/columns, go to export_all_to_csv method
-        # df = database_processing.export_all_to_csv(brf_database, single_or_double)
-
-        load_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\stat_analysis.csv'
-
-        figure_save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\Feature Analysis\Feature Analysis Figures'
-
-        df = pd.read_csv(load_path)
-
-        brf_names = df.BRF_Name.unique()
-        bulb_types = df.Bulb_Type.unique() #only do first four bulb types
-
-        #IS THERE A BETTER WAY TO DO THIS??
-        brf_name_list = list([])
-        bulb_type_list = list([])
-        integral_mean = list([])
-        integral_CI = list([])
-        angle_mean = list([])
-        angle_CI = list([])
-        crest_mean = list([])
-        crest_CI = list([])
-        kurtosis_mean = list([])
-        kurtosis_CI = list([])
-        skew_mean = list([])
-        skew_CI = list([])
-
-        #all waveforms in a BRF
-        #bar graphs of all BRFs of a feature
-        #e.g. Eiko CFL 13W, Eiko CFL 23W, ... , Westinhouse LED 16.5W for Angle of Inflection, Crest Factor, Kurtosis, etc...
-        for name in brf_names:
-            new_df = df.loc[df['BRF_Name'] == name]
-            bulb_type = new_df['Bulb_Type'].tolist()[0]
-
-            #gets the mean and CI list of each feature for a particular dataframe
-            mean_list, CI_list = database_processing.return_mean_CI_lists(new_df, method_name_list)
-
-            assert len(mean_list) == len(CI_list)
-
-            brf_name_list.append(name)
-            bulb_type_list.append(bulb_type)
-            integral_mean.append(mean_list[0])
-            integral_CI.append(CI_list[0])
-            angle_mean.append(mean_list[1])
-            angle_CI.append(CI_list[1])
-            crest_mean.append(mean_list[2])
-            crest_CI.append(CI_list[2])
-            kurtosis_mean.append(mean_list[3])
-            kurtosis_CI.append(CI_list[3])
-            skew_mean.append(mean_list[4])
-            skew_CI.append(CI_list[4])
-            #need to do 
-
-        #I think I can make this more automated with the method_name_list parameter...
-        integral_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\integral_analysis_entire_database.png'
-        angle_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\angle_analysis_entire_database.png'
-        crest_factor_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\crest_factor_analysis_entire_database.png'
-        kurtosis_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\kurtosis_analysis_entire_database.png'
-        skew_save_path = figure_save_directory + '\\Comparison of BRFs in Entire Database\\skew_analysis_entire_database.png'
-
-        string = 'for Entire Database'
-        integral_title = 'Integral Ratio Analysis ' + string
-        angle_title = 'Angle of Inflection Analysis' + string
-        crest_factor_title = 'Crest Factor Analysis ' + string
-        kurtosis_title = 'Kurtosis Analysis ' + string
-        skew_title = 'Skew Analysis ' + string
-        
-        plots.feature_analysis_bar_graphs(brf_name_list, integral_mean, integral_CI, integral_title, integral_save_path)
-        plots.feature_analysis_bar_graphs(brf_name_list, angle_mean, angle_CI, angle_title, angle_save_path)
-        plots.feature_analysis_bar_graphs(brf_name_list, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
-        plots.feature_analysis_bar_graphs(brf_name_list, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
-        plots.feature_analysis_bar_graphs(brf_name_list, skew_mean, skew_CI, skew_title, skew_save_path)
-
-        #CHANGE THIS TO BE DYNAMIC
-        d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
-
-        stats_df = pd.DataFrame(data = d)
-        file_name = 'mean_CI95_analysis_entire.csv'
-        save_path = feature_analysis_save_directory + '\\' + file_name
-
-        if os.path.exists(save_path):
-            print('File exists: do you want to overwrite? (Y/N):')
-            print(file_name)
-
-            x = input()
-            if x == 'Y':
-                stats_df.to_csv(save_path)
-        else:
-            stats_df.to_csv(save_path)
-
-        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
-
-        #mean and CI for a bulb type (should only be 4 rows)
-        #generates bar graphs of a feature for each type (e.g. Angle of Inflection bar graphs for CFL, Halogen, Incandescent, LED)
-        for i in range(0, 4):
-            bulb_type = bulb_types[i]
-            new_df = df.loc[df['Bulb_Type'] == bulb_type]
-
-            mean_list, CI_list = database_processing.return_mean_CI_lists(new_df, method_name_list)
-
-            assert len(mean_list) == len(CI_list)
-
-            bulb_type_list.append(bulb_type)
-            integral_mean.append(mean_list[0])
-            integral_CI.append(CI_list[0])
-            angle_mean.append(mean_list[1])
-            angle_CI.append(CI_list[1])
-            crest_mean.append(mean_list[2])
-            crest_CI.append(CI_list[2])
-            kurtosis_mean.append(mean_list[3])
-            kurtosis_CI.append(CI_list[3])
-            skew_mean.append(mean_list[4])
-            skew_CI.append(CI_list[4])
-
-        integral_save_path = figure_save_directory + '\\Comparison of Bulb Types\\integral_analysis_bulb_types.png'
-        angle_save_path = figure_save_directory + '\\Comparison of Bulb Types\\angle_analysis_bulb_types.png'
-        crest_factor_save_path = figure_save_directory + '\\Comparison of Bulb Types\\crest_factor_analysis_bulb_types.png'
-        kurtosis_save_path = figure_save_directory + '\\Comparison of Bulb Types\\kurtosis_analysis_bulb_types.png'
-        skew_save_path = figure_save_directory + '\\Comparison of Bulb Types\\skew_analysis_bulb_types.png'
-
-        string = 'for Bulb Types'
-        integral_title = 'Integral Ratio Analysis ' + string
-        angle_title = 'Angle of Inflection Analysis' + string
-        crest_factor_title = 'Crest Factor Analysis ' + string
-        kurtosis_title = 'Kurtosis Analysis ' + string
-        skew_title = 'Skew Analysis ' + string
-
-        plots.feature_analysis_bar_graphs(bulb_type_list, integral_mean, integral_CI, integral_title, integral_save_path)
-        plots.feature_analysis_bar_graphs(bulb_type_list, angle_mean, angle_CI, angle_title, angle_save_path)
-        plots.feature_analysis_bar_graphs(bulb_type_list, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
-        plots.feature_analysis_bar_graphs(bulb_type_list, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
-        plots.feature_analysis_bar_graphs(bulb_type_list, skew_mean, skew_CI, skew_title, skew_save_path)
-
-        d = {'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
-
-        stats_df = pd.DataFrame(data = d)
-        file_name = 'mean_CI95_analysis_bulb_type.csv'
-        save_path = feature_analysis_save_directory + '\\' + file_name
-
-        if os.path.exists(save_path):
-            print('File exists: do you want to overwrite? (Y/N):')
-            print(file_name)
-
-            x = input()
-            if x == 'Y':
-                stats_df.to_csv(save_path)
-        else:
-            stats_df.to_csv(save_path)
-
-        clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
-
-        #within a bulb type, compare BRFs
-        #e.g. For CFL, Eiko CFL 13W, Eiko CFL 23W, ... , Westinghouse CFL 23W for Crest Factor, Kurtosis, Skew, etc.
-        for i in range(0,4):
-            bulb_type = bulb_types[i]
-            type_df = df.loc[df['Bulb_Type'] == bulb_type]
-
-            brf_names_of_type = type_df.BRF_Name.unique()
-
-            for name in brf_names_of_type:
-                brf_of_type_df = type_df.loc[type_df['BRF_Name'] == name]
-
-                mean_list, CI_list = database_processing.return_mean_CI_lists(brf_of_type_df, method_name_list)
-
-                assert len(mean_list) == len(CI_list)
-
-                brf_name_list.append(name)
-                bulb_type_list.append(bulb_type)
-                integral_mean.append(mean_list[0])
-                integral_CI.append(CI_list[0])
-                angle_mean.append(mean_list[1])
-                angle_CI.append(CI_list[1])
-                crest_mean.append(mean_list[2])
-                crest_CI.append(CI_list[2])
-                kurtosis_mean.append(mean_list[3])
-                kurtosis_CI.append(CI_list[3])
-                skew_mean.append(mean_list[4])
-                skew_CI.append(CI_list[4])
-
-            integral_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\integral_analysis_bulb_types.png'
-            angle_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\angle_analysis_bulb_types.png'
-            crest_factor_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\crest_factor_analysis_bulb_types.png'
-            kurtosis_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\kurtosis_analysis_bulb_types.png'
-            skew_save_path = figure_save_directory + '\\Comparison of BRFs of a Bulb Type\\' + bulb_type + '\\skew_analysis_bulb_types.png'
-
-            string = 'for ' + bulb_type + ' Bulbs'
-            integral_title = 'Integral Ratio Analysis ' + string
-            angle_title = 'Angle of Inflection Analysis' + string
-            crest_factor_title = 'Crest Factor Analysis ' + string
-            kurtosis_title = 'Kurtosis Analysis ' + string
-            skew_title = 'Skew Analysis ' + string
-            
-            plots.feature_analysis_bar_graphs(brf_names_of_type, integral_mean, integral_CI, integral_title, integral_save_path)
-            plots.feature_analysis_bar_graphs(brf_names_of_type, angle_mean, angle_CI, angle_title, angle_save_path)
-            plots.feature_analysis_bar_graphs(brf_names_of_type, crest_mean, crest_CI, crest_factor_title, crest_factor_save_path)
-            plots.feature_analysis_bar_graphs(brf_names_of_type, kurtosis_mean, kurtosis_CI, kurtosis_title, kurtosis_save_path)
-            plots.feature_analysis_bar_graphs(brf_names_of_type, skew_mean, skew_CI, skew_title, skew_save_path)
-
-            d = {'BRF Name': brf_name_list, 'Bulb Type': bulb_type_list, 'Integral Ratio (Mean)': integral_mean, 'Integral Ratio (95% CI)': integral_CI, 'Nadir Angle (Mean)': angle_mean, 'Nadir Angle (95% CI)': angle_CI, 'Crest Factor (Mean)': crest_mean, 'Crest Factor (95% CI)': crest_CI, 'Kurtosis (Mean)': kurtosis_mean, 'Kurtosis (95% CI)': kurtosis_CI, 'Skew (Mean)': skew_mean, 'Skew (95% CI)': skew_CI}
-
-            stats_df = pd.DataFrame(data = d)
-            file_name = 'mean_CI95_analysis_' + bulb_type + '.csv'
-            save_path = feature_analysis_save_directory + '\\' + file_name
-
-            if os.path.exists(save_path):
-                print('File exists: do you want to overwrite? (Y/N):')
-                print(file_name)
-
-                x = input()
-                if x == 'Y':
-                    stats_df.to_csv(save_path)
-            else:
-                stats_df.to_csv(save_path)
-
-            clear_lists(brf_name_list, bulb_type_list, integral_mean, integral_CI, angle_mean, angle_CI, crest_mean, crest_CI, kurtosis_mean, kurtosis_CI, skew_mean, skew_CI)
             
 
 class brf_classification():
     #Sheinin et al. BRF comparison method 
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
-        bulb_types = database_processing.return_bulb_types(brf_database)
+        bulb_types = brf_database.Bulb_Type.unique()
         brf_database_list = database_processing.database_to_list(brf_database)
         
         ground_list = list([])
         predicted_list = list([])
 
-        bulb_type_list = database_processing.return_bulb_types(brf_database)
+        bulb_type_list = brf_database.Bulb_Type.unique()
 
         #Personal note: if want to generate confusion matrix for bulb type, don't include outer bulb_type for loop
         #               otherwise, if want to compare unique BRFs, compare between the bulb type classification
@@ -1336,7 +931,7 @@ class brf_classification():
             print(bulb_type)
             same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
             same_type_database_list = database_processing.database_to_list(same_type_database)
-            same_type_name_list = database_processing.database_to_list(database_processing.return_names(same_type_database))
+            same_type_name_list = database_processing.database_to_list(same_type_database.Name)
             #RENAMING same_type_database_list to brf_database_list for convenience
             brf_database_list = same_type_database_list
 
@@ -1526,7 +1121,7 @@ class brf_classification():
             return KNN_input, KNN_output, KNN_prediction_list
 
     #classification_type is for either the BRF name or BRF type; options are either 'name' or 'type'
-    def train_KNN(KNN_input, KNN_output, number_neighbors, classification_type, single_or_double, num_features, weights):
+    def train_KNN(KNN_input, KNN_output, number_neighbors, num_features, weights):
 
         # https://stackoverflow.com/questions/50064632/weighted-distance-in-sklearn-knn
         #angle of inflection, integral ratio, integral average, peak location, crest factor, kurtosis, skew
@@ -1550,7 +1145,97 @@ class brf_classification():
 
         return brf_KNN_model
 
-    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass): #True or False for tallied
+    def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Entire, name_k): #True or False for tallied
+        #this assert statement should always hold because the pairing does not make sense
+        if classification_type == 'type':
+            assert Entire == True
+
+        no_match = True
+
+        # grabs first bulb
+        bulb_type = brf_database.Bulb_Type.tolist()[0]
+        # same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
+        name_list = database_processing.database_to_list(brf_database.Name)
+
+        #requires and input list and output list to train the model
+        # classification_list is either:
+        # 1) all unique BRFs, or
+        # 2) Bulb types
+        if Entire:
+            brf_KNN_model = brf_classification.train_KNN(KNN_in, KNN_out, number_neighbors, num_features, weights)
+            if classification_type == 'name':
+                classification_list = database_processing.database_to_list(brf_database.Name)
+            elif classification_type == 'type':
+                classification_list = brf_database.Bulb_Type.unique()
+        else:
+            brf_KNN_model = brf_classification.train_KNN(KNN_in, KNN_out, number_neighbors, num_features, weights)
+
+        ground_list = list([])
+        predicted_list = list([])
+
+        true_positive = 0
+        total = len(KNN_prediction_list)
+
+        for prediction in KNN_prediction_list:
+            input_data = prediction[0]
+            expected_output = prediction[1]
+            output = brf_KNN_model.predict([input_data])[0]
+
+            #don't evaluate k closest neighbors with bulb type classification
+            if classification_type == 'type':
+                if expected_output == output:
+                    true_positive += 1
+                ground_list.append(expected_output)
+                predicted_list.append(output)
+                continue
+
+            #kneighbors or use NearestNeighbors?
+            neighbor_indices = brf_KNN_model.kneighbors([input_data])[1][0]
+
+            neighbor_indices = neighbor_indices[:name_k]
+
+            # print(f'{expected_output}; Index = {index}')
+            for model_index in neighbor_indices:
+                if Entire:
+                    classification_list_index = brf_KNN_model._y[model_index]
+                else:
+                    name_list_index = brf_KNN_model._y[model_index]
+                # print(name_list_index)
+                if Entire:
+                    if classification_list[classification_list_index] == expected_output:
+                        true_positive += 1
+                        ground_list.append(expected_output)
+                        predicted_list.append(expected_output)
+                        no_match = False
+                        break
+                else:
+                    if name_list[name_list_index] == expected_output:
+                        true_positive += 1
+                        ground_list.append(expected_output)
+                        predicted_list.append(expected_output)
+                        no_match = False
+                        break
+            if no_match:
+                #if not amongst the closest neighbors, then check if the "predict" method predicts the correct result
+                if expected_output == output:
+                    true_positive += 1
+                ground_list.append(expected_output)
+                predicted_list.append(output)
+
+            no_match = True
+
+        # this should be accuracy...?
+        accuracy = true_positive/total
+
+        if Entire:
+            if classification_type == 'name':
+                plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+            elif classification_type == 'type':
+                plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+        else:
+            plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+
+    def KNN_k_fold_analysis(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass):
         #this assert statement should always hold because the pairing does not make sense
         if classification_type == 'type':
             assert Entire == True
@@ -1697,32 +1382,6 @@ class brf_classification():
 
             no_match = True
 
-            if Tallied:
-
-                probabilities = brf_KNN_model.predict_proba([input_data])
-                row_total = np.full(probabilities.shape,number_neighbors)
-
-                expected_index = name_list.index(expected_output)
-
-                #creating matrixs of same shape as tallied_matrix and total_matrix to add matricies
-                temp_probabilities_matrix = np.zeros(probabilities.shape)
-                temp_total_matrix = np.zeros(probabilities.shape)
-                zeros_row = np.zeros(probabilities.shape)
-                for i in range(len(tallied_matrix)):
-                    if i == expected_index:
-                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,probabilities))
-                        temp_total_matrix = np.vstack((temp_total_matrix,row_total))
-                    else:
-                        temp_probabilities_matrix = np.vstack((temp_probabilities_matrix,zeros_row))
-                        temp_total_matrix = np.vstack((temp_total_matrix,zeros_row))
-
-                temp_probabilities_matrix = temp_probabilities_matrix[1:len(temp_probabilities_matrix)]*number_neighbors
-                temp_total_matrix = temp_total_matrix[1:len(temp_total_matrix)]
-
-                tallied_matrix += temp_probabilities_matrix
-                total_matrix += temp_total_matrix
-
-                brf_KNN_model = None
 
         #GridSearch parameter is just used to return overall accuracy
         if GridSearch:
@@ -1751,101 +1410,105 @@ class brf_classification():
             return misclassification_array, true_positive, total, true_positive_list, total_list #lists refer to bulb types
 
     #get different KNN_in, KNN_out, KNN_prediction_list, and then RUN THE METHOD
-    #not meant for 'name' yet(?)
-    def KNN_analysis_pkl(pkl_path, brf_database, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, num_splits, MisClass):
+    def KNN_analysis_pkl(pkl_path, brf_database, classification_type, single_or_double, weights, Entire, num_test_waveforms, num_features, number_neighbors, name_k):
         if Entire:
-            name_list = database_processing.database_to_list(brf_database.Name)
-            type_list = brf_database.Bulb_Type.unique()
-            k_fold_misclassification = np.zeros(len(name_list))
-
-            #commit 167
-            type_true_positive = np.zeros(len(type_list))
-            type_total = np.zeros(len(type_list))
-
-            num_true_positive = 0
-            total = 0
-            random_state = 0
-            split_number = 0
-
-            overall_accuracy = list()
-            cfl_accuracy = list()
-            halogen_accuracy = list()
-            incandescent_accuracy = list()
-            led_accuracy = list()
-
-            #TODO: need to use 'MisClass' variable in this method
-
-            k_list = np.arange(2,11,1)
-            for number_neighbors in k_list:
-                print(f'Number of Neighbors: {number_neighbors}')
-                while split_number < num_splits:
-                    # print(f'Split Number: {split_number + 1}')
-                    KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
-                    if classification_type == 'type':
-                        '''
-                        index 0: feature array
-                        index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
-                        index 2: brf name
-                        '''
-                        unique_type_list = list(set(list(zip(*KNN_prediction_list))[1]))
-                        if len(unique_type_list) < 4:
-                            random_state = random_state + 1
-                            continue
-                    if classification_type == 'type':
-                        #commit 167
-                        # misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
-                        misclassification_array, k_true_positive, k_total, k_true_positive_list, k_total_list = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
-
-                        # print('Accumulative misclassification')
-                        k_fold_misclassification = k_fold_misclassification + misclassification_array
-                        # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
-
-                        #commit 167
-                        type_true_positive = type_true_positive + k_true_positive_list
-                        type_total = type_total + k_total_list
-
-                        num_true_positive = num_true_positive + k_true_positive
-                        total = total + k_total
-                        random_state = random_state + 1
-                        split_number = split_number + 1
-                    elif classification_type == 'name':
-                        brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
-
-                if MisClass:
-                    # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
-                    total_accuracy = num_true_positive / total
-                    print(f'Accuracy for k = {number_neighbors} and {num_splits} folds: {total_accuracy}')
-
-                    #commit 167
-                    type_accuracy = type_true_positive / type_total
-                    for i in range(len(type_accuracy)):
-                        print(f'{type_list[i]}: {type_accuracy[i]}')
-                    print()
-
-                    overall_accuracy.append(total_accuracy)
-                    cfl_accuracy.append(type_accuracy[0])
-                    halogen_accuracy.append(type_accuracy[1])
-                    incandescent_accuracy.append(type_accuracy[2])
-                    led_accuracy.append(type_accuracy[3])
-
-                    k_fold_misclassification = np.zeros(len(name_list))
-                    num_true_positive = 0
-                    total = 0
-                    random_state = 0
-                    split_number = 0
-
-            #commit 167
-            title = 'Bulb Type KNN Model: Accuracy Using k-fold Cross Validation with 12 Splits '
-            plots.k_and_k_fold(k_list, overall_accuracy, cfl_accuracy, halogen_accuracy, incandescent_accuracy, led_accuracy, title)
-
+            KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV=False, split_number=0)
+            brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Entire, name_k)
         else:
             bulb_type_list = database_processing.return_bulb_types(brf_database)
             for bulb_type in bulb_type_list:
                 print(bulb_type)
                 same_type_database = database_processing.same_type_df(brf_database,str(bulb_type))
-                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, bulb_type, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV)
-                brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, bulb_type, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV=False, split_number=0)
+                brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Entire)
                 print()
+
+    #get different KNN_in, KNN_out, KNN_prediction_list, and then RUN THE METHOD
+    #not meant for 'name' yet(?)
+    def k_fold_analysis(pkl_path, brf_database, classification_type, single_or_double, weights, MisClass, num_features, num_test_waveforms, min_num_neighbors, max_num_neighbors, num_splits):
+        name_list = database_processing.database_to_list(brf_database.Name)
+        type_list = brf_database.Bulb_Type.unique()
+        k_fold_misclassification = np.zeros(len(name_list))
+
+        #commit 167
+        type_true_positive = np.zeros(len(type_list))
+        type_total = np.zeros(len(type_list))
+
+        num_true_positive = 0
+        total = 0
+        random_state = 0
+        split_number = 0
+
+        overall_accuracy = list()
+        cfl_accuracy = list()
+        halogen_accuracy = list()
+        incandescent_accuracy = list()
+        led_accuracy = list()
+
+        #TODO: need to use 'MisClass' variable in this method
+
+        k_list = np.arange(2,11,1)
+        for number_neighbors in k_list:
+            print(f'Number of Neighbors: {number_neighbors}')
+            while split_number < num_splits:
+                # print(f'Split Number: {split_number + 1}')
+                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV)
+                if classification_type == 'type':
+                    '''
+                    index 0: feature array
+                    index 1: classification type ('name' or bulb 'type'); this is more important if classification_type is 'type'
+                    index 2: brf name
+                    '''
+                    unique_type_list = list(set(list(zip(*KNN_prediction_list))[1]))
+                    if len(unique_type_list) < 4:
+                        random_state = random_state + 1
+                        continue
+                if classification_type == 'type':
+                    #commit 167
+                    # misclassification_array, k_true_positive, k_total = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+                    misclassification_array, k_true_positive, k_total, k_true_positive_list, k_total_list = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+
+                    # print('Accumulative misclassification')
+                    k_fold_misclassification = k_fold_misclassification + misclassification_array
+                    # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
+
+                    #commit 167
+                    type_true_positive = type_true_positive + k_true_positive_list
+                    type_total = type_total + k_total_list
+
+                    num_true_positive = num_true_positive + k_true_positive
+                    total = total + k_total
+                    random_state = random_state + 1
+                    split_number = split_number + 1
+                elif classification_type == 'name':
+                    brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, single_or_double, num_features, weights, Tallied, Entire, GridSearch, k_fold_CV, MisClass)
+
+            if MisClass:
+                # plots.misclass_bar_graph(name_list, k_fold_misclassification, 'Misclassification Bar Graph')
+                total_accuracy = num_true_positive / total
+                print(f'Accuracy for k = {number_neighbors} and {num_splits} folds: {total_accuracy}')
+
+                #commit 167
+                type_accuracy = type_true_positive / type_total
+                for i in range(len(type_accuracy)):
+                    print(f'{type_list[i]}: {type_accuracy[i]}')
+                print()
+
+                overall_accuracy.append(total_accuracy)
+                cfl_accuracy.append(type_accuracy[0])
+                halogen_accuracy.append(type_accuracy[1])
+                incandescent_accuracy.append(type_accuracy[2])
+                led_accuracy.append(type_accuracy[3])
+
+                k_fold_misclassification = np.zeros(len(name_list))
+                num_true_positive = 0
+                total = 0
+                random_state = 0
+                split_number = 0
+
+        #commit 167
+        title = 'Bulb Type KNN Model: Accuracy Using k-fold Cross Validation with 12 Splits '
+        plots.k_and_k_fold(k_list, overall_accuracy, cfl_accuracy, halogen_accuracy, incandescent_accuracy, led_accuracy, title)
 
     '''
     THIS METHOD IS OUTDATED
@@ -1882,7 +1545,9 @@ class brf_classification():
 
 if __name__ == "__main__":
     csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
-    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
+    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
+    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized.pkl'
+    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Zeal_stats.pkl'
     brf_database = database_processing(database_path).brf_database
 
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
@@ -1900,16 +1565,23 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     # brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
 
     # brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
     
-    # database_processing.pkl_KNN_in_out(brf_database, 'double', 7, csv_pkl_save_path)
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True, num_splits = 15, MisClass = True)
-    
+    # database_processing.pkl_KNN_in_out(brf_database, 'double', 6, csv_pkl_save_path)
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', 'double', weights, Entire = True, num_test_waveforms=3, number_neighbors=3, num_features=6, name_k=3)    
+    # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', 'double', weights, MisClass = False, num_features = 6, min_num_neighbors = 3, max_num_neighbors = 11, num_splits = 12)
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
+
+    # df = pd.read_pickle(pkl_path)
+    # df_list = df.values.tolist()
+    # print(len(df_list[0]))
+
 
     '''
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
