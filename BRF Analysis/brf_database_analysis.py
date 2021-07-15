@@ -12,6 +12,8 @@ import math
 import os
 import seaborn as sn
 
+import pdb
+
 #CLEAN UP TIME
 #TODO: feature_analysis: condense and make it so that I can just include different feature names and they'll spit out the right graphs; clear_lists has gotta go
 #fix all the global methods/variable names
@@ -1610,7 +1612,6 @@ class brf_classification():
         index 2: brf name
         '''
 
-
         for prediction in KNN_prediction_list:
             input_data = prediction[0]
             expected_output = prediction[1]
@@ -1780,6 +1781,7 @@ class brf_classification():
                 print(f'Number of Neighbors: {number_neighbors}')
                 while split_number < num_splits:
                     # print(f'Split Number: {split_number + 1}')
+
                     KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, number_neighbors, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
                     if classification_type == 'type':
                         '''
@@ -1882,7 +1884,8 @@ class brf_classification():
 
 if __name__ == "__main__":
     csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
-    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
+    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
+    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized.pkl'
     brf_database = database_processing(database_path).brf_database
 
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
@@ -1900,14 +1903,13 @@ if __name__ == "__main__":
     # brf_classification.compare_brfs(brf_database, 3, 'double')
     
     #'Entire' is for the entire database
-    weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-    # brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
-
-    # brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
     
     # database_processing.pkl_KNN_in_out(brf_database, 'double', 7, csv_pkl_save_path)
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True, num_splits = 15, MisClass = True)
+    # brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True, num_splits = 15, MisClass = True)
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 3, 'type', 3, 'double', 6, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True, num_splits = 12, MisClass = True)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 

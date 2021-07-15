@@ -12,6 +12,8 @@ import math
 import os
 import seaborn as sn
 
+import pdb
+
 #CLEAN UP TIME
 #TODO: feature_analysis: condense and make it so that I can just include different feature names and they'll spit out the right graphs; clear_lists has gotta go
 #fix all the global methods/variable names
@@ -148,9 +150,10 @@ class plots():
         sn.heatmap(df_cm)
         plt.title(title)
         plt.xlabel('Predicted', fontsize = 16)
-        plt.xticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, ha = 'right', fontsize = 8)
+        #font size is too small, and not sure if can make it smaller
+        plt.xticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, ha = 'right', fontsize = 6)
         plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, va = 'top', fontsize = 8)
+        plt.yticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, va = 'top', fontsize = 6)
         plt.tight_layout()
         plt.show()
 
@@ -318,11 +321,18 @@ class database_processing():
                 # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
                 # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
+
                 int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)                
                 peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
                 skew = brf_analysis.skew(waveform_list[i])
+
+                # int_avg = brf_analysis.cycle_integral_avg(smoothed, single_or_double)                
+                # peak_loc = brf_analysis.peak_location(smoothed, single_or_double)
+                # crest_factor = brf_analysis.crest_factor(smoothed)
+                # kurtosis = brf_analysis.kurtosis(smoothed)
+                # skew = brf_analysis.skew(smoothed)
                 # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
                 # input_param = np.array([crest_factor, kurtosis, skew])
                 
@@ -370,9 +380,10 @@ class database_processing():
         df_zeal = pd.DataFrame(row_list)
 
         df.to_pickle(save_path + '//KNN_downsized.pkl')
+        # df.to_pickle(save_path + '//KNN_downsized_smoothed.pkl')
         # df.to_csv(save_path + '//KNN.csv')
-        df_zeal.to_pickle(save_path + '//Zeal_stats.pkl', protocol = 4)
-        df_zeal.to_csv(save_path + '//Zeal_stats.csv')
+        # df_zeal.to_pickle(save_path + '//Zeal_stats.pkl', protocol = 4)
+        # df_zeal.to_csv(save_path + '//Zeal_stats.csv')
 
     '''
     loads the pkl file and makes a dataframe of the inputs and the outputs ("type" or "name" is specified)
@@ -990,6 +1001,7 @@ class brf_classification():
         num_test_waveforms      number of waveforms to form the test set (it not using k-fold cross validation)
         num_features            number of features used for KNN; used for assertion statement
         k_fold_CV               True or False for whether to use k-fold or not
+        split_number            for setting the k-fold cross validation seed
 
     OUTPUT:
         KNN_input               training input for KNN
@@ -1259,9 +1271,10 @@ class brf_classification():
         if not skip:
             print('Do you want to skip plotting? [y]/other')
             val = input()
-            skip_plots(val)
+            if val == 'y':
+                skip_plots(True)
 
-        if skip:
+        if not skip:
             if Entire:
                 if classification_type == 'name':
                     plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
@@ -1274,7 +1287,7 @@ class brf_classification():
             return misclassification_array, true_positive, total, true_positive_list, total_list #lists refer to bulb types        
 
     #get different KNN_in, KNN_out, KNN_prediction_list, and then RUN THE METHOD
-    def KNN_analysis_pkl(pkl_path, brf_database, classification_type, single_or_double, weights, Entire, num_test_waveforms, num_features, number_neighbors, name_k):
+    def KNN_analysis_pkl(pkl_path, brf_database, classification_type, weights, Entire, num_test_waveforms, num_features, number_neighbors, name_k):
         # other parameters
         ########################################################################################################################################################
         MisClass = False            #no misclassification analysis done with this method, so set MisClass to False
@@ -1301,7 +1314,6 @@ class brf_classification():
     OUTPUT:
     '''
     def k_fold_analysis(pkl_path, brf_database, classification_type, weights, num_test_waveforms, num_features, min_num_neighbors, max_num_neighbors, num_splits, MisClass):
-
         #other parameters
         ########################################################################################################################################################
         k_fold_CV = True            #set k_fold_CV to true because evaluating misclassification from using k-fold cross validation
@@ -1333,8 +1345,10 @@ class brf_classification():
         for number_neighbors in k_list:
             print(f'Number of Neighbors: {number_neighbors}')
             while split_number < num_splits:
+                # print(f'Split iteration: {split_number}')
                 # print(f'Split Number: {split_number + 1}')
-                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, classification_type, num_test_waveforms, num_features, k_fold_CV, split_number)
+
+                KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, classification_type, num_test_waveforms, num_features, k_fold_CV, random_state)
                 if classification_type == 'type':
                     '''
                     index 0: feature array
@@ -1384,7 +1398,7 @@ class brf_classification():
                 random_state = 0
                 split_number = 0
 
-        title = 'Bulb Type KNN Model: Accuracy Using k-fold Cross Validation with 12 Splits '
+        title = f'Bulb Type KNN Model: Accuracy Using k-fold Cross Validation with {num_splits} Splits'
         plots.k_and_k_fold(k_list, overall_accuracy, cfl_accuracy, halogen_accuracy, incandescent_accuracy, led_accuracy, title)
 
     '''
@@ -1424,6 +1438,7 @@ if __name__ == "__main__":
     csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
     # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
     pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized.pkl'
+    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
     # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Zeal_stats.pkl'
     brf_database = database_processing(database_path).brf_database
 
@@ -1444,24 +1459,22 @@ if __name__ == "__main__":
     #'Entire' is for the entire database
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
-
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-    # brf_classification.KNN_analysis(brf_database, 3, 'name', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False)
-
-    # brf_classification.KNN_analysis(brf_database, 3, 'type', 3, 'double', 7, weights, Tallied = False, Entire = True, GridSearch = False, k_fold_CV = True)
     
+    # pickles features
     # database_processing.pkl_KNN_in_out(brf_database, 'double', 6, csv_pkl_save_path)
-    # brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', 'double', weights, Entire = True, num_test_waveforms=3, number_neighbors=3, num_features=6, name_k=3)    
 
-    #CODE IS GETTING STUCK SOMEWHERE
-    brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 6, min_num_neighbors = 3, max_num_neighbors = 11, num_splits = 12, MisClass = True)
+    # runs KNN analysis on pkl file
+    # brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=3, num_features=6, name_k=3)    
+
+    # k-fold analysis
+    brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 6, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
     # df = pd.read_pickle(pkl_path)
     # df_list = df.values.tolist()
     # print(len(df_list[0]))
-
 
     '''
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
