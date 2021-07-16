@@ -1,5 +1,11 @@
 import numpy as np
 import math
+from PIL import Image
+import matplotlib.pyplot as plt
+import time
+
+def open_image(img_path):
+    return np.array(Image.open(img_path), dtype='float')/255.
 
 def Sinc(x):
     if x == 0:
@@ -39,6 +45,9 @@ def Parameterize_Rotation(R):
 
 def calc_camera_proj_matrix(K, R, t):
     return K @ np.hstack((R, t))
+
+def Homogenize(x):
+    return np.vstack((x,np.ones((1,x.shape[1]))))
 
 def Dehomogenize(x):   
     return x[:-1]/x[-1]
@@ -148,7 +157,106 @@ def triangulation2View(x1, x2, P1rectified, P2rectified):
 
     print(Dehomogenize(X))
 
+def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
+    print(original_image.shape[0])
+
+    print(original_image.shape[1])
+
+    for row in range(rectified_image.shape[0]):
+        for col in range(rectified_image.shape[1]):
+            rec_pt = np.array([col, row]).reshape(-1,1)
+
+            if min_row_val < 0:
+                rec_pt[1][0] = rec_pt[1][0] + min_row_val
+            elif min_row_val >= 0:
+                rec_pt[1][0] = rec_pt[1][0] - min_row_val
+
+            if min_col_val < 0:
+                rec_pt[0][0] = rec_pt[0][0] + min_col_val
+            elif min_row_val >= 0:
+                rec_pt[0][0] = rec_pt[0][0] - min_col_val
+
+            homog_rec_pt = Homogenize(rec_pt)
+            img_pt = Dehomogenize(np.linalg.inv(H) @ homog_rec_pt)
+
+            img_row = math.ceil(img_pt[1][0])
+            img_col = math.ceil(img_pt[0][0])
+
+            # print(col)
+            # source_path.contains_point([xCoord, yCoord] --> WHAT
+            if img_row >= 0 and img_row < original_image.shape[0] and img_col >= 0 and img_col < original_image.shape[1]:
+                rectified_image[row][col] = original_image[img_row][img_col]
+
+    return rectified_image
+
+def epipolar_rectify_images(H1, H2, I1, I2):
+    # points are defined by [x,y]!!!
+    I1_top_left = np.array([0, 0]).reshape(-1,1)
+    I1_top_right = np.array([I1.shape[1], 0]).reshape(-1,1)
+    I1_bottom_left = np.array([0, I1.shape[0]]).reshape(-1,1)
+    I1_bottom_right = np.array([I1.shape[1], I1.shape[0]]).reshape(-1,1)
+
+    I2_top_left = np.array([0, 0]).reshape(-1,1)
+    I2_top_right = np.array([I2.shape[1], 0]).reshape(-1,1)
+    I2_bottom_left = np.array([0, I2.shape[0]]).reshape(-1,1)
+    I2_bottom_right = np.array([I2.shape[1], I2.shape[0]]).reshape(-1,1)
+
+    pts_I1 = np.hstack((I1_top_left, I1_top_right, I1_bottom_left, I1_bottom_right))
+    pts_I2 = np.hstack((I2_top_left, I2_top_right, I2_bottom_left, I2_bottom_right))
+
+    pts_I1_rec = Dehomogenize(H1 @ Homogenize(pts_I1))
+    pts_I2_rec = Dehomogenize(H2 @ Homogenize(pts_I2))
+
+    new_bounds = np.hstack((pts_I1_rec, pts_I2_rec))
+
+    min_row = math.ceil(min(new_bounds[1]))
+    max_row = math.ceil(max(new_bounds[1]))
+    min_col = math.ceil(min(new_bounds[0]))
+    max_col = math.ceil(max(new_bounds[0]))
+
+    if min_row < 0:
+        row_rec_bound = max_row + abs(min_row)
+    elif min_row > 0:
+        row_rec_bound = max_row - min_row
+    
+    if min_col < 0:
+        col_rec_bound = max_col + abs(min_col)
+    elif min_col > 0:
+        col_rec_bound = max_col - min_col
+
+    # DEFINE SHAPE IN TERMS OF IMAGE COORDINATES NOW
+    left_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
+    right_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
+
+    print(I1.shape)
+
+    print(left_rectified.shape)
+
+    print(time.ctime())
+
+    curr_time = time.time()
+
+    left_rectified = rectify_image(I1, left_rectified, H1, min_row, min_col)
+    plt.imsave('left_rectified.jpg', left_rectified)
+    # plt.imsave('Ben_left_rectified.jpg', left_rectified)
+
+    print(f'Rectification took {time.time() - curr_time} seconds')
+    curr_time = time.time()
+
+    right_rectified = rectify_image(I2, right_rectified, H2, min_row, min_col)
+    plt.imsave('right_rectified.jpg', right_rectified)
+    # plt.imsave('Ben_right_rectified.jpg', right_rectified)
+
+    print(f'Rectification took {time.time() - curr_time} seconds')
+
+
 if __name__ == '__main__':
+    img_path_1 = 'left_led.jpg'
+    img_path_2 = 'right_led.jpg'
+
+    I1 = open_image(img_path_1)
+    I2 = open_image(img_path_2)
+
     #left camera
     K1 = np.array([3290.62072, 0, 2006.98028, 0, 3327.56775, 1484.04255, 0, 0, 1]).reshape(3,3)
     #right camera
@@ -165,25 +273,64 @@ if __name__ == '__main__':
 
     Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
 
-    print('H1 = ')
-    print(H1)
-    print()
+    Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
 
-    print('H2 = ')
-    print(H2)
-    print()
+    x1 = np.array([3195, 2662]).reshape(-1,1)
+    x2 = np.array([2665, 2662]).reshape(-1,1)
 
-    print('Krectified = ')
-    print(Krectified)
-    print()
+    # Krectified = np.array([3337.2906524999999, 0.0000000000000000, 2040.5119399999999, \
+    #                        0.0000000000000000, 3337.2906524999999, 1464.7135599999999, \
+    #                        0.0000000000000000, 0.0000000000000000, 1.0000000000000000]).reshape(3,3)
 
-    print('t1rectified = ')
-    print(t1rectified)
-    print()
+    # Rrectified = np.array([0.99748768379921904, -0.0058985981993709821, -0.070594101794352840, \
+    #                        0.0066944808383461512, 0.99991661688309375, 0.011042789836512600, \
+    #                        0.070523078457864347, -0.011487637718467060, 0.99744399821968710]).reshape(3,3)
+    
+    # t1rectified = np.array([0, 0, 0]).reshape(-1,1)
 
-    print('t2rectified = ')
-    print(t2rectified)
+    # t2rectified = np.array([-279.48308974678037, 2.3619994848900205e-14, 7.8159700933611020e-14]).reshape(-1,1)
+
+    P1rectified = calc_camera_proj_matrix(Krectified, Rrectified, t1rectified)
+    P2rectified = calc_camera_proj_matrix(Krectified, Rrectified, t2rectified)
+
+    triangulation2View(x1, x2, P1rectified, P2rectified)
     print()
+    print(Dehomogenize(Ben_X))
+
+    Ben_H1 = np.array([1.0630228122134058, -0.014193587041567837, 43.652643864836932, \
+                       0.041331132756986265, 0.99727420761593855, 81.508106854624259, \
+                       2.1431542696255907e-05, -3.4522626078663791e-06, 0.95955461926217112]).reshape(3,3)
+    Ben_H2 = np.array([1.0398997943316142, -0.028416211609224532, 88.682229854250352, \
+                       0.065524141468807931, 0.99018383318183045, 0.050438250545255414, \
+                       1.8712552518662292e-05, 2.9977058405924798e-06, 0.95484232868928220]).reshape(3,3)
+
+    epipolar_rectify_images(H1, H2, I1, I2)
+    # epipolar_rectify_images(Ben_H1, Ben_H2, I1, I2)
+
+    '''
+    # print('H1 = ')
+    # print(H1)
+    # print()
+
+    # print('H2 = ')
+    # print(H2)
+    # print()
+
+    # print('Krectified = ')
+    # print(Krectified)
+    # print()
+
+    # print('Rrectified = ')
+    # print(Rrectified)
+    # print()
+
+    # print('t1rectified = ')
+    # print(t1rectified)
+    # print()
+
+    # print('t2rectified = ')
+    # print(t2rectified)
+    # print()
 
     # E = skew(t2) @ R2
 
@@ -195,30 +342,4 @@ if __name__ == '__main__':
 
     # print(left_epipole)
     # print(right_epipole)
-
-
-    '''
-    Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
-
-    x1 = np.array([3195, 2662]).reshape(-1,1)
-    x2 = np.array([2665, 2662]).reshape(-1,1)
-
-    Krectified = np.array([3337.2906524999999, 0.0000000000000000, 2040.5119399999999, \
-                           0.0000000000000000, 3337.2906524999999, 1464.7135599999999, \
-                           0.0000000000000000, 0.0000000000000000, 1.0000000000000000]).reshape(3,3)
-
-    Rrectified = np.array([0.99748768379921904, -0.0058985981993709821, -0.070594101794352840, \
-                           0.0066944808383461512, 0.99991661688309375, 0.011042789836512600, \
-                           0.070523078457864347, -0.011487637718467060, 0.99744399821968710]).reshape(3,3)
-    
-    t1rectified = np.array([0, 0, 0]).reshape(-1,1)
-
-    t2rectified = np.array([-279.48308974678037, 2.3619994848900205e-14, 7.8159700933611020e-14]).reshape(-1,1)
-
-    P1rectified = calc_camera_proj_matrix(Krectified, Rrectified, t1rectified)
-    P2rectified = calc_camera_proj_matrix(Krectified, Rrectified, t2rectified)
-
-    triangulation2View(x1, x2, P1rectified, P2rectified)
-    print()
-    print(Dehomogenize(Ben_X))
     '''
