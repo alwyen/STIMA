@@ -271,6 +271,8 @@ if __name__ == '__main__':
     t1 = np.array([0, 0, 0]).reshape(-1,1)
     t2 = np.array([ -278.75844, 10.10778, 17.38857]).reshape(-1,1)
 
+    print(np.linalg.norm(t2))
+
     Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
 
     Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
