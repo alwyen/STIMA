@@ -3,6 +3,7 @@ import math
 from PIL import Image
 import matplotlib.pyplot as plt
 import time
+import rotation
 
 def open_image(img_path):
     return np.array(Image.open(img_path), dtype='float')/255.
@@ -155,7 +156,59 @@ def triangulation2View(x1, x2, P1rectified, P2rectified):
 
     X = V_T[len(V_T)-1].reshape(-1,1)
 
-    print(Dehomogenize(X))
+    return Dehomogenize(X)
+
+'''
+R1 --> np.eye(3)
+omega --> R2 = Deparameterize_Omega(omega)
+'''
+def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega):
+    # # Top of phone is "top"
+    # gimbal_yaw = 0
+    # gimbal_pitch = -np.pi/2
+    # gimbal_roll = 0
+
+    # # Bottom of phone is "top" (i.e., upside down)
+    # gimbal_yaw = np.pi
+    # gimbal_pitch = -np.pi/2
+    # gimbal_roll = 0
+
+    # # Right of phone is "top"
+    # gimbal_yaw = np.pi/2
+    # gimbal_pitch = -np.pi/2
+    # gimbal_roll = 0
+
+    # Left of phone is "top"
+    gimbal_yaw = -np.pi/2
+    gimbal_pitch = -np.pi/2
+    gimbal_roll = 0
+
+    R1 = np.eye(3)
+    R2 = Deparameterize_Omega(omega)
+    Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
+    
+    latitude_radians = latitude_origin * np.pi / 180
+    longitude_radians = longitude_origin * np.pi / 180
+
+    plat_yaw_radians = plat_yaw * np.pi / 180
+    plat_pitch_radians = plat_pitch * np.pi / 180
+    plat_roll_radians = plat_pitch * np.pi / 180
+
+    R1_geocentric = rotation.rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_yaw, gimbal_pitch, gimbal_roll, plat_yaw_radians, plat_pitch_radians, plat_roll_radians)
+    t1_geocentric = -R1_geocentric @ C
+
+    #Rrectified or R2??
+    R2_geocentric = Rrectified @ R1_geocentric
+    t2_geocentric = Rrectified @ t1_geocentric + t2rectified
+
+    P1_geocentric = calc_camera_proj_matrix(Krectified, R1_geocentric, t1_geocentric)
+    P2_geocentric = calc_camera_proj_matrix(Krectified, R2_geocentric, t2_geocentric)
+
+    triangulated_geocentric_point = triangulation2View(x1, x2, P1_geocentric, P2_geocentric)
+
+    # CONVERT THIS TO GEODETIC AND SEE IF WORKS
+    print(triangulated_geocentric_point)
+
 
 def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
     print(original_image.shape[0])
@@ -189,7 +242,8 @@ def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
 
     return rectified_image
 
-def epipolar_rectify_images(H1, H2, I1, I2):
+# approximately takes 10 minutes per image
+def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
     # points are defined by [x,y]!!!
     I1_top_left = np.array([0, 0]).reshape(-1,1)
     I1_top_right = np.array([I1.shape[1], 0]).reshape(-1,1)
@@ -237,48 +291,88 @@ def epipolar_rectify_images(H1, H2, I1, I2):
     curr_time = time.time()
 
     left_rectified = rectify_image(I1, left_rectified, H1, min_row, min_col)
-    plt.imsave('left_rectified.jpg', left_rectified)
+    plt.imsave(name_left + '.jpg', left_rectified)
     # plt.imsave('Ben_left_rectified.jpg', left_rectified)
 
     print(f'Rectification took {time.time() - curr_time} seconds')
     curr_time = time.time()
 
     right_rectified = rectify_image(I2, right_rectified, H2, min_row, min_col)
-    plt.imsave('right_rectified.jpg', right_rectified)
+    plt.imsave(name_right + '.jpg', right_rectified)
     # plt.imsave('Ben_right_rectified.jpg', right_rectified)
 
     print(f'Rectification took {time.time() - curr_time} seconds')
 
 
 if __name__ == '__main__':
-    img_path_1 = 'left_led.jpg'
-    img_path_2 = 'right_led.jpg'
+    img_path_1 = 'left_lights0.jpg'
+    img_path_2 = 'right_lights0.jpg'
 
     I1 = open_image(img_path_1)
     I2 = open_image(img_path_2)
 
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
+
     #left camera
-    K1 = np.array([3290.62072, 0, 2006.98028, 0, 3327.56775, 1484.04255, 0, 0, 1]).reshape(3,3)
+    K1 = np.array([3228.66303, 0, 2021.53934, 0, 3250.53106, 1477.63438, 0, 0, 1]).reshape(3,3)
     #right camera
-    K2 = np.array([3346.46355, 0, 2074.04360, 0, 3384.51059, 1445.38457, 0, 0, 1]).reshape(3,3)
+    K2 = np.array([3259.20105, 0, 2103.66743, 0, 3285.76283, 1601.77702, 0, 0, 1]).reshape(3,3)
+
+    # print(K1)
+    # print(K2)
 
     #angle of right camera
-    omega = np.array([-0.02360, -0.00790, -0.02877]).reshape(-1,1)
+    omega = np.array([0.01725, -0.01680, -0.02239]).reshape(-1,1)
 
-    R1 = np.eye(3)
-    R2 = Deparameterize_Omega(omega)
+    # print(Deparameterize_Omega(omega))
 
     t1 = np.array([0, 0, 0]).reshape(-1,1)
-    t2 = np.array([ -278.75844, 10.10778, 17.38857]).reshape(-1,1)
+    t2 = np.array([-0.29191, 0.00474, 0.00789]).reshape(-1,1)
 
-    print(np.linalg.norm(t2))
+    x1_mid = np.array([1876, 1360]).reshape(-1,1)
+    x2_mid = np.array([1844, 1360]).reshape(-1,1)
 
-    Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
+    x1_far = np.array([948, 1800]).reshape(-1,1)
+    x2_far = np.array([944, 1800]).reshape(-1,1)
 
-    Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
+    C = np.array([-2453138.6926446641, -4768009.3846089030, 3442311.5484639616]).reshape(-1,1)
+    latitude_origin = 32.87462
+    longitude_origin = -117.22580
+    plat_yaw = 23.060
+    plat_pitch = 179.728
+    plat_roll = -82.172
 
-    x1 = np.array([3195, 2662]).reshape(-1,1)
-    x2 = np.array([2665, 2662]).reshape(-1,1)
+    # x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega
+    print('Geocentric Middle Light Coordinate:')
+    geocentric_triangulation2View(x1_mid, x2_mid, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+    print()
+    
+    print('Geocentric Far Light Coordinate:')
+    geocentric_triangulation2View(x1_far, x2_far, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
+
+    '''
+    Epipolar Rectification (rows are still not aligned entirely...)
+    '''
+
+    # R1 = np.eye(3)
+    # R2 = Deparameterize_Omega(omega)
+
+    # Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
+
+    # epipolar_rectify_images(H1, H2, I1, I2, img_path_1.split('.')[0] + '_rectified', img_path_2.split('.')[0] + '_rectified')
+    # epipolar_rectify_images(Ben_H1, Ben_H2, I1, I2)
+
+    '''
+    # Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
+
+    # x1 = np.array([3195, 2662]).reshape(-1,1)
+    # x2 = np.array([2665, 2662]).reshape(-1,1)
 
     # Krectified = np.array([3337.2906524999999, 0.0000000000000000, 2040.5119399999999, \
     #                        0.0000000000000000, 3337.2906524999999, 1464.7135599999999, \
@@ -292,22 +386,20 @@ if __name__ == '__main__':
 
     # t2rectified = np.array([-279.48308974678037, 2.3619994848900205e-14, 7.8159700933611020e-14]).reshape(-1,1)
 
-    P1rectified = calc_camera_proj_matrix(Krectified, Rrectified, t1rectified)
-    P2rectified = calc_camera_proj_matrix(Krectified, Rrectified, t2rectified)
+    # P1rectified = calc_camera_proj_matrix(Krectified, Rrectified, t1rectified)
+    # P2rectified = calc_camera_proj_matrix(Krectified, Rrectified, t2rectified)
 
-    triangulation2View(x1, x2, P1rectified, P2rectified)
-    print()
-    print(Dehomogenize(Ben_X))
+    # triangulation2View(x1, x2, P1rectified, P2rectified)
+    # print()
+    # print(Dehomogenize(Ben_X))
 
-    Ben_H1 = np.array([1.0630228122134058, -0.014193587041567837, 43.652643864836932, \
-                       0.041331132756986265, 0.99727420761593855, 81.508106854624259, \
-                       2.1431542696255907e-05, -3.4522626078663791e-06, 0.95955461926217112]).reshape(3,3)
-    Ben_H2 = np.array([1.0398997943316142, -0.028416211609224532, 88.682229854250352, \
-                       0.065524141468807931, 0.99018383318183045, 0.050438250545255414, \
-                       1.8712552518662292e-05, 2.9977058405924798e-06, 0.95484232868928220]).reshape(3,3)
-
-    epipolar_rectify_images(H1, H2, I1, I2)
-    # epipolar_rectify_images(Ben_H1, Ben_H2, I1, I2)
+    # Ben_H1 = np.array([1.0630228122134058, -0.014193587041567837, 43.652643864836932, \
+    #                    0.041331132756986265, 0.99727420761593855, 81.508106854624259, \
+    #                    2.1431542696255907e-05, -3.4522626078663791e-06, 0.95955461926217112]).reshape(3,3)
+    # Ben_H2 = np.array([1.0398997943316142, -0.028416211609224532, 88.682229854250352, \
+    #                    0.065524141468807931, 0.99018383318183045, 0.050438250545255414, \
+    #                    1.8712552518662292e-05, 2.9977058405924798e-06, 0.95484232868928220]).reshape(3,3)
+    '''
 
     '''
     # print('H1 = ')

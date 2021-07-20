@@ -11,12 +11,15 @@ EPSG 3857       flat surface (orthometric??)
 from_crs(a, b)  convert from 'a' to 'b'
 '''
 
+def orthometricToEllipsoid():
+    pass
+
 '''
 gamma --> yaw
 beta --> pitch
 alpha --> roll
 '''
-def euler_angles_ZXY_to_rotation_matrix(gamma, beta, alpha):
+def eulerAnglesZXYToRotationMatrix(gamma, beta, alpha):
     sin_gamma = np.sin(gamma)
     cos_gamma = np.cos(gamma)
     sin_alpha = np.sin(alpha)
@@ -36,6 +39,26 @@ def euler_angles_ZXY_to_rotation_matrix(gamma, beta, alpha):
     R[2][2] = cos_alpha * cos_beta
 
     return R
+
+def eulerAnglesZYXToRotationMatrix( gamma, beta, alpha):
+     sin_gamma = np.sin(gamma)
+     cos_gamma = np.cos(gamma)
+     sin_beta  = np.sin(beta)
+     cos_beta  = np.cos(beta)
+     sin_alpha = np.sin(alpha)
+     cos_alpha = np.cos(alpha)
+
+     R = np.zeros((3,3))
+     R[0][0] = cos_beta * cos_gamma
+     R[0][1] = sin_alpha * sin_beta * cos_gamma - cos_alpha * sin_gamma
+     R[0][2] = cos_alpha * sin_beta * cos_gamma + sin_alpha * sin_gamma
+     R[1][0] = cos_beta * sin_gamma
+     R[1][1] = sin_alpha * sin_beta * sin_gamma + cos_alpha * cos_gamma
+     R[1][2] = cos_alpha * sin_beta * sin_gamma - sin_alpha * cos_gamma
+     R[2][0] = -sin_beta
+     R[2][1] = cos_beta * sin_alpha
+     R[2][2] = cos_beta * cos_alpha
+     return R
 
 '''
 latitude and longitude are both in radians
@@ -72,13 +95,14 @@ Note: I understand the rotations now
          Result: Rca
 '''
 
-def rotation(latitude_radians, longitude_radians, gimbal_pitch, gimbal_roll, gimbal_yaw, platform_pitch, platform_roll, platform_yaw):
+def rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_pitch, gimbal_roll, gimbal_yaw, platform_pitch, platform_roll, platform_yaw):
     # Rotation from gimbal rotated frame (b) to camera frame (a)
     # This is a fixed, known rotation
     Rba = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
 
     # Rotation from gimbal unrotated frame (c) to gimbal rotated frame (b)
-    Rcb = euler_angles_ZXY_to_rotation_matrix(gimbal_yaw, gimbal_pitch, gimbal_roll)
+    Rcb = eulerAnglesZXYToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll)
+    # Rcb = eulerAnglesZYXToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll)
     Rca = Rba @ Rcb
 
     # Rotation from platform rotated frame (d) to gimbal unrotated frame (c)
@@ -87,7 +111,8 @@ def rotation(latitude_radians, longitude_radians, gimbal_pitch, gimbal_roll, gim
     Rda = Rca @ Rdc
 
     # Rotation from platform unrotated frame (e) to platform rotated frame (d)
-    Red = euler_angles_ZXY_to_rotation_matrix(platform_yaw, platform_pitch, platform_roll)
+    Red = eulerAnglesZXYToRotationMatrix(platform_yaw, platform_pitch, platform_roll)
+    # Red = eulerAnglesZYXToRotationMatrix(platform_yaw, platform_pitch, platform_roll)
     Rea = Rda @ Red
 
     # Rotation from WGS84 local Cartesian frame (f) to platform unrotated frame (e)
@@ -115,15 +140,15 @@ if __name__ == '__main__':
     # gimbal_pitch = -np.pi/2
     # gimbal_roll = 0
 
-    # Right of phone is "top"
-    gimbal_yaw = np.pi/2
-    gimbal_pitch = -np.pi/2
-    gimbal_roll = 0
-
-    # # Left of phone is "top"
-    # gimbal_yaw = -np.pi/2
+    # # Right of phone is "top"
+    # gimbal_yaw = np.pi/2
     # gimbal_pitch = -np.pi/2
     # gimbal_roll = 0
+
+    # Left of phone is "top"
+    gimbal_yaw = -np.pi/2
+    gimbal_pitch = -np.pi/2
+    gimbal_roll = 0
 
     platform_yaw = 0
     platform_pitch = 0
@@ -135,4 +160,4 @@ if __name__ == '__main__':
     latitude_radians = latitude * np.pi / 180
     longitude_radians = longitude * np.pi / 180
 
-    print(rotation(latitude_radians, longitude_radians, gimbal_yaw, gimbal_pitch, gimbal_roll, platform_yaw, platform_pitch, platform_roll))
+    print(rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_yaw, gimbal_pitch, gimbal_roll, platform_yaw, platform_pitch, platform_roll))

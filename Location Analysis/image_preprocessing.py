@@ -30,13 +30,16 @@ def grayscale(load_path, save_path):
 
 
 if __name__ == '__main__':
-    left_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Camera Calibration\Stereo Calibration Images\Left\near'
-    right_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Camera Calibration\Stereo Calibration Images\Right\near'
-    rotate_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Camera Calibration\Stereo Calibration Images\Right\calib_gray\rotate'
-    left_gray_save_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Camera Calibration\Stereo Calibration Images\Left\calib_gray'
-    right_gray_save_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Camera Calibration\Stereo Calibration Images\Right\calib_gray'
-    # rename_images(left_path, 'left')
-    # rename_images(right_path, 'right')
+    left_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_7_18_21\Left'
+    right_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_7_18_21\Right'
+    rotate_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_7_18_21\Right\rotate'
+    left_save_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_7_18_21\Left_calib_gray'
+    right_save_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_7_18_21\Right_calib_gray'
+    rename_images(left_path, 'left')
+    rename_images(right_path, 'right')
+
+    # might need to run this twice...
     # rotate_image(rotate_path)
-    grayscale(left_path, left_gray_save_path)
-    grayscale(right_path, right_gray_save_path)
+
+    grayscale(left_path, left_save_path)
+    grayscale(right_path, right_save_path)
