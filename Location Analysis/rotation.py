@@ -140,15 +140,15 @@ if __name__ == '__main__':
     # gimbal_pitch = -np.pi/2
     # gimbal_roll = 0
 
-    # # Right of phone is "top"
-    # gimbal_yaw = np.pi/2
-    # gimbal_pitch = -np.pi/2
-    # gimbal_roll = 0
-
-    # Left of phone is "top"
-    gimbal_yaw = -np.pi/2
+    # Right of phone is "top"
+    gimbal_yaw = np.pi/2
     gimbal_pitch = -np.pi/2
     gimbal_roll = 0
+
+    # # Left of phone is "top"
+    # gimbal_yaw = -np.pi/2
+    # gimbal_pitch = -np.pi/2
+    # gimbal_roll = 0
 
     platform_yaw = 0
     platform_pitch = 0

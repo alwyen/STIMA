@@ -1,0 +1,18 @@
+Light # -->,1,,2,,3,,4,
+Image_Name,Column (X),Row (Y),Column (X),Row (Y),Column (X),Row (Y),Column (X),Row (Y)
+left_corner0,2404,536,0,0,0,0,0,0
+left_corner1,1096,460,2976,1324,0,0,0,0
+left_corner2,0,0,1664,1332,0,0,3788,1204
+left_corner3,0,0,368,1216,0,0,2504,1288
+left_corner4,0,0,0,0,0,0,1428,1292
+left_straight0,3968,556,0,0,0,0,0,0
+left_straight1,2360,464,0,0,0,0,0,0
+left_straight2,1300,532,3800,1272,0,0,0,0
+right_corner0,2308,536,0,0,0,0,0,0
+right_corner1,1000,460,2888,1324,0,0,0,0
+right_corner2,0,0,1596,1332,0,0,3704,1204
+right_corner3,0,0,276,1216,0,0,2432,1292
+right_corner4,0,0,0,0,0,0,1356,1292
+right_straight0,3904,556,0,0,0,0,0,0
+right_straight1,2260,464,0,0,0,0,0,0
+right_straight2,1188,532,3736,1272,0,0,0,0

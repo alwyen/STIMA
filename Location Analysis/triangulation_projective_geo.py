@@ -4,6 +4,9 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import time
 import rotation
+import glob
+import os
+import pandas as pd
 
 def open_image(img_path):
     return np.array(Image.open(img_path), dtype='float')/255.
@@ -161,6 +164,16 @@ def triangulation2View(x1, x2, P1rectified, P2rectified):
 '''
 R1 --> np.eye(3)
 omega --> R2 = Deparameterize_Omega(omega)
+
+INPUT:
+    x1                  2D inhomogeneous point
+    x2                  2D inhomogeneous point
+    C                   3D inhomogeneous geocentric point of the stereo camera center
+    latitude_origin     latitude in degrees
+    longitude_origin    longitude in degrees
+    plat_yaw            yaw in degrees
+    plat_pitch          pitch in degrees
+    plat_roll           roll in degrees
 '''
 def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega):
     # # Top of phone is "top"
@@ -173,15 +186,15 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     # gimbal_pitch = -np.pi/2
     # gimbal_roll = 0
 
-    # # Right of phone is "top"
-    # gimbal_yaw = np.pi/2
-    # gimbal_pitch = -np.pi/2
-    # gimbal_roll = 0
-
-    # Left of phone is "top"
-    gimbal_yaw = -np.pi/2
+    # Right of phone is "top"
+    gimbal_yaw = np.pi/2
     gimbal_pitch = -np.pi/2
     gimbal_roll = 0
+
+    # # Left of phone is "top"
+    # gimbal_yaw = -np.pi/2
+    # gimbal_pitch = -np.pi/2
+    # gimbal_roll = 0
 
     R1 = np.eye(3)
     R2 = Deparameterize_Omega(omega)
@@ -192,7 +205,7 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
 
     plat_yaw_radians = plat_yaw * np.pi / 180
     plat_pitch_radians = plat_pitch * np.pi / 180
-    plat_roll_radians = plat_pitch * np.pi / 180
+    plat_roll_radians = plat_roll * np.pi / 180
 
     R1_geocentric = rotation.rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_yaw, gimbal_pitch, gimbal_roll, plat_yaw_radians, plat_pitch_radians, plat_roll_radians)
     t1_geocentric = -R1_geocentric @ C
@@ -207,13 +220,137 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     triangulated_geocentric_point = triangulation2View(x1, x2, P1_geocentric, P2_geocentric)
 
     # CONVERT THIS TO GEODETIC AND SEE IF WORKS
-    print(triangulated_geocentric_point)
+    return triangulated_geocentric_point
+
+def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, t1, K2, t2, omega):
+    # geo_centric_detic unpacking
+    geo_centric_detic_df = pd.read_csv(geo_centric_detic_path)
+    name_list = geo_centric_detic_df.Image_Name.tolist()
+    yaw_list = geo_centric_detic_df.Yaw_X.tolist()
+    pitch_list = geo_centric_detic_df.Pitch_Y.tolist()
+    roll_list = geo_centric_detic_df.Roll_Z.tolist()
+    geo_x_list = geo_centric_detic_df.Geocentric_X.tolist()
+    geo_y_list = geo_centric_detic_df.Geocentric_Y.tolist()
+    geo_z_list = geo_centric_detic_df.Geocentric_Z.tolist()
+    lat_list = geo_centric_detic_df.Lat.tolist()
+    long_list = geo_centric_detic_df.Long.tolist()
+
+    xleft_df = pd.read_csv(xleft_path)
+    yleft_df = pd.read_csv(yleft_path)
+
+    xright_df = pd.read_csv(xright_path)
+    yright_df = pd.read_csv(yright_path)
+
+    gis_df = pd.read_csv(light_gis_path)
+
+    num_lights = 0
+    error_list = list()
+
+    light_number_list = list()
+    est_geo_x_list = list()
+    est_geo_y_list = list()
+    est_geo_z_list = list()
+
+    # also need to cycle through lights 1-4
+    for i in range(len(name_list)):
+        left = 'left_' + name_list[i]
+        right = 'right_' + name_list[i]
+
+        print(name_list[i])
+
+        # cycling through lights 1-4
+        for j in range(1,5):
+            xleft_temp = xleft_df.loc[xleft_df['Image_Name'] == left]
+            yleft_temp = yleft_df.loc[yleft_df['Image_Name'] == left]
+
+            xright_temp = xright_df.loc[xright_df['Image_Name'] == right]
+            yright_temp = yright_df.loc[yright_df['Image_Name'] == right]
+
+            xleft_coord = xleft_temp.iloc[0][j]
+            yleft_coord = yleft_temp.iloc[0][j]
+
+            xright_coord = xright_temp.iloc[0][j]
+            yright_coord = yright_temp.iloc[0][j]
+
+            if xleft_coord == 0:
+                continue
+
+            print(f'Light {j}')
+
+            # x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega
+
+            x1 = np.array([xleft_coord, yleft_coord]).reshape(-1,1)
+            x2 = np.array([xright_coord, yright_coord]).reshape(-1,1)
+
+            C_origin = np.array([geo_x_list[i], geo_y_list[i], geo_z_list[i]]).reshape(-1,1)
+
+            latitude_origin = lat_list[i]
+            longitude_origin = long_list[i]
+
+            plat_yaw = yaw_list[i]
+            plat_pitch = pitch_list[i]
+            plat_roll = roll_list[i]
+
+            estimated_geo_point = geocentric_triangulation2View(x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+
+            light_j = gis_df.loc[gis_df['Light_Number'] == j]
+
+            geo_x = light_j.iloc[0]['Geocentric_X']
+            geo_y = light_j.iloc[0]['Geocentric_Y']
+            geo_z = light_j.iloc[0]['Geocentric_Z']
+
+            light_number_list.append(j)
+            est_geo_x_list.append(geo_x)
+            est_geo_y_list.append(geo_y)
+            est_geo_z_list.append(geo_z)
+
+            light_geo_coord = np.array([geo_x, geo_y, geo_z]).reshape(-1,1)
+            
+            error = np.linalg.norm(estimated_geo_point - light_geo_coord)
+
+            error_list.append(error)
+            num_lights += 1
+
+            print(f'Error: {error}')
+
+            print(estimated_geo_point)
+            print()
+
+            # distance_from_camera = np.linalg.norm(C_origin - estimated_geo_point)
+            # print(f'Distance from camera center to estimated point: {distance_from_camera}')
+        
+        print()
+
+        mean_error = np.mean(np.array(error_list))
+
+    print(f'Average error for {num_lights} lights: {mean_error}')
+
+    d = {'Light_Number':light_number_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
+    est_geocentric_df = pd.DataFrame(data = d)
+    est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
+
+# https://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
+def calc_dist_between_gps(lat1, long1, lat2, long2):
+    earth_radius_km = 6371
+
+    dLat = np.radians(lat2 - lat1)
+    dLong = np.radians(long2 - long1)
+
+    lat1_rad = np.radians(lat1)
+    long1_rad = np.radians(long1)
+
+    a = np.sin(dLat/2) * np.sin(dLat/2) + np.sin(dLong/2) * np.sin(dLong/2) * np.cos(lat1) * np.cos(lat2)
+    c = 2 * np.arctan2(math.sqrt(a), math.sqrt(1-a))
+
+    dist_m = earth_radius_km * c * 1000
+
+    print(dist_m)
 
 
 def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
-    print(original_image.shape[0])
+    # print(original_image.shape[0])
 
-    print(original_image.shape[1])
+    # print(original_image.shape[1])
 
     for row in range(rectified_image.shape[0]):
         for col in range(rectified_image.shape[1]):
@@ -282,7 +419,7 @@ def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
     left_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
     right_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
 
-    print(I1.shape)
+    # print(I1.shape)
 
     print(left_rectified.shape)
 
@@ -303,70 +440,110 @@ def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
 
     print(f'Rectification took {time.time() - curr_time} seconds')
 
+def rectify_all_images(H1, H2, left_path, right_path, save_path):
+    left_name_list = glob.glob(left_path + '\*.jpg')
+    right_name_list = glob.glob(right_path + '\*.jpg')
+
+    os.chdir(left_path)
+    left_names = glob.glob('*.jpg')
+
+    os.chdir(right_path)
+    right_names = glob.glob('*.jpg')
+
+    assert len(left_name_list) == len(right_name_list)    
+    assert len(left_names) == len(right_names)
+    assert len(left_name_list) == len(left_names)
+
+    os.chdir(save_path)
+
+    for i in range(len(left_names)):
+        I1 = open_image(left_name_list[i])
+        I2 = open_image(right_name_list[i])
+        epipolar_rectify_images(H1, H2, I1, I2, left_names[i].split('.')[0] + '_rectified', right_names[i].split('.')[0] + '_rectified')
+
 
 if __name__ == '__main__':
-    img_path_1 = 'left_lights0.jpg'
-    img_path_2 = 'right_lights0.jpg'
+    csv_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
+    xleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_x.csv'
+    yleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_y.csv'
+    xright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_x.csv'
+    yright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_y.csv'
+    light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\light_gis_out.csv'
 
-    I1 = open_image(img_path_1)
-    I2 = open_image(img_path_2)
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
 
-    ########################################################################################################
-    ########################################################################################################
-    ########################################################################################################
+    '''
+    use the "Image_Name" column from geo_centric_detic_coords.csv to index the coordinates of the lamps in  
+    '''
 
     #left camera
-    K1 = np.array([3228.66303, 0, 2021.53934, 0, 3250.53106, 1477.63438, 0, 0, 1]).reshape(3,3)
+    K1 = np.array([3350.32465, 0, 2056.92070, 0, 3354.75661, 1541.58403, 0, 0, 1]).reshape(3,3)
     #right camera
-    K2 = np.array([3259.20105, 0, 2103.66743, 0, 3285.76283, 1601.77702, 0, 0, 1]).reshape(3,3)
+    K2 = np.array([3326.52010, 0, 2092.90462, 0, 3325.27950, 1585.89738, 0, 0, 1]).reshape(3,3)
 
     # print(K1)
     # print(K2)
 
     #angle of right camera
-    omega = np.array([0.01725, -0.01680, -0.02239]).reshape(-1,1)
+    omega = np.array([-0.00213, 0.00721, -0.01770]).reshape(-1,1)
 
     # print(Deparameterize_Omega(omega))
 
     t1 = np.array([0, 0, 0]).reshape(-1,1)
-    t2 = np.array([-0.29191, 0.00474, 0.00789]).reshape(-1,1)
+    t2 = np.array([-0.29434, 0.00705, -0.00043]).reshape(-1,1)
 
-    x1_mid = np.array([1876, 1360]).reshape(-1,1)
-    x2_mid = np.array([1844, 1360]).reshape(-1,1)
+    gps_estimation(csv_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, t1, K2, t2, omega)
 
-    x1_far = np.array([948, 1800]).reshape(-1,1)
-    x2_far = np.array([944, 1800]).reshape(-1,1)
+    # calc_dist_between_gps(32.87515225, -117.21846236, 32.87525536, -117.21840555)
+    # calc_dist_between_gps(32.87504120, -117.21842973, 32.8750389, -117.21809992)
 
-    C = np.array([-2453138.6926446641, -4768009.3846089030, 3442311.5484639616]).reshape(-1,1)
-    latitude_origin = 32.87462
-    longitude_origin = -117.22580
-    plat_yaw = 23.060
-    plat_pitch = 179.728
-    plat_roll = -82.172
+    # x1_mid = np.array([1876, 1360]).reshape(-1,1)
+    # x2_mid = np.array([1844, 1360]).reshape(-1,1)
 
-    # x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega
-    print('Geocentric Middle Light Coordinate:')
-    geocentric_triangulation2View(x1_mid, x2_mid, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
-    print()
+    # x1_far = np.array([948, 1800]).reshape(-1,1)
+    # x2_far = np.array([944, 1800]).reshape(-1,1)  
+
+    # C = np.array([-2453138.6926446641, -4768009.3846089030, 3442311.5484639616]).reshape(-1,1)
+    # latitude_origin = 32.87462
+    # longitude_origin = -117.22580
+    # plat_yaw = 23.060
+    # plat_pitch = 179.728
+    # plat_roll = -82.172
+
+    # # x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega
+    # print('Geocentric Middle Light Coordinate:')
+    # geocentric_triangulation2View(x1_mid, x2_mid, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+    # print()
     
-    print('Geocentric Far Light Coordinate:')
-    geocentric_triangulation2View(x1_far, x2_far, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+    # print('Geocentric Far Light Coordinate:')
+    # geocentric_triangulation2View(x1_far, x2_far, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
 
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
 
-    '''
-    Epipolar Rectification (rows are still not aligned entirely...)
-    '''
+    # img_path_1 = 'left_lights0.jpg'
+    # img_path_2 = 'right_lights0.jpg'
+
+    # I1 = open_image(img_path_1)
+    # I2 = open_image(img_path_2)
+
+    # left_rectification_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification\left'
+    # right_rectification_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification\right'
+    # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification'
 
     # R1 = np.eye(3)
     # R2 = Deparameterize_Omega(omega)
 
     # Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
 
+    # rectify_all_images(H1, H2, left_rectification_path, right_rectification_path, save_path)
+
     # epipolar_rectify_images(H1, H2, I1, I2, img_path_1.split('.')[0] + '_rectified', img_path_2.split('.')[0] + '_rectified')
-    # epipolar_rectify_images(Ben_H1, Ben_H2, I1, I2)
+
+
 
     '''
     # Ben_X = np.array([4.5106863134821099e+25, 3.7251903855656536e+25, 1.0542971220170820e+26, 6.1319918022837758e+22]).reshape(-1,1)
@@ -436,4 +613,36 @@ if __name__ == '__main__':
 
     # print(left_epipole)
     # print(right_epipole)
+    '''
+
+    '''
+    # 
+    # headergeo_centric_detic_df = pd.read_csv(csv_path)_list = list(geo_centric_detic_df.columns)[0].split('\t')
+    # geo_list = geo_centric_detic_df.values.tolist()
+    # name_list = list()
+    # yaw_list = list()
+    # pitch_list = list()
+    # roll_list = list()
+    # geo_x_list = list()
+    # geo_y_list = list()
+    # geo_z_list = list()
+    # lat_list = list()
+    # long_list = list()
+    # height_list = list()
+    # for i in range(len(geo_list)):
+    #     row = list(geo_list[i])[0].split('\t')
+    #     name_list.append(row[0])
+    #     yaw_list.append(float(row[1]))
+    #     pitch_list.append(float(row[2]))
+    #     roll_list.append(float(row[3]))
+    #     geo_x_list.append(float(row[4]))
+    #     geo_y_list.append(float(row[5]))
+    #     geo_z_list.append(float(row[6]))
+    #     lat_list.append(float(row[7]))
+    #     long_list.append(float(row[8]))
+    #     height_list.append(float(row[9]))
+
+    # d = {header_list[0]: name_list, header_list[1]: yaw_list, header_list[2]: pitch_list, header_list[3]: roll_list, header_list[4]: geo_x_list, header_list[5]: geo_y_list, header_list[6]: geo_z_list, header_list[7]: lat_list, header_list[8]: long_list, header_list[9]: height_list}
+    # df = pd.DataFrame(data = d)
+    # df.to_csv('please_work.csv')  
     '''
