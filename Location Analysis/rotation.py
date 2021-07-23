@@ -16,10 +16,10 @@ def orthometricToEllipsoid():
 
 '''
 gamma --> yaw
-beta --> pitch
 alpha --> roll
+beta --> pitch
 '''
-def eulerAnglesZXYToRotationMatrix(gamma, beta, alpha):
+def eulerAnglesZXYToRotationMatrix(gamma, alpha, beta):
     sin_gamma = np.sin(gamma)
     cos_gamma = np.cos(gamma)
     sin_alpha = np.sin(alpha)
@@ -101,9 +101,13 @@ def rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians,
     Rba = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
 
     # Rotation from gimbal unrotated frame (c) to gimbal rotated frame (b)
-    Rcb = eulerAnglesZXYToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll)
-    # Rcb = eulerAnglesZYXToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll)
+    # Rcb = eulerAnglesZXYToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll).T
+    Rcb = eulerAnglesZYXToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll).T
     Rca = Rba @ Rcb
+
+    # print('Rcb:')
+    # print(Rcb)
+    # print()
 
     # Rotation from platform rotated frame (d) to gimbal unrotated frame (c)
     # This is a fixed, known rotation
@@ -111,9 +115,23 @@ def rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians,
     Rda = Rca @ Rdc
 
     # Rotation from platform unrotated frame (e) to platform rotated frame (d)
-    Red = eulerAnglesZXYToRotationMatrix(platform_yaw, platform_pitch, platform_roll)
     # Red = eulerAnglesZYXToRotationMatrix(platform_yaw, platform_pitch, platform_roll)
+    # Red = eulerAnglesZXYToRotationMatrix(platform_yaw, platform_pitch, platform_roll)
+
+    # Red = eulerAnglesZYXToRotationMatrix(platform_yaw, platform_pitch, platform_roll).T
+    # Red = eulerAnglesZXYToRotationMatrix(platform_yaw, platform_pitch, platform_roll).T
+
+    # Red = eulerAnglesZYXToRotationMatrix(-platform_yaw, -platform_pitch, -platform_roll)
+    Red = eulerAnglesZXYToRotationMatrix(-platform_yaw, -platform_pitch, -platform_roll)
+
+    # Red = eulerAnglesZYXToRotationMatrix(-platform_yaw, -platform_pitch, -platform_roll).T
+    # Red = eulerAnglesZXYToRotationMatrix(-platform_yaw, -platform_pitch, -platform_roll).T
+
     Rea = Rda @ Red
+
+    # print('Red:')
+    # print(Red)
+    # print()
 
     # Rotation from WGS84 local Cartesian frame (f) to platform unrotated frame (e)
     # This is a fixed, known rotation
@@ -124,6 +142,10 @@ def rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians,
     # Camera center in WGS84 geodetic coordinates
     Rgf = rotationFromWGS84GeocentricToWGS84LocalCartesian(latitude_radians, longitude_radians)
     Rga = Rfa @ Rgf
+
+    # print('Rgf:')
+    # print(Rgf)
+    # print()
 
     return Rga
 

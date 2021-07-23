@@ -200,6 +200,14 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     R2 = Deparameterize_Omega(omega)
     Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
     
+    # print('H1:')
+    # print(H1)
+    # print()
+
+    # print('H2:')
+    # print(H2)
+    # print()
+
     latitude_radians = latitude_origin * np.pi / 180
     longitude_radians = longitude_origin * np.pi / 180
 
@@ -207,8 +215,11 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     plat_pitch_radians = plat_pitch * np.pi / 180
     plat_roll_radians = plat_roll * np.pi / 180
 
-    R1_geocentric = rotation.rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_yaw, gimbal_pitch, gimbal_roll, plat_yaw_radians, plat_pitch_radians, plat_roll_radians)
+    R1_geocentric = rotation.rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_pitch, gimbal_roll, gimbal_yaw, plat_pitch_radians, plat_roll_radians, plat_yaw_radians)
     t1_geocentric = -R1_geocentric @ C
+    # print('rotation from geocentric to camera frame')
+    # print(R1_geocentric)
+    # print
 
     #Rrectified or R2??
     R2_geocentric = Rrectified @ R1_geocentric
@@ -291,6 +302,21 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
             plat_pitch = pitch_list[i]
             plat_roll = roll_list[i]
 
+            # print('x1:')
+            # print(x1)
+            # print()
+            # print('x2:')
+            # print(x2)
+            # print()
+
+            # print('camera center')
+            # print(C_origin)
+            # print()
+
+            # print('platform [yaw, pitch, roll]')
+            # print([plat_yaw, plat_pitch, plat_roll])
+            # print()
+
             estimated_geo_point = geocentric_triangulation2View(x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
 
             light_j = gis_df.loc[gis_df['Light_Number'] == j]
@@ -300,9 +326,9 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
             geo_z = light_j.iloc[0]['Geocentric_Z']
 
             light_number_list.append(j)
-            est_geo_x_list.append(geo_x)
-            est_geo_y_list.append(geo_y)
-            est_geo_z_list.append(geo_z)
+            est_geo_x_list.append(estimated_geo_point[0][0])
+            est_geo_y_list.append(estimated_geo_point[1][0])
+            est_geo_z_list.append(estimated_geo_point[2][0])
 
             light_geo_coord = np.array([geo_x, geo_y, geo_z]).reshape(-1,1)
             
@@ -313,8 +339,13 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
 
             print(f'Error: {error}')
 
-            print(estimated_geo_point)
-            print()
+            # print('estimated geocentric point')
+            # print(estimated_geo_point)
+            # print()
+
+            # print('ground truth geocentric point')
+            # print(light_geo_coord)
+            # print()
 
             # distance_from_camera = np.linalg.norm(C_origin - estimated_geo_point)
             # print(f'Distance from camera center to estimated point: {distance_from_camera}')
@@ -330,22 +361,112 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
     est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
 
 # https://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
+# https://nathanrooy.github.io/posts/2016-09-07/haversine-with-python/
 def calc_dist_between_gps(lat1, long1, lat2, long2):
-    earth_radius_km = 6371
+    # earth_radius_km = 6371
 
-    dLat = np.radians(lat2 - lat1)
-    dLong = np.radians(long2 - long1)
+    # dLat = np.radians(lat2 - lat1)
+    # dLong = np.radians(long2 - long1)
 
-    lat1_rad = np.radians(lat1)
-    long1_rad = np.radians(long1)
+    # lat1_rad = np.radians(lat1)
+    # long1_rad = np.radians(long1)
 
-    a = np.sin(dLat/2) * np.sin(dLat/2) + np.sin(dLong/2) * np.sin(dLong/2) * np.cos(lat1) * np.cos(lat2)
-    c = 2 * np.arctan2(math.sqrt(a), math.sqrt(1-a))
+    # a = np.sin(dLat/2) * np.sin(dLat/2) + np.sin(dLong/2) * np.sin(dLong/2) * np.cos(lat1) * np.cos(lat2)
+    # c = 2 * np.arctan2(math.sqrt(a), math.sqrt(1-a))
 
-    dist_m = earth_radius_km * c * 1000
+    # # this is essentially the error
+    # dist_m = earth_radius_km * c * 1000
 
-    print(dist_m)
+    R = 6371000 # radius of Earth in meters
+    phi_1=math.radians(lat1)
+    phi_2=math.radians(lat2)
 
+    delta_phi=math.radians(lat2-lat1)
+    delta_lambda=math.radians(long2-long1)
+
+    a=math.sin(delta_phi/2.0)**2+math.cos(phi_1)*math.cos(phi_2)*math.sin(delta_lambda/2.0)**2
+    c=2*math.atan2(math.sqrt(a),math.sqrt(1-a))
+        
+    dist_m = R*c
+
+    return dist_m
+
+def lights_errors(light_est_path, light_gis_gps_path):
+    est_df = pd.read_csv(light_est_path)
+    gis_df = pd.read_csv(light_gis_gps_path)
+
+    light_1_error = list()
+    light_2_error = list()
+    light_4_error = list()
+
+    gps_est_1_lat = list()
+    gps_est_1_long = list()
+    gps_est_2_lat = list()
+    gps_est_2_long = list()
+    gps_est_4_lat = list()
+    gps_est_4_long = list()
+
+    est_light_number = np.array(est_df.Light_Number.tolist()) - 1
+    est_latitude = est_df.Latitude.tolist()
+    est_longitude = est_df.Longitude.tolist()
+
+    gis_light_number = np.array(gis_df.Light_Number.tolist()) - 1
+    gis_latitude = gis_df.Latitude.tolist()
+    gis_longitude = gis_df.Longitude.tolist()
+
+    gis_light_1 = (gis_latitude[0], gis_longitude[0])
+    gis_light_2 = (gis_latitude[1], gis_longitude[1])
+    gis_light_4 = (gis_latitude[3], gis_longitude[3])
+
+    for i in range(len(est_light_number)):
+        light_number = est_light_number[i]
+        error = calc_dist_between_gps(est_latitude[i], est_longitude[i], gis_latitude[light_number], gis_longitude[light_number])
+        if light_number == 0:
+            light_1_error.append(error)
+            gps_est_1_lat.append(est_latitude[i])
+            gps_est_1_long.append(est_longitude[i])
+        elif light_number == 1:
+            light_2_error.append(error)
+            gps_est_2_lat.append(est_latitude[i])
+            gps_est_2_long.append(est_longitude[i])
+        elif light_number == 3:
+            light_4_error.append(error)
+            gps_est_4_lat.append(est_latitude[i])
+            gps_est_4_long.append(est_longitude[i])
+    
+    print(f'Average error for 1: {np.mean(np.array(light_1_error))}')
+    print(f'Average error for 2: {np.mean(np.array(light_2_error))}')
+    print(f'Average error for 4: {np.mean(np.array(light_4_error))}')
+
+    gps_est_1 = list(zip(gps_est_1_lat, gps_est_1_long))
+    gps_est_2 = list(zip(gps_est_2_lat, gps_est_2_long))
+    gps_est_4 = list(zip(gps_est_4_lat, gps_est_4_long))
+
+    return gps_est_1, gps_est_2, gps_est_4, gis_light_1, gis_light_2, gis_light_4
+
+def error_reduction_analysis(light_number_error, gis_light_number):
+    print(f'Number of observations: {len(light_number_error)}')
+    lat_long_list = list(zip(*light_number_error))
+    lat_list = lat_long_list[0]
+    long_list = lat_long_list[1]
+    for i in range(len(light_number_error)):
+        print(f'{i+1} observation(s):')
+        lat_list_i = np.array(lat_list[:i+1])
+        long_list_i = np.array(long_list[:i+1])
+        error = calc_dist_between_gps(np.mean(lat_list_i), np.mean(long_list_i), gis_light_number[0], gis_light_number[1])
+        print(f'Error: {error}')
+        print()
+
+def error_analysis(light_1_error, light_2_error, light_4_error, gis_light_1, gis_light_2, gis_light_4):
+    print('Light 1:')
+    error_reduction_analysis(light_1_error, gis_light_1)
+    
+    print('Light 2:')
+    error_reduction_analysis(light_2_error, gis_light_2)
+
+    print('Light 4:')
+    error_reduction_analysis(light_4_error, gis_light_4)
+        
 
 def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
     # print(original_image.shape[0])
@@ -415,6 +536,9 @@ def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
     elif min_col > 0:
         col_rec_bound = max_col - min_col
 
+    print(min_row)
+    print(min_col)
+
     # DEFINE SHAPE IN TERMS OF IMAGE COORDINATES NOW
     left_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
     right_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
@@ -463,12 +587,15 @@ def rectify_all_images(H1, H2, left_path, right_path, save_path):
 
 
 if __name__ == '__main__':
-    csv_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
+    geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
+    # geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
     xleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_x.csv'
     yleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_y.csv'
     xright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_x.csv'
     yright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_y.csv'
-    light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\light_gis_out.csv'
+    light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\light_gis_out_2.csv'
+    light_est_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\estimated_gps_coords.csv'
+    light_gis_gps_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\light_gis.csv'
 
     ########################################################################################################
     ########################################################################################################
@@ -494,10 +621,15 @@ if __name__ == '__main__':
     t1 = np.array([0, 0, 0]).reshape(-1,1)
     t2 = np.array([-0.29434, 0.00705, -0.00043]).reshape(-1,1)
 
-    gps_estimation(csv_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, t1, K2, t2, omega)
+    gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, t1, K2, t2, omega)
 
-    # calc_dist_between_gps(32.87515225, -117.21846236, 32.87525536, -117.21840555)
-    # calc_dist_between_gps(32.87504120, -117.21842973, 32.8750389, -117.21809992)
+    # gps_est_1, gps_est_2, gps_est_4, gis_light_1, gis_light_2, gis_light_4 = lights_errors(light_est_path, light_gis_gps_path)
+    # error_analysis(gps_est_1, gps_est_2, gps_est_4, gis_light_1, gis_light_2, gis_light_4)
+
+
+    # error = calc_dist_between_gps(32.87515225, -117.21846236, 32.87525536, -117.21840555)
+    # error = calc_dist_between_gps(32.87504120, -117.21842973, 32.8750389, -117.21809992)
+    # print(error)
 
     # x1_mid = np.array([1876, 1360]).reshape(-1,1)
     # x2_mid = np.array([1844, 1360]).reshape(-1,1)
@@ -646,3 +778,17 @@ if __name__ == '__main__':
     # df = pd.DataFrame(data = d)
     # df.to_csv('please_work.csv')  
     '''
+
+    # H1 = np.array([[ 9.91275333e-01, -6.90187277e-03, 7.53407792e+01], [ 2.19327103e-03,  9.94841868e-01,  2.93493660e+01], [-2.58012514e-06, -3.24156793e-07, 1.00576887e+00]]).reshape(3,3)
+    # H2 = np.array([[ 1.00263463e+00, -2.33391941e-02, 1.83809682e+01], [ 2.33640382e-02,  1.00443599e+00, -8.17564452e+01], [-4.31016659e-07, 3.40347247e-07, 1.00036065e+00]]).reshape(3,3)
+
+    # pt1 = np.array([1428, 1292]).reshape(-1,1)
+    # pt2 = np.array([1356, 1292]).reshape(-1,1)
+
+    # orig_pt1 = Dehomogenize(np.linalg.inv(H1) @ Homogenize(pt1))
+    # orig_pt2 = Dehomogenize(np.linalg.inv(H2) @ Homogenize(pt2))
+
+    # buffer = np.array([54, 81]).reshape(-1,1)
+
+    # print(orig_pt1-buffer)
+    # print(orig_pt2-buffer)

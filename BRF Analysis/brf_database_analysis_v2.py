@@ -338,7 +338,7 @@ class database_processing():
                 
 
                 # input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
-                input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                input_param = np.array([int_avg, peak_loc, crest_factor, kurtosis, skew])
                 
                 assert len(input_param) == num_features
 
@@ -1164,6 +1164,7 @@ class brf_classification():
 
         return brf_KNN_model
 
+    #name_k is for bulb identification, which I am not doing at the moment!
     def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, num_features, weights, Entire, name_k, MisClass):
         #this assert statement should always hold because the pairing does not make sense
         if classification_type == 'type':
@@ -1266,6 +1267,7 @@ class brf_classification():
 
         # this should be accuracy...?
         accuracy = true_positive/total
+        print(f'Accuracy: {accuracy}')
 
 
         if not skip:
@@ -1277,9 +1279,9 @@ class brf_classification():
         if not skip:
             if Entire:
                 if classification_type == 'name':
-                    plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+                    plots.confusion_matrix_unique(ground_list, predicted_list, classification_list, f'[int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix for Entire Database Using KNN\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
                 elif classification_type == 'type':
-                    plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
+                    plots.confusion_matrix_type(ground_list, predicted_list, classification_list, f'[int_avg, peak_loc, crest_factor, kurtosis, skew]\nConfusion Matrix of Bulb Types Using KNN and k-fold CV (80% Train/20% Test)\nWeights: {weights}\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
             else:
                 plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
 
@@ -1458,17 +1460,20 @@ if __name__ == "__main__":
     
     #'Entire' is for the entire database
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
-    weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.75, 0.5, 0.75, 1.0, 1.0])
+    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     
     # pickles features
-    # database_processing.pkl_KNN_in_out(brf_database, 'double', 6, csv_pkl_save_path)
+    # database_processing.pkl_KNN_in_out(brf_database, 'double', 5, csv_pkl_save_path)
 
     # runs KNN analysis on pkl file
-    # brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=3, num_features=6, name_k=3)    
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=5, name_k=3)
+    #after choosing K, train on train+validation set; final with test set
 
     # k-fold analysis
-    brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 6, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
+    # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
     
     # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
 
