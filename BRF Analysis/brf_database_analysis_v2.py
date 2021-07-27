@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import math
 import os
 import seaborn as sn
+import glob
 
 import pdb
 
@@ -99,6 +100,37 @@ class plots():
         plt.plot(waveform)
         plt.title(plot_name)
         plt.savefig(plot_name + '.png')
+        plt.clf()
+
+    def plot_three_waveforms(csv_brf_path, save_path, title_name):
+        os.chdir(csv_brf_path)
+        csv_names = glob.glob('*.csv')
+        colors = list(['r', 'g', 'b'])
+        # fig, axs = plt.subplots(len(csv_names), constrained_layout=True, figsize = (8,15))
+        for i in range(len(csv_names)):
+            processed = raw_waveform_processing(csv_names[i])
+            time = processed.time
+            brf = processed.brf
+            # time, brf = raw_waveform_processing.clean_brf(time, brf)
+            brf = raw_waveform_processing.normalize(brf)
+            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
+            smoothed_time = raw_waveform_processing.moving_average(time, mov_avg_w_size)
+            # plt.plot(time, brf, colors[i])
+            plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3)
+            # plt.plot(normalized_smoothed, colors[i])
+            plt.xlabel('Time (s)', fontsize = 18)
+            plt.ylabel('Normalized Intensity', fontsize = 18)
+            plt.xticks(fontsize = 18)
+            plt.yticks(fontsize = 18)
+            plt.locator_params(axis='x', nbins=5)
+            # plt.tight_layout()
+            plt.gcf().subplots_adjust(bottom=0.15)
+            # axs[i].plot(time, brf)
+            # axs[i].set_xlabel('Time (s)', fontsize = 18)
+            # axs[i].set_ylabel('Normalized Intensity', fontsize = 18)
+
+        plt.title(title_name, fontsize = 18)
+        plt.savefig(save_path + '\\' + title_name + '.png')
         plt.clf()
 
     #confusion matrix for bulb types only
@@ -1438,12 +1470,27 @@ class brf_classification():
 
 if __name__ == "__main__":
     csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
+    smoothed_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples'
     # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
     pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized.pkl'
     # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
     # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Zeal_stats.pkl'
     brf_database = database_processing(database_path).brf_database
 
+    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\CFL'
+    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'CFL')
+
+    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\Halogen'
+    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Halogen')
+
+    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\Incandescent'
+    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Incandescent')
+
+    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\LED'
+    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'LED')
+
+
+    '''
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
@@ -1480,6 +1527,8 @@ if __name__ == "__main__":
     # df = pd.read_pickle(pkl_path)
     # df_list = df.values.tolist()
     # print(len(df_list[0]))
+
+    '''
 
     '''
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)

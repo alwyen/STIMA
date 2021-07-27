@@ -339,9 +339,9 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
 
             print(f'Error: {error}')
 
-            # print('estimated geocentric point')
-            # print(estimated_geo_point)
-            # print()
+            print('estimated geocentric point')
+            print(estimated_geo_point)
+            print()
 
             # print('ground truth geocentric point')
             # print(light_geo_coord)
@@ -477,15 +477,16 @@ def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
         for col in range(rectified_image.shape[1]):
             rec_pt = np.array([col, row]).reshape(-1,1)
 
+            #this is the rectified point we're modifying...
             if min_row_val < 0:
-                rec_pt[1][0] = rec_pt[1][0] + min_row_val
+                rec_pt[1][0] = rec_pt[1][0] + min_row_val #adding negative value to be negative
             elif min_row_val >= 0:
-                rec_pt[1][0] = rec_pt[1][0] - min_row_val
+                rec_pt[1][0] = rec_pt[1][0] - min_row_val #I think you also need to add the value here...
 
             if min_col_val < 0:
                 rec_pt[0][0] = rec_pt[0][0] + min_col_val
-            elif min_row_val >= 0:
-                rec_pt[0][0] = rec_pt[0][0] - min_col_val
+            elif min_col_val >= 0:
+                rec_pt[0][0] = rec_pt[0][0] + min_col_val
 
             homog_rec_pt = Homogenize(rec_pt)
             img_pt = Dehomogenize(np.linalg.inv(H) @ homog_rec_pt)
@@ -523,25 +524,35 @@ def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
 
     min_row = math.ceil(min(new_bounds[1]))
     max_row = math.ceil(max(new_bounds[1]))
-    min_col = math.ceil(min(new_bounds[0]))
-    max_col = math.ceil(max(new_bounds[0]))
+
+    min_col_I1 = math.ceil(min(pts_I1_rec[0]))
+    max_col_I1 = math.ceil(max(pts_I1_rec[0]))
+
+    min_col_I2 = math.ceil(min(pts_I2_rec[0]))
+    max_col_I2 = math.ceil(max(pts_I2_rec[0]))
 
     if min_row < 0:
         row_rec_bound = max_row + abs(min_row)
     elif min_row > 0:
         row_rec_bound = max_row - min_row
     
-    if min_col < 0:
-        col_rec_bound = max_col + abs(min_col)
-    elif min_col > 0:
-        col_rec_bound = max_col - min_col
+    if min_col_I1 < 0:
+        col_rec_bound_I1 = max_col_I1 + abs(min_col_I1)
+    elif min_col_I1 > 0:
+        col_rec_bound_I1 = max_col_I1 - min_col_I1
 
-    print(min_row)
-    print(min_col)
+    if min_col_I2 < 0:
+        col_rec_bound_I2 = max_col_I2 + abs(min_col_I2)
+    elif min_col_I2 > 0:
+        col_rec_bound_I2 = max_col_I2 - min_col_I2
+
+
+    # print(min_row)
+    # print(min_col)
 
     # DEFINE SHAPE IN TERMS OF IMAGE COORDINATES NOW
-    left_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
-    right_rectified = np.zeros((row_rec_bound, col_rec_bound, 3))
+    left_rectified = np.zeros((row_rec_bound, col_rec_bound_I1, 3))
+    right_rectified = np.zeros((row_rec_bound, col_rec_bound_I2, 3))
 
     # print(I1.shape)
 
@@ -551,14 +562,16 @@ def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
 
     curr_time = time.time()
 
-    left_rectified = rectify_image(I1, left_rectified, H1, min_row, min_col)
+    left_rectified = rectify_image(I1, left_rectified, H1, min_row, min_col_I1)
     plt.imsave(name_left + '.jpg', left_rectified)
     # plt.imsave('Ben_left_rectified.jpg', left_rectified)
 
     print(f'Rectification took {time.time() - curr_time} seconds')
     curr_time = time.time()
 
-    right_rectified = rectify_image(I2, right_rectified, H2, min_row, min_col)
+    print(time.ctime())
+
+    right_rectified = rectify_image(I2, right_rectified, H2, min_row, min_col_I2)
     plt.imsave(name_right + '.jpg', right_rectified)
     # plt.imsave('Ben_right_rectified.jpg', right_rectified)
 
@@ -588,8 +601,9 @@ def rectify_all_images(H1, H2, left_path, right_path, save_path):
 
 if __name__ == '__main__':
     geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
-    # geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
+    # geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords_avg.csv'
     xleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_x.csv'
+    # xleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_x_debugging.csv'
     yleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_left_y.csv'
     xright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_x.csv'
     yright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\feature_coords_right_y.csv'
@@ -664,7 +678,8 @@ if __name__ == '__main__':
 
     # left_rectification_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification\left'
     # right_rectification_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification\right'
-    # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification'
+    # # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification'
+    # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification_v2'
 
     # R1 = np.eye(3)
     # R2 = Deparameterize_Omega(omega)
