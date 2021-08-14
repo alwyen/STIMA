@@ -175,7 +175,7 @@ INPUT:
     plat_pitch          pitch in degrees
     plat_roll           roll in degrees
 '''
-def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega):
+def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12):
     # # Top of phone is "top"
     gimbal_yaw = 0
     gimbal_pitch = -np.pi/2
@@ -196,10 +196,6 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     # gimbal_pitch = -np.pi/2
     # gimbal_roll = 0
 
-    R1 = np.eye(3)
-    R2 = Deparameterize_Omega(omega)
-    Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
-    
     # print('H1:')
     # print(H1)
     # print()
@@ -225,20 +221,46 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
     # print(R1_geocentric @ C)
     # print()
 
-    #Rrectified or R2??
-    R2_geocentric = Rrectified @ R1_geocentric
-    t2_geocentric = Rrectified @ t1_geocentric + t2rectified
+    R2_geocentric = R12 @ R1_geocentric
+    t2_geocentric = R12 @ t1_geocentric + t12
 
-    # print(Krectified)
-    # print(R1_geocentric)
-    # print(t1_geocentric)
+    Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1_geocentric, t1_geocentric, K2, R2_geocentric, t2_geocentric)
+    K1rectified, K2rectified = rectified_calibration_matrices(Krectified, H1, H2, left_img, right_img)
 
-    P1_geocentric = calc_camera_proj_matrix(Krectified, R1_geocentric, t1_geocentric)
-    P2_geocentric = calc_camera_proj_matrix(Krectified, R2_geocentric, t2_geocentric)
+    P1_geocentric = calc_camera_proj_matrix(K1rectified, Rrectified, t1rectified)
+    P2_geocentric = calc_camera_proj_matrix(K2rectified, Rrectified, t2rectified)
 
-    triangulated_geocentric_point = triangulation2View(x1, x2, P1_geocentric, P2_geocentric)
+    # print(np.linalg.norm(P1_geocentric))
+    # print(np.linalg.norm(P2_geocentric))
 
-    # CONVERT THIS TO GEODETIC AND SEE IF WORKS
+    #frobius norm projection matrices
+    norm_P1_geocentric = P1_geocentric / np.linalg.norm(P1_geocentric)
+    norm_P2_geocentric = P2_geocentric / np.linalg.norm(P2_geocentric)
+
+    # print('Rrectified')
+    # print(Rrectified)
+    # print('t1rectified')
+    # print(t1rectified)
+    # print('t2rectified')
+    # print(t2rectified)
+    # print()
+
+
+
+    # norm_P1_geocentric = P1_geocentric
+    # norm_P2_geocentric = P2_geocentric
+
+    # K1rec_inv = np.linalg.inv(K1rectified)
+    # K2rec_inv = np.linalg.inv(K2rectified)
+
+    # x1 = Dehomogenize (K1rec_inv @ Homogenize(x1))
+    # x2 = Dehomogenize (K2rec_inv @ Homogenize(x2))
+
+    # norm_P1_geocentric = K1rec_inv @ norm_P1_geocentric
+    # norm_P2_geocentric = K2rec_inv @ norm_P2_geocentric
+
+    triangulated_geocentric_point = triangulation2View(x1, x2, norm_P1_geocentric, norm_P2_geocentric)
+
     return triangulated_geocentric_point
 
 def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, t1, K2, t2, omega):
@@ -481,7 +503,7 @@ def rectify_image(original_image, rectified_image, H):
 
 # approximately takes 10 minutes per image
 # ask ben why -0.5??
-def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
+def epipolar_rectify_images(Krectified, H1, H2, I1, I2, name_left, name_right):
     # points are defined by [x,y]!!!
     I1_top_left = np.array([-0.5, -0.5]).reshape(-1,1)
     I1_top_right = np.array([I1.shape[1]-0.5, -0.5]).reshape(-1,1)
@@ -586,6 +608,59 @@ def rectify_all_images(H1, H2, left_path, right_path, save_path):
         I2 = open_image(right_name_list[i])
         epipolar_rectify_images(H1, H2, I1, I2, left_names[i].split('.')[0] + '_rectified', right_names[i].split('.')[0] + '_rectified')
 
+def rectified_calibration_matrices(Krectified, H1, H2, I1, I2):
+    # points are defined by [x,y]!!!
+    I1_top_left = np.array([-0.5, -0.5]).reshape(-1,1)
+    I1_top_right = np.array([I1.shape[1]-0.5, -0.5]).reshape(-1,1)
+    I1_bottom_left = np.array([-0.5, I1.shape[0]-0.5]).reshape(-1,1)
+    I1_bottom_right = np.array([I1.shape[1]-0.5, I1.shape[0]-0.5]).reshape(-1,1)
+
+    I2_top_left = np.array([-0.5, -0.5]).reshape(-1,1)
+    I2_top_right = np.array([I2.shape[1]-0.5, -0.5]).reshape(-1,1)
+    I2_bottom_left = np.array([-0.5, I2.shape[0]-0.5]).reshape(-1,1)
+    I2_bottom_right = np.array([I2.shape[1]-0.5, I2.shape[0]-0.5]).reshape(-1,1)
+
+    pts_I1 = np.hstack((I1_top_left, I1_top_right, I1_bottom_left, I1_bottom_right))
+    pts_I2 = np.hstack((I2_top_left, I2_top_right, I2_bottom_left, I2_bottom_right))
+
+    pts_I1_rec = Dehomogenize(H1 @ Homogenize(pts_I1))
+    pts_I2_rec = Dehomogenize(H2 @ Homogenize(pts_I2))
+
+    min_row_I1 = math.ceil(min(pts_I1_rec[1]))
+    max_row_I1 = math.ceil(max(pts_I1_rec[1]))
+
+    min_row_I2 = math.ceil(min(pts_I2_rec[1]))
+    max_row_I2 = math.ceil(max(pts_I2_rec[1]))
+
+    min_col_I1 = math.ceil(min(pts_I1_rec[0]))
+    max_col_I1 = math.ceil(max(pts_I1_rec[0]))
+
+    min_col_I2 = math.ceil(min(pts_I2_rec[0]))
+    max_col_I2 = math.ceil(max(pts_I2_rec[0]))
+
+    T1 = np.eye(3)
+    T2 = np.eye(3)
+
+    #if add values onto T1[1][2], answer gets closer to Ben's results
+    T1[1][2] = -min(min_row_I1, min_row_I2) - 0.5
+    T1[0][2] = -min_col_I1 - 0.5
+
+    T2[1][2] = -min(min_row_I1, min_row_I2) - 0.5
+    T2[0][2] = -min_col_I2 - 0.5
+
+    # print(Krectified)
+
+    K1rectified = T1 @ Krectified
+    K2rectified = T2 @ Krectified
+
+    # print()
+    # print(K1rectified)
+    # print()
+    # print(K2rectified)
+    # print()
+
+    return K1rectified, K2rectified
+
 
 if __name__ == '__main__':
     geo_centric_detic_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\geo_centric_detic_coords.csv'
@@ -606,6 +681,12 @@ if __name__ == '__main__':
     '''
     use the "Image_Name" column from geo_centric_detic_coords.csv to index the coordinates of the lamps in  
     '''
+
+    left_img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Left\left0.jpg'
+    right_img_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Right\right0.jpg'
+
+    left_img = open_image(left_img_path)
+    right_img = open_image(right_img_path)
 
     #left camera
     # fx_left = 3306.12409
@@ -642,18 +723,29 @@ if __name__ == '__main__':
     # print(Deparameterize_Omega(omega))
 
     t1 = np.array([0, 0, 0]).reshape(-1,1)
-    t2 = np.array([-0.33418658, 0.00541115, -0.00189281]).reshape(-1,1)
+    t12 = np.array([-0.33418658, 0.00541115, -0.00189281]).reshape(-1,1)
     # t2 = np.array([-0.353, 0.00541115, -0.00189281]).reshape(-1,1)
 
+
+    R1 = np.eye(3)
+    R12 = Deparameterize_Omega(omega)
+
+    # print(Rrectified)
+
+    # print(t1rectified)
+
+    # print(t2rectified)
+
+
     # Test 1; light 1
-    x1 = np.array([1913, 394]).reshape(-1,1)
-    x2 = np.array([1861, 394]).reshape(-1,1)
-    latitude_origin = 32.87507
-    longitude_origin = -117.21848
-    plat_yaw = 355.012 - 360
-    plat_pitch = -98.61
-    plat_roll = 0.659
-    C = np.array([-2452515.379, -4768295.259, 3442350.988]).reshape(-1,1)
+    # x1 = np.array([1922, 355]).reshape(-1,1)
+    # x2 = np.array([1870, 355]).reshape(-1,1)
+    # latitude_origin = 32.87507
+    # longitude_origin = -117.21848
+    # plat_yaw = 355.012 - 360
+    # plat_pitch = -98.61
+    # plat_roll = 0.659
+    # C = np.array([-2452515.379, -4768295.259, 3442350.988]).reshape(-1,1)
 
     # Test 2; light 1
     # x1 = np.array([420, 113]).reshape(-1,1)
@@ -706,22 +798,27 @@ if __name__ == '__main__':
     # C = np.array([-2452515.533, -4768295.558, 3442351.205]).reshape(-1,1)
 
     # Test 7; light 4
-    # x1 = np.array([2023, 1086]).reshape(-1,1)
-    # x2 = np.array([2000, 1086]).reshape(-1,1)
-    # latitude_origin = 32.87507
-    # longitude_origin = -117.21848
-    # plat_yaw = 65.984
-    # plat_pitch = -96.998
-    # plat_roll = -0.475
-    # C = np.array([-2452515.533, -4768295.558, 3442351.205]).reshape(-1,1)
+    x1 = np.array([2023, 1086]).reshape(-1,1)
+    x2 = np.array([2000, 1086]).reshape(-1,1)
+    latitude_origin = 32.87507
+    longitude_origin = -117.21848
+    plat_yaw = 65.984
+    plat_pitch = -96.998
+    plat_roll = -0.475
+    C = np.array([-2452515.533, -4768295.558, 3442351.205]).reshape(-1,1)
 
     plat_yaw = plat_yaw + 13
     # x1[0][0] = x1[0][0] + 35
 
-    est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega)
+    # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, Krectified, Krectified, t1rectified, t2rectified)
+    est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
+
+    '''
+    RECTIFIED STUFF COMES AFTERWARDS????????
+    '''
 
     # print(latitude_origin, longitude_origin)
-    # print(C)
+    print(C)
     # print(x1)
     # print(x2)
     # print(plat_yaw, plat_pitch, plat_roll)
@@ -731,7 +828,7 @@ if __name__ == '__main__':
     # print(t2)
     # print(omega)
 
-    # print()
+    print()
 
     print(est_point)
 
@@ -900,7 +997,8 @@ if __name__ == '__main__':
     print(t1rectified)
     print(t2rectified)
 
-    I1 = open_image('left_led.jpg')
-    I2 = open_image('right_led.jpg')
-    epipolar_rectify_images(H1, H2, I1, I2, 'right_rectified', 'left_rectified')
+    # I1 = open_image('left_led.jpg')
+    # I2 = open_image('right_led.jpg')
+    # epipolar_rectify_images(H1, H2, I1, I2, 'right_rectified', 'left_rectified')
     '''
+    
