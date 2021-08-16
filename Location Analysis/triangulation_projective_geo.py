@@ -292,6 +292,9 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
     est_geo_y_list = list()
     est_geo_z_list = list()
 
+    min_error = 9999
+    max_error = -9999
+
     # also need to cycle through lights 1-4
     for i in range(len(name_list)):
         # left = 'left_' + name_list[i]
@@ -384,6 +387,11 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
             print(estimated_geo_point)
             print()
 
+            if error > max_error:
+                max_error = error
+            if error < min_error:
+                min_error = error
+
             # print('ground truth geocentric point')
             # print(light_geo_coord)
             # print()
@@ -396,6 +404,9 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
         mean_error = np.mean(np.array(error_list))
 
     print(f'Average error for {num_lights} lights: {mean_error}')
+
+    print(f'Min Error: {min_error}')
+    print(f'Max Error: {max_error}')
 
     # d = {'Light_Number':light_number_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
     # est_geocentric_df = pd.DataFrame(data = d)
@@ -680,8 +691,8 @@ if __name__ == '__main__':
     yleft_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_y.csv'
     xright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_x.csv'
     yright_coord_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_y.csv'
-    light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
-
+    # light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    light_gis_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\arcgis_ground_truth.csv'
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
@@ -821,10 +832,21 @@ if __name__ == '__main__':
     # plat_roll = -2.713
     # C = np.array([-2452525.411, -4768300.441, 3442352.97]).reshape(-1,1)
 
+    # Test 8; light 1
+    # x1 = np.array([1943, 1460]).reshape(-1,1)
+    # x2 = np.array([1937, 1460]).reshape(-1,1)
+    # latitude_origin = 32.87506
+    # longitude_origin = -117.21848
+    # plat_yaw = 41.496
+    # plat_pitch = -102.063
+    # plat_roll = -1.251
+    # C = np.array([-2452515.616, -4768295.72, 3442350.002]).reshape(-1,1)
+
     # plat_yaw = plat_yaw + 13
-    # x1[0][0] = x1[0][0] + 35
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
+
+    # print(est_point)
 
     # print(latitude_origin, longitude_origin)
     # print(C)
