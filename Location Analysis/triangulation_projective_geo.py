@@ -465,6 +465,56 @@ def error_reduction_analysis(est_coord_path, light_gis_path):
     avg_error = np.mean(np.array(error_list))
     print(f'Avg error: {avg_error}')
 
+
+'''
+TODO: overlay this with GPS map...? GPD maybe too much work...
+'''
+def plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path):
+    origin_df = pd.read_csv(geo_centric_detic_path)
+    est_df = pd.read_csv(est_coord_path)
+    gis_df = pd.read_csv(light_gis_path)
+    gis_light_num = gis_df.Light_Number.tolist()
+
+    lat_origin_list = origin_df.Lat.tolist()
+    long_origin_list = origin_df.Long.tolist()
+
+    lat_truth_list = list()
+    long_truth_list = list()
+
+    lat_est_list = list()
+    long_est_list = list()
+
+    for i in range(len(gis_light_num)):
+        light_i_coord_df = gis_df.loc[gis_df['Light_Number'] == gis_light_num[i]]
+        lat_truth = light_i_coord_df.Lat.tolist()
+        long_truth = light_i_coord_df.Long.tolist()
+
+        lat_truth_list.append(lat_truth)
+        long_truth_list.append(long_truth)
+
+        est_i_coord_df = est_df.loc[est_df['Light_Number'] == gis_light_num[i]]
+        lat_est = est_i_coord_df.Lat.tolist()
+        long_est = est_i_coord_df.Long.tolist()
+
+        assert len(lat_est) == len(long_est)
+
+        for j in range(len(lat_est)):
+            lat = lat_est[j]
+            long = long_est[j]
+
+            lat_est_list.append(lat)
+            long_est_list.append(long)
+
+    plt.figure(figsize = (10,7))
+    plt.plot(long_origin_list, lat_origin_list, 'b*', label = 'Origin')
+    plt.plot(long_truth_list, lat_truth_list, 'go', label = 'Ground Truth')
+    plt.plot(long_est_list, lat_est_list, 'rx', label = 'Estmated Points')
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.title('GPS Estimation Error Plots')
+    plt.legend()
+    plt.show()
+
 # def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
 def rectify_image(original_image, rectified_image, H):
     # print(original_image.shape[0])
@@ -727,8 +777,9 @@ if __name__ == '__main__':
     R12 = Deparameterize_Omega(omega)
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
-    gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12)
+    # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12)
     # error_reduction_analysis(est_coord_path, light_gis_path)
+    plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
 
     # Test 1; light 1
     # x1 = np.array([1922, 355]).reshape(-1,1)
