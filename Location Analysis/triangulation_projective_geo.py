@@ -310,12 +310,6 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
         # cycling through lights 1-4
         for j in range(1,5):
 
-            # xleft_temp = xleft_df.loc[xleft_df['Base_Name'] == left]
-            # yleft_temp = yleft_df.loc[yleft_df['Base_Name'] == left]
-
-            # xright_temp = xright_df.loc[xright_df['Base_Name'] == right]
-            # yright_temp = yright_df.loc[yright_df['Base_Name'] == right]
-
             xleft_temp = xleft_df.loc[xleft_df['Base_Name'] == name_list[i]]
             yleft_temp = yleft_df.loc[yleft_df['Base_Name'] == name_list[i]]
 
@@ -350,21 +344,6 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
             plat_roll = roll_list[i]
 
             plat_yaw = plat_yaw + 13
-
-            # print('x1:')
-            # print(x1)
-            # print()
-            # print('x2:')
-            # print(x2)
-            # print()
-
-            # print('camera center')
-            # print(C_origin)
-            # print()
-
-            # print('platform [yaw, pitch, roll]')
-            # print([plat_yaw, plat_pitch, plat_roll])
-            # print()
 
             estimated_geo_point = geocentric_triangulation2View(x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
 
@@ -429,6 +408,111 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
     # d = {'Light_Number':light_number_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
     # est_geocentric_df = pd.DataFrame(data = d)
     # est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
+
+def column_error_analysis(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, dist_away):
+    # geo_centric_detic unpacking
+    geo_centric_detic_df = pd.read_csv(geo_centric_detic_path)
+    name_list = geo_centric_detic_df.Base_Name.tolist()
+    yaw_list = geo_centric_detic_df.Yaw_X.tolist()
+    pitch_list = geo_centric_detic_df.Pitch_Y.tolist()
+    roll_list = geo_centric_detic_df.Roll_Z.tolist()
+    geo_x_list = geo_centric_detic_df.Geocentric_X.tolist()
+    geo_y_list = geo_centric_detic_df.Geocentric_Y.tolist()
+    geo_z_list = geo_centric_detic_df.Geocentric_Z.tolist()
+    lat_list = geo_centric_detic_df.Lat.tolist()
+    long_list = geo_centric_detic_df.Long.tolist()
+
+    xleft_df = pd.read_csv(xleft_path)
+    yleft_df = pd.read_csv(yleft_path)
+
+    xright_df = pd.read_csv(xright_path)
+    yright_df = pd.read_csv(yright_path)
+
+    gis_df = pd.read_csv(light_gis_path)
+
+    num_lights = 0
+    error_list = list()
+
+    light_number_list = list()
+    est_geo_x_list = list()
+    est_geo_y_list = list()
+    est_geo_z_list = list()
+
+    # also need to cycle through lights 1-4
+    for i in range(len(name_list)):
+        # left = 'left_' + name_list[i]
+        # right = 'right_' + name_list[i]
+
+        print(name_list[i])
+
+        # cycling through lights 1-4
+        for j in range(1,5):
+
+            xleft_temp = xleft_df.loc[xleft_df['Base_Name'] == name_list[i]]
+            yleft_temp = yleft_df.loc[yleft_df['Base_Name'] == name_list[i]]
+
+            xright_temp = xright_df.loc[xright_df['Base_Name'] == name_list[i]]
+            yright_temp = yright_df.loc[yright_df['Base_Name'] == name_list[i]]
+
+            # print(xleft_temp)
+
+            xleft_coord = xleft_temp.iloc[0][j]
+            yleft_coord = yleft_temp.iloc[0][j]
+
+            xright_coord = xright_temp.iloc[0][j]
+            yright_coord = yright_temp.iloc[0][j]
+
+            if xleft_coord == 0:
+                continue
+
+            print(f'Light {j}')
+
+            # x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, t1, K2, t2, omega
+
+            for k in range(-dist_away, dist_away+1):
+                print(f'Shifting right column pixel by: {k}')
+                temp_xright_coord = xright_coord + k
+                temp_yright_coord = yright_coord + k
+
+                x1 = np.array([xleft_coord, yleft_coord]).reshape(-1,1)
+                x2 = np.array([temp_xright_coord, temp_yright_coord]).reshape(-1,1)
+
+                C_origin = np.array([geo_x_list[i], geo_y_list[i], geo_z_list[i]]).reshape(-1,1)
+
+                latitude_origin = lat_list[i]
+                longitude_origin = long_list[i]
+
+                plat_yaw = yaw_list[i]
+                plat_pitch = pitch_list[i]
+                plat_roll = roll_list[i]
+
+                plat_yaw = plat_yaw + 13
+
+                estimated_geo_point = geocentric_triangulation2View(x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
+
+                light_j = gis_df.loc[gis_df['Light_Number'] == j]
+
+                geo_x = light_j.iloc[0]['Geocentric_X']
+                geo_y = light_j.iloc[0]['Geocentric_Y']
+                geo_z = light_j.iloc[0]['Geocentric_Z']
+
+                light_number_list.append(j)
+                est_geo_x_list.append(estimated_geo_point[0][0])
+                est_geo_y_list.append(estimated_geo_point[1][0])
+                est_geo_z_list.append(estimated_geo_point[2][0])
+
+                light_geo_coord = np.array([geo_x, geo_y, geo_z]).reshape(-1,1)
+                
+                error = np.linalg.norm(estimated_geo_point - light_geo_coord)
+                est_vector = estimated_geo_point - C_origin
+                truth_vector = light_geo_coord - C_origin
+                angle = np.degrees(rotation.angle(est_vector, truth_vector))
+                # angle = np.degrees(rotation.angle(norm_est_vector, norm_truth_vector))
+
+                print(f'Error: {error}')
+                print(f'Angle: {angle}')
+                print()
+            print()
 
 '''
 TODO: modify this for GPS error smoothing analysis
@@ -778,8 +862,9 @@ if __name__ == '__main__':
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
     # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12)
+    column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
     # error_reduction_analysis(est_coord_path, light_gis_path)
-    plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
+    # plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
 
     # Test 1; light 1
     # x1 = np.array([1922, 355]).reshape(-1,1)
