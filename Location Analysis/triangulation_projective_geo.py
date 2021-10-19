@@ -7,6 +7,8 @@ import rotation
 import glob
 import os
 import pandas as pd
+import simplekml
+from os import path
 
 def open_image(img_path):
     return np.array(Image.open(img_path), dtype='float')/255.
@@ -405,9 +407,16 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
     print(f'Average error light2: {avg_error_2}')
     print(f'Average error light4: {avg_error_4}')
 
-    # d = {'Light_Number':light_number_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
-    # est_geocentric_df = pd.DataFrame(data = d)
-    # est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
+    d = {'Light_Number':light_number_list, 'Error':error_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
+    est_geocentric_df = pd.DataFrame(data = d)
+    file_name = 'estimated_geocentric_coords.csv'
+    if path.exists(file_name):
+        print('Overwriting file; press [y] to continue')
+        user_input = input()
+        if user_input == 'y':
+            est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
+    else:
+        est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
 
 def column_error_analysis(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, dist_away):
     # geo_centric_detic unpacking
@@ -599,6 +608,35 @@ def plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path):
     plt.legend()
     plt.show()
 
+def gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, origin_kml_name, est_kml_name):
+    origin_df = pd.read_csv(geo_centric_detic_path)
+    est_df = pd.read_csv(est_coord_path)
+    gis_df = pd.read_csv(light_gis_path)
+    gis_light_num = gis_df.Light_Number.tolist()
+
+    lat_origin_list = origin_df.Lat.tolist()
+    long_origin_list = origin_df.Long.tolist()
+
+    lat_est_list = est_df.Lat.tolist()
+    long_est_list = est_df.Long.tolist()
+
+    lat_gis_list = gis_df.Lat.tolist()
+    long_gis_list = gis_df.Long.tolist()
+
+    origin_kml = simplekml.Kml()
+    est_kml = simplekml.Kml()
+    gis_kml = simplekml.Kml()
+
+    for i in range(len(lat_origin_list)):
+        # kml.newpoint(name = str(i), coords = [(lat_origin_list[i], long_origin_list[i])])
+        origin_kml.newpoint(name = str(i), coords = [(long_origin_list[i], lat_origin_list[i])])
+
+    for i in range(len(lat_est_list)):
+        est_kml.newpoint(name = str(i), coords = [(long_est_list[i], lat_est_list[i])])
+
+    origin_kml.save(origin_kml_name)
+    est_kml.save(est_kml_name)
+
 # def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
 def rectify_image(original_image, rectified_image, H):
     # print(original_image.shape[0])
@@ -635,7 +673,7 @@ def rectify_image(original_image, rectified_image, H):
 
 # approximately takes 10 minutes per image
 # ask ben why -0.5??
-def epipolar_rectify_images(Krectified, H1, H2, I1, I2, name_left, name_right):
+def epipolar_rectify_images(H1, H2, I1, I2, name_left, name_right):
     # points are defined by [x,y]!!!
     I1_top_left = np.array([-0.5, -0.5]).reshape(-1,1)
     I1_top_right = np.array([I1.shape[1]-0.5, -0.5]).reshape(-1,1)
@@ -795,15 +833,32 @@ def rectified_calibration_matrices(Krectified, H1, H2, I1, I2):
 
 
 if __name__ == '__main__':
-    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\1_250_exp_3200_iso_inf_focus.csv'
-    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\1_350_exp_100_iso_inf_focus.csv'
-    xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_x.csv'
-    yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_y.csv'
-    xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_x.csv'
-    yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_y.csv'
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
+    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\1_250_exp_3200_iso_inf_focus_out.csv'
+    # xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_x.csv'
+    # yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_y.csv'
+    # xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_x.csv'
+    # yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_y.csv'
+    # light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
+    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
+    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_nobias_out.csv'
+    xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_x.csv'
+    yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_y.csv'
+    xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_x.csv'
+    yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_y.csv'
     light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    ########################################################################################################
+    ########################################################################################################
+    ########################################################################################################
     # light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\arcgis_ground_truth.csv'
-    est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\estimated_geocentric_coords.csv'
+    # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\estimated_geocentric_coords.csv'
+    # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_biased_out.csv'
+    est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_unbiased_out.csv'
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
@@ -862,9 +917,12 @@ if __name__ == '__main__':
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
     # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12)
-    column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
+    # column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
     # error_reduction_analysis(est_coord_path, light_gis_path)
+    
     # plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
+    # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_biased.kml', 'est_biased.kml')
+    gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_unbiased.kml', 'est_unbiased.kml')
 
     # Test 1; light 1
     # x1 = np.array([1922, 355]).reshape(-1,1)
@@ -1019,16 +1077,16 @@ if __name__ == '__main__':
     # I1 = open_image(img_path_1)
     # I2 = open_image(img_path_2)
 
-    left_rectification_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_13_21\left'
-    right_rectification_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_13_21\right'
+    left_rectification_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_10_08_21\Left'
+    right_rectification_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_10_08_21\Right'
     # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rectification'
     # save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rec_8_9_21'
-    save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_rec_8_13_21'
+    save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\image_rec_10_08_21'
 
     R1 = np.eye(3)
     R2 = Deparameterize_Omega(omega)
 
-    # Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t2)
+    Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1, t1, K2, R2, t12)
 
     # rectify_all_images(H1, H2, left_rectification_path, right_rectification_path, save_path)
 

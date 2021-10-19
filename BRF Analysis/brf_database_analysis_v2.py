@@ -22,15 +22,15 @@ import pdb
 #make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
 #check is "train_KNN" and "KNN" can be simplified
 
-database_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\bulb_database_master.csv'
-base_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\csv_files'
-gradient_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\Gradient Tests\Savgol 31 Moving 50'
-raw_waveform_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Raw BRFs'
+database_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\bulb_database_master.csv'
+base_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\csv_files'
+gradient_save_path = r'C:\Users\alexy\Dropbox\STIMA\Gradient Tests\Savgol 31 Moving 50'
+raw_waveform_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\Raw BRFs'
 savgol_window = 31
 mov_avg_w_size = 50
 
-brf_analysis_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis'
-feature_analysis_save_directory = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis\Feature Analysis'
+brf_analysis_save_path = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis'
+feature_analysis_save_directory = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis\Feature Analysis'
 ############################################################
 #debugging
 falling_slope = 0
@@ -103,6 +103,47 @@ class plots():
         plt.clf()
 
     def plot_three_waveforms(csv_brf_path, save_path, title_name):
+        os.chdir(csv_brf_path)
+        csv_names = glob.glob('*.csv')
+        colors = list(['r', 'g', 'b'])
+        temp_labels = list(['Incandescent', 'CFL', 'LED'])
+
+        # font_size = 18
+        plt.rcParams["font.family"] = "Times New Roman"
+        font_size = 11
+
+        # fig, axs = plt.subplots(len(csv_names), constrained_layout=True, figsize = (8,15))
+        for i in range(len(csv_names)):
+            processed = raw_waveform_processing(csv_names[i])
+            time = processed.time
+            brf = processed.brf
+            # time, brf = raw_waveform_processing.clean_brf(time, brf)
+            brf = raw_waveform_processing.normalize(brf)
+            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
+            smoothed_time = raw_waveform_processing.moving_average(time, mov_avg_w_size)
+            # plt.plot(time, brf, colors[i])
+            # plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3)
+            plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3, markersize = 1, label = temp_labels[i])
+            # plt.plot(normalized_smoothed, colors[i])
+            plt.xlabel('Time (s)', fontsize = font_size)
+            plt.ylabel('Normalized Intensity', fontsize = font_size)
+            plt.xticks(fontsize = font_size)
+            plt.yticks(fontsize = font_size)
+            plt.locator_params(axis='x', nbins=5)
+            # plt.tight_layout()
+            plt.gcf().subplots_adjust(bottom=0.15)
+            # axs[i].plot(time, brf)
+            # axs[i].set_xlabel('Time (s)', fontsize = 18)
+            # axs[i].set_ylabel('Normalized Intensity', fontsize = 18)
+
+        # plt.title(title_name, fontsize = 18)
+        plt.legend(loc = 'upper left', fontsize = font_size, prop={'size': 9})
+        plt.tight_layout()
+        plt.show()
+        # plt.savefig(save_path + '\\' + title_name + '.png')
+        # plt.clf()
+
+    def plot_waveforms_GRFP(csv_brf_path, save_path, title_name):
         os.chdir(csv_brf_path)
         csv_names = glob.glob('*.csv')
         colors = list(['r', 'g', 'b'])
@@ -284,7 +325,7 @@ class database_processing():
         # geeksforgeeks.org/create-a-pandas-dataframe-from-lists/ --> USE THIS WAY INSTEAD
         d = {'BRF_Name': name_list, 'Bulb_Type': type_list, 'Integral_Ratio': integral_ratio_list, 'Nadir_Angle': nadir_angle_list, 'Crest_Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
         df = pd.DataFrame(data = d)
-        save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\BRF Analysis' + '\\stat_analysis.csv'
+        save_path = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis' + '\\stat_analysis.csv'
 
         if os.path.exists(save_path):
             print('File exists: do you want to overwrite? (Y/N):')
@@ -1469,25 +1510,28 @@ class brf_classification():
             print()
 
 if __name__ == "__main__":
-    csv_pkl_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database'
-    smoothed_save_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples'
-    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN.pkl'
-    pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized.pkl'
-    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
-    # pkl_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\Zeal_stats.pkl'
+    csv_pkl_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database'
+    smoothed_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples'
+    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN.pkl'
+    pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized.pkl'
+    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
+    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\Zeal_stats.pkl'
     brf_database = database_processing(database_path).brf_database
 
-    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\CFL'
-    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'CFL')
+    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\CFL'
+    # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'CFL')
 
-    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\Halogen'
-    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Halogen')
+    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\Halogen'
+    # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Halogen')
 
-    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\Incandescent'
-    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Incandescent')
+    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\Incandescent'
+    # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Incandescent')
 
-    smoothed_brf_path = r'C:\Users\alexy\OneDrive\Documents\STIMA\bulb_database\smoothed_brf_examples\LED'
-    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'LED')
+    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\LED'
+    # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'LED')
+
+    smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\GRFP'
+    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'GRFP')
 
 
     '''
