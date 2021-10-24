@@ -177,7 +177,7 @@ INPUT:
     plat_pitch          pitch in degrees
     plat_roll           roll in degrees
 '''
-def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12):
+def geocentric_triangulation2View(left_img, right_img, x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12):
     # # Top of phone is "top"
     gimbal_yaw = 0
     gimbal_pitch = -np.pi/2
@@ -265,7 +265,7 @@ def geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, 
 
     return triangulated_geocentric_point
 
-def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12):
+def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, left_img, right_img):
     # geo_centric_detic unpacking
     geo_centric_detic_df = pd.read_csv(geo_centric_detic_path)
     name_list = geo_centric_detic_df.Base_Name.tolist()
@@ -347,7 +347,7 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
 
             plat_yaw = plat_yaw + 13
 
-            estimated_geo_point = geocentric_triangulation2View(x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
+            estimated_geo_point = geocentric_triangulation2View(left_img, right_img, x1, x2, C_origin, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
 
             light_j = gis_df.loc[gis_df['Light_Number'] == j]
 
@@ -915,8 +915,8 @@ if __name__ == '__main__':
     R1 = np.eye(3)
     R12 = Deparameterize_Omega(omega)
 
-    # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12)
-    # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12)
+    # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12, left_img, right_img)
+    # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, left_img, right_img)
     # column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
     # error_reduction_analysis(est_coord_path, light_gis_path)
     
