@@ -608,7 +608,7 @@ def plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path):
     plt.legend()
     plt.show()
 
-def gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, origin_kml_name, est_kml_name):
+def gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, origin_kml_name, est_kml_name, kml_save_path):
     origin_df = pd.read_csv(geo_centric_detic_path)
     est_df = pd.read_csv(est_coord_path)
     gis_df = pd.read_csv(light_gis_path)
@@ -634,8 +634,14 @@ def gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, origin_km
     for i in range(len(lat_est_list)):
         est_kml.newpoint(name = str(i), coords = [(long_est_list[i], lat_est_list[i])])
 
+    for i in range(len(lat_gis_list)):
+        gis_kml.newpoint(name = str(i), coords = [(long_gis_list[i], lat_gis_list[i])])
+
+    os.chdir(kml_save_path)
+
     origin_kml.save(origin_kml_name)
     est_kml.save(est_kml_name)
+    gis_kml.save('gis.kml')
 
 # def rectify_image(original_image, rectified_image, H, min_row_val, min_col_val):
 def rectify_image(original_image, rectified_image, H):
@@ -845,8 +851,8 @@ if __name__ == '__main__':
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
-    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
-    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_nobias_out.csv'
+    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
+    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_nobias_out.csv'
     xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_x.csv'
     yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_y.csv'
     xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_x.csv'
@@ -859,6 +865,7 @@ if __name__ == '__main__':
     # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\estimated_geocentric_coords.csv'
     # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_biased_out.csv'
     est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_unbiased_out.csv'
+    kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml'
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
@@ -921,8 +928,8 @@ if __name__ == '__main__':
     # error_reduction_analysis(est_coord_path, light_gis_path)
     
     # plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
-    # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_biased.kml', 'est_biased.kml')
-    gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_unbiased.kml', 'est_unbiased.kml')
+    # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_biased.kml', 'est_biased.kml', kml_save_path)
+    gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_unbiased.kml', 'est_unbiased.kml', kml_save_path)
 
     # Test 1; light 1
     # x1 = np.array([1922, 355]).reshape(-1,1)
