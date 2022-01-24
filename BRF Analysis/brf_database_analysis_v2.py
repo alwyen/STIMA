@@ -22,15 +22,19 @@ import pdb
 #make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
 #check is "train_KNN" and "KNN" can be simplified
 
-database_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\bulb_database_master.csv'
-base_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\csv_files'
-gradient_save_path = r'C:\Users\alexy\Dropbox\STIMA\Gradient Tests\Savgol 31 Moving 50'
-raw_waveform_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\Raw BRFs'
+os_sep = os.sep
+cwd = list(os.getcwd().split(os_sep))
+STIMA_dir = os_sep.join(cwd[:len(cwd)-3]) # hard coded.. this is from Alex's Dropbox folder
+
+database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
+base_path = os.path.join(STIMA_dir, 'bulb_database' 'csv_files')
+gradient_save_path = os.path.join(STIMA_dir, 'Gradient Tests', 'Savgol 31 Moving 50')
+raw_waveform_save_path = os.path.join(STIMA_dir, 'bulb_database', 'Raw BRFs')
 savgol_window = 31
 mov_avg_w_size = 50
 
-brf_analysis_save_path = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis'
-feature_analysis_save_directory = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis\Feature Analysis'
+brf_analysis_save_path = os.path.join(STIMA_dir, 'BRF Analysis')
+feature_analysis_save_directory = os.path.join(STIMA_dir, 'BRF Analysis', 'Feature Analysis')
 ############################################################
 #debugging
 falling_slope = 0
@@ -101,6 +105,10 @@ class plots():
         plt.title(plot_name)
         plt.savefig(plot_name + '.png')
         plt.clf()
+
+    def plot_voltage():
+        pass
+
 
     def plot_three_waveforms(csv_brf_path, save_path, title_name):
         os.chdir(csv_brf_path)
@@ -497,6 +505,7 @@ class raw_waveform_processing():
 ##################################################################################################################
 ##################################################################################################################
 #NOTE: 750 IS HARDCODED; NEEDS TO BE CHANGED/AUTOMATED
+# SOLUTION: find max values of BRF and get distance from that
     def clean_brf(time, brf):
         nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
         corresponding_time = time[nadir_indices[0]:nadir_indices[2]]
@@ -605,7 +614,7 @@ class brf_analysis():
         plots.save_gradient_plot(data, gradient_x, name)
         return gradient_x
 
-    #enforces that the integral (or sum) is equal to 1
+    #enforces that the integral (or sum) is equal to 1 (edit: huh...??)
     def normalize_cycle(brf):
         integral = np.sum(brf)
         normalized = brf/integral
@@ -1510,10 +1519,16 @@ class brf_classification():
             print()
 
 if __name__ == "__main__":
-    csv_pkl_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database'
-    smoothed_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples'
+    # csv_path = r'/Users/alexyen/Dropbox/STIMA/bulb_database/brf_database/csv_files/eiko_cfl_13w/waveform_0.csv'
+    # waveform = raw_waveform_processing(csv_path)
+    # plots.show_plot(waveform.voltage)
+    # csv_pkl_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database'
+    csv_pkl_save_path = os.path.join(STIMA_dir, 'bulb_database')
+    # smoothed_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples'
+    smoothed_save_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples')
     # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN.pkl'
-    pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized.pkl'
+    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized.pkl'
+    pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized.pkl')
     # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
     # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\Zeal_stats.pkl'
     brf_database = database_processing(database_path).brf_database
@@ -1530,11 +1545,10 @@ if __name__ == "__main__":
     # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\LED'
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'LED')
 
-    smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\GRFP'
-    plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'GRFP')
+    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\GRFP'
+    # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'GRFP')
 
 
-    '''
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
     brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
@@ -1572,7 +1586,6 @@ if __name__ == "__main__":
     # df_list = df.values.tolist()
     # print(len(df_list[0]))
 
-    '''
 
     '''
     # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)

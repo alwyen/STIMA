@@ -265,7 +265,7 @@ def geocentric_triangulation2View(left_img, right_img, x1, x2, C, latitude_origi
 
     return triangulated_geocentric_point
 
-def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, left_img, right_img):
+def gps_estimation(file_name, geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, left_img, right_img):
     # geo_centric_detic unpacking
     geo_centric_detic_df = pd.read_csv(geo_centric_detic_path)
     name_list = geo_centric_detic_df.Base_Name.tolist()
@@ -407,16 +407,16 @@ def gps_estimation(geo_centric_detic_path, xleft_path, yleft_path, xright_path, 
     print(f'Average error light2: {avg_error_2}')
     print(f'Average error light4: {avg_error_4}')
 
-    d = {'Light_Number':light_number_list, 'Error':error_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
-    est_geocentric_df = pd.DataFrame(data = d)
-    file_name = 'estimated_geocentric_coords.csv'
-    if path.exists(file_name):
-        print('Overwriting file; press [y] to continue')
-        user_input = input()
-        if user_input == 'y':
-            est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
-    else:
-        est_geocentric_df.to_csv('estimated_geocentric_coords.csv')
+    # d = {'Light_Number':light_number_list, 'Error':error_list, 'Est_Geocentric_X':est_geo_x_list, 'Est_Geocentric_Y':est_geo_y_list, 'Est_Geocentric_Z':est_geo_z_list}
+    # est_geocentric_df = pd.DataFrame(data = d)
+    # # file_name = 'estimated_geocentric_coords.csv'
+    # if path.exists(file_name):
+    #     print('Overwriting file; press [y] to continue')
+    #     user_input = input()
+    #     if user_input == 'y':
+    #         est_geocentric_df.to_csv(file_name)
+    # else:
+    #     est_geocentric_df.to_csv(file_name)
 
 def column_error_analysis(geo_centric_detic_path, xleft_path, yleft_path, xright_path, yright_path, light_gis_path, K1, K2, R12, t12, dist_away):
     # geo_centric_detic unpacking
@@ -862,10 +862,11 @@ if __name__ == '__main__':
     ########################################################################################################
     ########################################################################################################
     # light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\arcgis_ground_truth.csv'
-    # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\estimated_geocentric_coords.csv'
+    # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\8_13_21_estimated_geocentric_coords_out.csv'
     # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_biased_out.csv'
     est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_unbiased_out.csv'
-    kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml'
+    # kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml'
+    kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml_original_test'
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
@@ -923,13 +924,14 @@ if __name__ == '__main__':
     R12 = Deparameterize_Omega(omega)
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12, left_img, right_img)
-    # gps_estimation(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, left_img, right_img)
+    gps_estimation('8_13_21_estimated_geocentric_coords.csv', geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, left_img, right_img)
     # column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
     # error_reduction_analysis(est_coord_path, light_gis_path)
     
     # plot_coords(geo_centric_detic_path, est_coord_path, light_gis_path)
+    # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin.kml', 'est.kml', kml_save_path)
     # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_biased.kml', 'est_biased.kml', kml_save_path)
-    gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_unbiased.kml', 'est_unbiased.kml', kml_save_path)
+    # gps_to_kml(geo_centric_detic_path, est_coord_path, light_gis_path, 'origin_unbiased.kml', 'est_unbiased.kml', kml_save_path)
 
     # Test 1; light 1
     # x1 = np.array([1922, 355]).reshape(-1,1)
