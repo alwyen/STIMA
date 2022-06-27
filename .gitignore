@@ -3,3 +3,5 @@
 *.png
 *.xlsx
 *.kml
+*.DS_Store
+*.pyc
