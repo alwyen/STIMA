@@ -385,7 +385,8 @@ def gps_estimation(file_name, geo_centric_detic_path, xleft_path, yleft_path, xr
             print(estimated_geo_point)
             print()
 
-            if error > max_error:
+            if error > max_error and error < 80:
+            # if error > max_error:
                 max_error = error
             if error < min_error:
                 min_error = error
@@ -842,31 +843,31 @@ if __name__ == '__main__':
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
-    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\1_250_exp_3200_iso_inf_focus_out.csv'
-    # xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_x.csv'
-    # yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\left_y.csv'
-    # xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_x.csv'
-    # yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\8_13_21\right_y.csv'
-    # light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    # geo_centric_detic_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\1_250_exp_3200_iso_inf_focus_out.csv'
+    # xleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\feature_coords\8_13_21\left_x.csv'
+    # yleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\feature_coords\8_13_21\left_y.csv'
+    # xright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\feature_coords\8_13_21\right_x.csv'
+    # yright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\feature_coords\8_13_21\right_y.csv'
+    # light_gis_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\ground_truth_gis_lights.csv'
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
-    # geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
-    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_nobias_out.csv'
-    xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_x.csv'
-    yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_y.csv'
-    xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_x.csv'
-    yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_y.csv'
-    light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    # geo_centric_detic_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
+    geo_centric_detic_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'images_10_08_21', '1_350_exp_3200_iso_autofocus_nobias_out.csv')
+    xleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_x.csv')
+    yleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_y.csv')
+    xright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_x.csv')
+    yright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_y.csv')
+    light_gis_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'ground_truth_gis_lights.csv')
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
-    # light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\arcgis_ground_truth.csv'
+    # light_gis_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\arcgis_ground_truth.csv'
     # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\8_13_21_estimated_geocentric_coords_out.csv'
-    # est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_biased_out.csv'
-    est_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\estimated_geocentric_coords_unbiased_out.csv'
+    # est_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data',\images_10_08_21\estimated_geocentric_coords_biased_out.csv'
+    est_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'images_10_08_21', 'estimated_geocentric_coords_unbiased_out.csv')
     # kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml'
-    kml_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\kml_original_test'
+    kml_save_path = os.path.join(os.getcwd(), 'kml_original_test')
     ########################################################################################################
     ########################################################################################################
     ########################################################################################################
@@ -875,8 +876,8 @@ if __name__ == '__main__':
     use the "Image_Name" column from geo_centric_detic_coords.csv to index the coordinates of the lamps in  
     '''
 
-    left_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Left\left0.jpg'
-    right_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Right\right0.jpg'
+    left_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Left', 'left0.jpg')
+    right_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Right', 'right0.jpg')
 
     left_img = open_image(left_img_path)
     right_img = open_image(right_img_path)
@@ -924,7 +925,10 @@ if __name__ == '__main__':
     R12 = Deparameterize_Omega(omega)
 
     # est_point = geocentric_triangulation2View(x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, plat_roll, K1, K2, R12, t12, left_img, right_img)
+    
+    # first parameter not used
     gps_estimation('8_13_21_estimated_geocentric_coords.csv', geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, left_img, right_img)
+    
     # column_error_analysis(geo_centric_detic_path, xleft_coord_path, yleft_coord_path, xright_coord_path, yright_coord_path, light_gis_path, K1, K2, R12, t12, dist_away=5)
     # error_reduction_analysis(est_coord_path, light_gis_path)
     

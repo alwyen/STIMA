@@ -24,7 +24,7 @@ import pdb
 
 os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
-STIMA_dir = os_sep.join(cwd[:len(cwd)-3]) # hard coded.. this is from Alex's Dropbox folder
+STIMA_dir = os_sep.join(cwd[:len(cwd)-3])
 
 database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
 base_path = os.path.join(STIMA_dir, 'bulb_database' 'csv_files')
@@ -1172,7 +1172,6 @@ class brf_classification():
             return KNN_input_train, KNN_output_train, KNN_prediction_list
         else:
             KNN_df = pd.read_pickle(pkl_path)
-
             if type != None:
                 KNN_df = KNN_df.loc[KNN_df['Bulb_Type'] == type]
 
@@ -1246,7 +1245,7 @@ class brf_classification():
 
         return brf_KNN_model
 
-    #name_k is for bulb identification, which I am not doing at the moment!
+    #name_k is for bulb identification, which I am not doing at the moment! --> (1/23/22) is that for the three closest neighbors...?
     def KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, num_features, weights, Entire, name_k, MisClass):
         #this assert statement should always hold because the pairing does not make sense
         if classification_type == 'type':
@@ -1567,7 +1566,7 @@ if __name__ == "__main__":
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([0.75, 0.5, 0.75, 1.0, 1.0])
-    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral average, peak location, crest, kurtosis, skew
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     
     # pickles features

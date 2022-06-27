@@ -16,15 +16,15 @@ def error_quant_analysis(number_increments, csv_file, save_path):
     param_name_list = file_df.Param_Name.tolist()
     increment_val_list = file_df.Increment_Val.tolist()
 
-    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
-    xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_x.csv'
-    yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_y.csv'
-    xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_x.csv'
-    yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_y.csv'
-    light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    geo_centric_detic_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'images_10_08_21', '1_350_exp_3200_iso_autofocus_out.csv')
+    xleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_x.csv')
+    yleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_y.csv')
+    xright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_x.csv')
+    yright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_y.csv')
+    light_gis_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'ground_truth_gis_lights.csv')
 
-    left_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Left\left0.jpg'
-    right_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Right\right0.jpg'
+    left_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Left', 'left0.jpg')
+    right_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Left', 'right0.jpg')
 
     left_img = open_image(left_img_path)
     right_img = open_image(right_img_path)
@@ -306,15 +306,16 @@ def compound_error_quant_analysis(number_increments, csv_file, save_path):
     param_name_list = file_df.Param_Name.tolist()
     increment_val_list = file_df.Increment_Val.tolist()
 
-    geo_centric_detic_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\images_10_08_21\1_350_exp_3200_iso_autofocus_out.csv'
-    xleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_x.csv'
-    yleft_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\left_y.csv'
-    xright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_x.csv'
-    yright_coord_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\feature_coords\10_08_21\right_y.csv'
-    light_gis_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\gps_data\ground_truth_gis_lights.csv'
+    # this is duplicate code/directory paths...
+    geo_centric_detic_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'images_10_08_21', '1_350_exp_3200_iso_autofocus_out.csv')
+    xleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_x.csv')
+    yleft_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'left_y.csv')
+    xright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_x.csv')
+    yright_coord_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'feature_coords', '10_08_21', 'right_y.csv')
+    light_gis_path = os.path.join(os.getcwd(), 'GPS_estimation', 'gps_data', 'ground_truth_gis_lights.csv')
 
-    left_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Left\left0.jpg'
-    right_img_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\images_8_12_21\Right\right0.jpg'
+    left_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Left', 'left0.jpg')
+    right_img_path = os.path.join(os.getcwd(), 'GPS_estimation', 'images_8_12_21', 'Left', 'right0.jpg')
 
     left_img = open_image(left_img_path)
     right_img = open_image(right_img_path)
@@ -755,16 +756,16 @@ def table_error(saved_path, new_save_path):
     
 if __name__ == '__main__':
     number_increments = 5
-    quant_params_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\quant_params.csv'
-    save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\param_error_results'
-    compound_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\compound_param_error_results'
+    quant_params_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'quant_params.csv')
+    save_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'param_error_results')
+    compound_save_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'compound_param_error_results')
     # new_save_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error'
-    new_save_path_2 = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\compound_param_error'
+    new_save_path_2 = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'compound_param_error')
 
-    internal_csv_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\error_plotting\internal.csv'
-    external_csv_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\error_plotting\external.csv'
-    pixel_coord_csv_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\error_plotting\pixel_coord.csv'
-    orientation_csv_path = r'C:\Users\alexy\Dropbox\STIMA\scripts\STIMA\Location Analysis\GPS_estimation\param_error\error_plotting\orientation.csv'
+    internal_csv_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'error_plotting', 'internal.csv')
+    external_csv_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'error_plotting', 'external.csv')
+    pixel_coord_csv_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'error_plotting', 'pixel_coord.csv')
+    orientation_csv_path = os.path.join(os.getcwd(), 'GPS_estimation', 'param_error', 'error_plotting', 'orientation.csv')
 
     # error_quant_analysis(number_increments, quant_params_path, save_path)   
     # table_error(save_path, new_save_path)
