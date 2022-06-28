@@ -106,10 +106,6 @@ class plots():
         plt.savefig(plot_name + '.png')
         plt.clf()
 
-    def plot_voltage():
-        pass
-
-
     def plot_three_waveforms(csv_brf_path, save_path, title_name):
         os.chdir(csv_brf_path)
         csv_names = glob.glob('*.csv')
@@ -150,37 +146,6 @@ class plots():
         plt.show()
         # plt.savefig(save_path + '\\' + title_name + '.png')
         # plt.clf()
-
-    def plot_waveforms_GRFP(csv_brf_path, save_path, title_name):
-        os.chdir(csv_brf_path)
-        csv_names = glob.glob('*.csv')
-        colors = list(['r', 'g', 'b'])
-        # fig, axs = plt.subplots(len(csv_names), constrained_layout=True, figsize = (8,15))
-        for i in range(len(csv_names)):
-            processed = raw_waveform_processing(csv_names[i])
-            time = processed.time
-            brf = processed.brf
-            # time, brf = raw_waveform_processing.clean_brf(time, brf)
-            brf = raw_waveform_processing.normalize(brf)
-            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
-            smoothed_time = raw_waveform_processing.moving_average(time, mov_avg_w_size)
-            # plt.plot(time, brf, colors[i])
-            plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3)
-            # plt.plot(normalized_smoothed, colors[i])
-            plt.xlabel('Time (s)', fontsize = 18)
-            plt.ylabel('Normalized Intensity', fontsize = 18)
-            plt.xticks(fontsize = 18)
-            plt.yticks(fontsize = 18)
-            plt.locator_params(axis='x', nbins=5)
-            # plt.tight_layout()
-            plt.gcf().subplots_adjust(bottom=0.15)
-            # axs[i].plot(time, brf)
-            # axs[i].set_xlabel('Time (s)', fontsize = 18)
-            # axs[i].set_ylabel('Normalized Intensity', fontsize = 18)
-
-        plt.title(title_name, fontsize = 18)
-        plt.savefig(save_path + '\\' + title_name + '.png')
-        plt.clf()
 
     #confusion matrix for bulb types only
     def confusion_matrix_type(ground_list, predicted_list, bulb_types, title):
@@ -261,8 +226,17 @@ class plots():
         plt.legend()
         plt.show()
 
+'''
+this class does all the processing on the database side from the master CSV file; df has the following columns:
+    Folder_Name
+    Name
+    Bulb_Type
 
-#this class does all the processing on the database side from the master CSV file
+Example: [eiko_cfl_13w | Eiko CFL 13W | CFL]
+
+Init: database folder path; might not work for ACam data
+
+'''
 class database_processing():
     '''
     Folders to drop:
@@ -289,61 +263,6 @@ class database_processing():
     #the database refers to the Master CSV file
     def database_to_list(brf_database):
         return brf_database.values.tolist()
-
-    #for every waveform, export each feature (peak_location and integral_average not included) into a single CSV file
-    def export_all_to_csv(brf_database, method_name_list, single_or_double):
-        brf_database_list = database_processing.database_to_list(brf_database)
-
-        #NOTE: "Integral ratio" AND "angle of inflection" BOTH USED SMOOTHED WAVEFORMS; "crest factor," "kurtosis," and "skew" DO NOT
-        name_list = list([])
-        type_list = list([])
-        integral_ratio_list = list([])
-        nadir_angle_list = list([])
-        crest_factor_list = list([])
-        kurtosis_list = list([])
-        skew_factor_list = list([])
-
-        for i in range(len(brf_database_list)):
-            smoothed = None
-            folder_name = brf_database_list[i][0]
-            brf_name = brf_database_list[i][1]
-            bulb_type = brf_database_list[i][2]
-            extracted_lists = brf_extraction(folder_name, single_or_double)
-            time_list = extracted_lists.time_list
-            waveform_list = extracted_lists.brf_list
-
-            for j in range(len(waveform_list)):
-                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[j], savgol_window), mov_avg_w_size)
-                ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
-                nadir_angle = brf_analysis.angle_of_inflection(time_list[j], smoothed, single_or_double, 'nadir')
-                crest_factor = brf_analysis.crest_factor(waveform_list[j])
-                kurtosis = brf_analysis.kurtosis(waveform_list[j])
-                skew_factor = brf_analysis.skew(waveform_list[j])
-
-                name_list.append(brf_name)
-                type_list.append(bulb_type)
-                integral_ratio_list.append(ratio)
-                nadir_angle_list.append(nadir_angle)
-                crest_factor_list.append(crest_factor)
-                kurtosis_list.append(kurtosis)
-                skew_factor_list.append(skew_factor)
-
-            print(brf_name)
-        
-        # geeksforgeeks.org/create-a-pandas-dataframe-from-lists/ --> USE THIS WAY INSTEAD
-        d = {'BRF_Name': name_list, 'Bulb_Type': type_list, 'Integral_Ratio': integral_ratio_list, 'Nadir_Angle': nadir_angle_list, 'Crest_Factor': crest_factor_list, 'Kurtosis': kurtosis_list, 'Skew': skew_factor_list}
-        df = pd.DataFrame(data = d)
-        save_path = r'C:\Users\alexy\Dropbox\STIMA\BRF Analysis' + '\\stat_analysis.csv'
-
-        if os.path.exists(save_path):
-            print('File exists: do you want to overwrite? (Y/N):')
-            x = input()
-            if x == 'Y':
-                df.to_csv(save_path)
-        else:
-            df.to_csv(save_path)
-
-        return df
 
     '''
     #pkl file with both the bulb type and the name for output labels
@@ -385,8 +304,10 @@ class database_processing():
             waveform_list = extracted_lists.brf_list
             #ignoring the first waveform – will use that for classification
             for i in range(len(waveform_list)):
+
                 downsampled_BRF = raw_waveform_processing.normalize(signal.resample(waveform_list[i], 1600))
 
+                '''
                 # smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(downsampled_BRF, savgol_window), mov_avg_w_size)
                 # # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
                 # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
@@ -396,8 +317,8 @@ class database_processing():
                 # crest_factor = brf_analysis.crest_factor(downsampled_BRF)
                 # kurtosis = brf_analysis.kurtosis(downsampled_BRF)
                 # skew = brf_analysis.skew(downsampled_BRF)
+                '''
 
-                
                 smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
                 # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
                 # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
@@ -437,6 +358,7 @@ class database_processing():
 
                 row_list.append(item_list)
 
+                # downsampling is for making sure that each waveform has the same number of data points (i.e. 1600)
                 downsample_amount = len(waveform_list[i]) - len(downsampled_BRF)
                 if downsample_amount < min_val:
                     min_val = downsample_amount
@@ -1010,7 +932,7 @@ class brf_analysis():
 
         os.chdir(cwd)
 
-            
+
 
 class brf_classification():
     #Sheinin et al. BRF comparison method 
