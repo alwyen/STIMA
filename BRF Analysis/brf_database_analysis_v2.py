@@ -27,7 +27,7 @@ cwd = list(os.getcwd().split(os_sep))
 STIMA_dir = os_sep.join(cwd[:len(cwd)-3])
 
 database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
-base_path = os.path.join(STIMA_dir, 'bulb_database' 'csv_files')
+base_path = os.path.join(STIMA_dir, 'bulb_database', 'csv_files')
 gradient_save_path = os.path.join(STIMA_dir, 'Gradient Tests', 'Savgol 31 Moving 50')
 raw_waveform_save_path = os.path.join(STIMA_dir, 'bulb_database', 'Raw BRFs')
 savgol_window = 31
@@ -279,7 +279,7 @@ class database_processing():
         Features | Bulb_Type | Name
                     ...
     '''
-    def pkl_KNN_in_out(brf_database, single_or_double, num_features, save_path):
+    def pkl_KNN_in_out(brf_database, single_or_double, save_path, num_features):
         brf_database_list = database_processing.database_to_list(brf_database)
         
         KNN_input = list()
@@ -324,7 +324,8 @@ class database_processing():
                 # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
 
-                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)                
+                # these values are not downsized; we're not even using the smoothed values for our analyses
+                int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
                 peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
                 kurtosis = brf_analysis.kurtosis(waveform_list[i])
@@ -471,12 +472,13 @@ class brf_extraction():
             cwd = os.getcwd()
             time_list = []
             brf_list = []
-            path = base_path + '\\' + brf_folder_name
+            path = base_path + os_sep + brf_folder_name
             os.chdir(path)
-            num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
-            os.chdir(cwd)
-            for i in range(num_files):
-                brf_path = path + '\\waveform_' + str(i) + '.csv'
+            csv_list = glob.glob('*.csv')
+            # num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
+            # assert len(csv_list) == num_files
+            for brf_path in csv_list:
+                # brf_path = path + os_sep + 'waveform_' + str(i) + '.csv'
                 processed = raw_waveform_processing(brf_path)
                 time = processed.time
                 brf = processed.brf
@@ -495,6 +497,7 @@ class brf_extraction():
                     brf_list.append(brf2)
             self.time_list = time_list
             self.brf_list = brf_list
+            os.chdir(cwd)
 
         def concatenate_waveforms(waveform_list):
             waveform = np.array([])
@@ -1268,7 +1271,6 @@ class brf_classification():
 
             no_match = True
 
-        # this should be accuracy...?
         accuracy = true_positive/total
         print(f'Accuracy: {accuracy}')
 
@@ -1440,20 +1442,57 @@ class brf_classification():
             print()
 
 if __name__ == "__main__":
-    # csv_path = r'/Users/alexyen/Dropbox/STIMA/bulb_database/brf_database/csv_files/eiko_cfl_13w/waveform_0.csv'
-    # waveform = raw_waveform_processing(csv_path)
-    # plots.show_plot(waveform.voltage)
-    # csv_pkl_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database'
+    # pkl save path
     csv_pkl_save_path = os.path.join(STIMA_dir, 'bulb_database')
-    # smoothed_save_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples'
     smoothed_save_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples')
-    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN.pkl'
-    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized.pkl'
-    pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized.pkl')
-    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\KNN_downsized_smoothed.pkl'
-    # pkl_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\Zeal_stats.pkl'
-    brf_database = database_processing(database_path).brf_database
 
+    # pkl file path
+    pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized.pkl')
+    # pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized_orig.pkl') # this is from July 2021
+
+    # brf_database instatiation
+    brf_database = database_processing(database_path).brf_database
+    
+    # removing BRFs that induce errors
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_7p5w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_12w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
+
+    #taking out these BRFs increased accuracy; labels are different
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_halogenxenon_39w'].index)
+    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_halogenincandescent_65w'].index)
+    
+    # weights
+    #'Entire' is for the entire database
+    # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
+    # weights = np.array([0.75, 0.5, 0.75, 1.0, 1.0])
+    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral average, peak location, crest, kurtosis, skew
+    # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+    
+    # pickles features
+    print('Run preprocessing? [y]/other')
+    val = input()
+    if val == 'y':
+        database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=5)
+
+    # runs KNN analysis on pkl file
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=5, name_k=3)
+    #after choosing K, train on train+validation set; final with test set
+
+    # k-fold analysis
+    # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
+
+    ############################################################################################################################################################
+    ############################################################################################################################################################
+    ############################################################################################################################################################
+
+    # #plotting
+    # '''
     # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\CFL'
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'CFL')
 
@@ -1468,55 +1507,11 @@ if __name__ == "__main__":
 
     # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\GRFP'
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'GRFP')
+    # '''
 
-
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_7p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_12w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
-
-    #taking out these BRFs increased accuracy
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_halogenxenon_39w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_halogenincandescent_65w'].index)
-
-    # brf_classification.compare_brfs(brf_database, 3, 'double')
-    
-    #'Entire' is for the entire database
-    # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
-    # weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
-    # weights = np.array([0.75, 0.5, 0.75, 1.0, 1.0])
-    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral average, peak location, crest, kurtosis, skew
-    # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-    
-    # pickles features
-    # database_processing.pkl_KNN_in_out(brf_database, 'double', 5, csv_pkl_save_path)
-
-    # runs KNN analysis on pkl file
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=5, name_k=3)
-    #after choosing K, train on train+validation set; final with test set
-
-    # k-fold analysis
-    # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
-    
-    # brf_classification.grid_search(brf_database, 3, 'name', 3, 'double', 7, end_weight = 1, step_length = 0.25, Tallied = False, Entire = True)
-
-    # df = pd.read_pickle(pkl_path)
-    # df_list = df.values.tolist()
-    # print(len(df_list[0]))
-
-
-    '''
-    # brf_analysis.brf_gradient_analysis(brf_database, 'double', gradient_save_path)
-    # brf_analysis.test_analysis_method(brf_database, 'integral_ratio', 'double', 'TCP LED 9.5W')
-    # brf_analysis.test_analysis_method(brf_database, 'linearity_v2', 'double')
-    # brf_analysis.test_analysis_method(brf_database, 'test', 'single')
-    # brf_classification.PCA_KNN(brf_database, 'double', 7, 10, 3)
-    # #export stats to csv
-    # method_name_list = ['Integral_Ratio', 'Nadir_Angle', 'Crest_Factor', 'Kurtosis', 'Skew']
-    # database_processing.export_all_to_csv(brf_database, method_name_list, 'double')
-    # #generate stats figures with 95% CIs
-    # brf_analysis.feature_analysis(brf_database, method_name_list, 'double')
-    '''
+    # # example plots
+    # '''
+    # csv_path = r'/Users/alexyen/Dropbox/STIMA/bulb_database/brf_database/csv_files/eiko_cfl_13w/waveform_0.csv'
+    # waveform = raw_waveform_processing(csv_path)
+    # plots.show_plot(waveform.voltage)
+    # '''
