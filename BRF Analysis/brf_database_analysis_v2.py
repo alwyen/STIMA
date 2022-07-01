@@ -336,12 +336,11 @@ class database_processing():
                 # crest_factor = brf_analysis.crest_factor(smoothed)
                 # kurtosis = brf_analysis.kurtosis(smoothed)
                 # skew = brf_analysis.skew(smoothed)
-                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
-                # input_param = np.array([crest_factor, kurtosis, skew])
-                
 
-                # input_param = np.array([angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
-                input_param = np.array([int_avg, peak_loc, crest_factor, kurtosis, skew])
+                # define the number of parameters we want in our KNN model
+                # input_param = [linearity, angle, integral_ratio, crest_factor, kurtosis, skew]
+                input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+                # input_param = np.array([int_avg, peak_loc, crest_factor, kurtosis, skew])
                 
                 assert len(input_param) == num_features
 
@@ -410,6 +409,21 @@ class database_processing():
 
         return KNN_input, KNN_output
 
+    def filtering(brf_database):
+        # removing BRFs that induce errors
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_7p5w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_12w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
+
+        #taking out these BRFs increased accuracy; labels are different
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_halogenxenon_39w'].index)
+        brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_halogenincandescent_65w'].index)
+
+        return brf_database
 
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
@@ -1149,11 +1163,6 @@ class brf_classification():
     def train_KNN(KNN_input, KNN_output, number_neighbors, num_features, weights):
 
         # https://stackoverflow.com/questions/50064632/weighted-distance-in-sklearn-knn
-        #angle of inflection, integral ratio, integral average, peak location, crest factor, kurtosis, skew
-        # weights = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-        # weights = np.array([0, 0, 0, 0, 1, 1, 1])
-        # weights = np.array([0.001, 0.001, 0.001, 0.001, 100, 100, 100])
-        # weights = np.array([0, 0, 0, 1, 1, 1, 1])
 
         #try more integer values
         #small grid search (e.g. 5, 10, 15)
@@ -1452,36 +1461,24 @@ if __name__ == "__main__":
 
     # brf_database instatiation
     brf_database = database_processing(database_path).brf_database
-    
-    # removing BRFs that induce errors
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_led_10w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_6p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'philips_led_8w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_7p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_led_12w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_5p5w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'westinghouse_led_11w'].index)
-
-    #taking out these BRFs increased accuracy; labels are different
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'halco_halogenxenon_39w'].index)
-    brf_database = brf_database.drop(brf_database[brf_database['Folder_Name'] == 'sylvania_halogenincandescent_65w'].index)
-    
+    brf_database = database_processing.filtering(brf_database)    
     # weights
     #'Entire' is for the entire database
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
     # weights = np.array([0.75, 0.5, 0.75, 1.0, 1.0])
-    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral average, peak location, crest, kurtosis, skew
+    # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral average, peak location, crest, kurtosis, skew
+    weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral ratio, integral average, peak location, crest, kurtosis, skew
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     
     # pickles features
     print('Run preprocessing? [y]/other')
     val = input()
     if val == 'y':
-        database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=5)
+        database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
 
     # runs KNN analysis on pkl file
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=5, name_k=3)
+    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
     # k-fold analysis

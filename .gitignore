@@ -5,3 +5,9 @@
 *.kml
 *.DS_Store
 *.pyc
+*.cpg
+*.dbf
+*.prg
+*.shp
+*.shx
+*.qmd
