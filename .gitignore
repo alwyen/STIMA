@@ -7,7 +7,7 @@
 *.pyc
 *.cpg
 *.dbf
-*.prg
+*.prj
 *.shp
 *.shx
 *.qmd
