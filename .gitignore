@@ -11,3 +11,4 @@
 *.shp
 *.shx
 *.qmd
+*.geojson
