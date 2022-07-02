@@ -33,6 +33,20 @@ def return_areas(geojson_path, boundary_path):
     # gdf = gpd.read_file(geojson_path)
     # print(f'Time elapsed for loading file (seconds): {time.time() - start_time}')
 
+    '''
+    TODO:   shapely --> make smaller geojson file to load (and make an option for that)
+            print out shapes
+            compute centroid of polygons of geometry column (check geopandas df column names)
+            (Zeal said something about using `gdf.geometry.centroid` with `.apply`)
+            create buffer points from polygon (20m; figure that out)
+            geometry columns should be:
+                building polygon | centroid of building | then buffer around centroid
+            then generate random points inside buffer; result should be:
+                building polygon | centroid of building | then buffer around centroid | random point
+            need to attach brf label to random point, so create another column with that
+            (I think that should be it...?)
+    '''
+
 def main(args):
     geojson_path = os.path.join(STIMA_scripts_dir, 'ClassSim', 'geojson_files', args.geojson_path)
     boundary_path = os.path.join(STIMA_scripts_dir, 'ClassSim', 'geojson_files', args.boundary_path)
