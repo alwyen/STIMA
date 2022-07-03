@@ -33,8 +33,8 @@ raw_waveform_save_path = os.path.join(STIMA_dir, 'bulb_database', 'Raw BRFs')
 savgol_window = 31
 mov_avg_w_size = 50
 
-brf_analysis_save_path = os.path.join(STIMA_dir, 'BRF Analysis')
-feature_analysis_save_directory = os.path.join(STIMA_dir, 'BRF Analysis', 'Feature Analysis')
+brf_analysis_save_path = os.path.join(STIMA_dir, 'BRF_Analysis')
+feature_analysis_save_directory = os.path.join(STIMA_dir, 'BRF_Analysis', 'Feature Analysis')
 ############################################################
 #debugging
 falling_slope = 0
