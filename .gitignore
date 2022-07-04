@@ -8,7 +8,6 @@
 *.cpg
 *.dbf
 *.prj
-*.shp
 *.shx
 *.qmd
 *.geojson

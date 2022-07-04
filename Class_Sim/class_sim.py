@@ -1,13 +1,14 @@
 import argparse
+from numpy import save
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
-# import shapely
 from shapely.geometry import Point, Polygon, box
 import os
 import time
 import sys
 import random
+import pickle
 
 os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
@@ -40,14 +41,18 @@ def generate_random_spatialpoints(number, polygon):
     return list_of_points
 
 '''
-DESCRIPTION: creates a new geo dataframe with random points within new polygons with associated BRFs
+DESCRIPTION:    creates a new geo dataframe with random points within new polygons with associated BRFs
+                saves data frames in new folder
 
 INPUT:  geojson_path    path to geojson file
         boundary_path   path to lat-long box boundaries to narrow down df
 
-OUTPUT: 
+OUTPUT: nothing
 '''
-def return_new_df(geojson_path, boundary_path):
+def save_new_dfs(folder_name, save_path, geojson_path, boundary_path):
+    if not os.path.isdir(save_path):
+        os.mkdir(save_path)
+
     # extracting new scenarios; make multiple gdfs,
     # put into new files; make option to process again or just use from saved file
     boundary_df = pd.read_csv(boundary_path)
@@ -63,20 +68,24 @@ def return_new_df(geojson_path, boundary_path):
 
     start_time = time.time()
     gdf = gpd.read_file(geojson_path)
+    # print(gdf.crs)
     print(f'Time elapsed for loading file (seconds): {time.time() - start_time}')
     print()
 
     for i in range(len(xmin_list)):
-        new_gdf = box(xmin_list[i], ymin_list[i], xmax_list[i], ymax_list[i])
-        print(len(new_gdf['geometry']))
+        boundary_box = box(xmin_list[i], ymin_list[i], xmax_list[i], ymax_list[i])
+        bounded_gdf = gdf.intersection(boundary_box)
+        bounded_gdf = gpd.GeoDataFrame(bounded_gdf[~bounded_gdf.is_empty])
+        bounded_gdf = bounded_gdf.rename(columns={0:'geometry'}).set_geometry('geometry')
 
-    '''
-    FIGURE OUT HOW TO USE `box` TO REDUCE NUMBER OF POLYGONS IN IMAGE
-    '''
+        layout_name_path = os.path.join(save_path, folder_name + '_layout_' + str(i))
+        bounded_gdf.to_file(layout_name_path)
 
-    gdf['centroid'] = gdf['geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
-    centroid_list = gdf['centroid']
-    print(len(centroid_list))
+
+
+    # gdf['centroid'] = gdf['geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
+    # centroid_list = gdf['centroid']
+    # print(len(centroid_list))
 
     # gdf.plot()
     # plt.show() # this doesn't show anything yet? plot shapes?
@@ -98,8 +107,15 @@ def return_new_df(geojson_path, boundary_path):
 def main(args):
     geojson_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.geojson_path)
     boundary_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.boundary_path)
-    return_new_df(geojson_path, boundary_path)
-    # print("hello")
+
+    geojson_temp = list(geojson_path.split(os.sep))
+    folder_name = geojson_temp[len(geojson_temp) - 1].split('.')[0]
+    save_path = os.path.join(os.getcwd(), folder_name)
+
+    print('Skip file generation? [y]/other')
+    user_input = input()
+    if user_input != 'y':
+        save_new_dfs(folder_name, save_path, geojson_path, boundary_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
