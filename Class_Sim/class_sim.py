@@ -25,7 +25,6 @@ INPUT:  number              number of random points for a polygon
         polygon
 OUTPUT: list_of_points      list of random points in lat long format(?)
 '''
-
 def generate_random_spatialpoints(number, polygon):
     #Source: https://gis.stackexchange.com/questions/207731/generating-random-coordinates-in-multipolygon-in-python
     list_of_points = []
@@ -40,8 +39,17 @@ def generate_random_spatialpoints(number, polygon):
             counter += 1
     return list_of_points
 
-def return_areas(geojson_path, boundary_path):
-    # extracting new scenarios
+'''
+DESCRIPTION: creates a new geo dataframe with random points within new polygons with associated BRFs
+
+INPUT:  geojson_path    path to geojson file
+        boundary_path   path to lat-long box boundaries to narrow down df
+
+OUTPUT: 
+'''
+def return_new_df(geojson_path, boundary_path):
+    # extracting new scenarios; make multiple gdfs,
+    # put into new files; make option to process again or just use from saved file
     boundary_df = pd.read_csv(boundary_path)
     xmin_list = boundary_df.xmin.tolist()
     ymin_list = boundary_df.ymin.tolist()
@@ -58,13 +66,17 @@ def return_areas(geojson_path, boundary_path):
     print(f'Time elapsed for loading file (seconds): {time.time() - start_time}')
     print()
 
+    for i in range(len(xmin_list)):
+        new_gdf = box(xmin_list[i], ymin_list[i], xmax_list[i], ymax_list[i])
+        print(len(new_gdf['geometry']))
+
     '''
     FIGURE OUT HOW TO USE `box` TO REDUCE NUMBER OF POLYGONS IN IMAGE
     '''
 
     gdf['centroid'] = gdf['geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
     centroid_list = gdf['centroid']
-    print(centroid_list[0])
+    print(len(centroid_list))
 
     # gdf.plot()
     # plt.show() # this doesn't show anything yet? plot shapes?
@@ -86,12 +98,12 @@ def return_areas(geojson_path, boundary_path):
 def main(args):
     geojson_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.geojson_path)
     boundary_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.boundary_path)
-    return_areas(geojson_path, boundary_path)
+    return_new_df(geojson_path, boundary_path)
     # print("hello")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-gp', '--geojson_path', required=True, type=str, help='geojson file name')
-    parser.add_argument('-bp', '--boundary_path', required=True, type=str, help='boundary csv file name')
+    parser.add_argument('-gp', '--geojson_path', required=True, type=str, help='geojson file name; Example: Alaska.geojson')
+    parser.add_argument('-bp', '--boundary_path', required=True, type=str, help='boundary csv file name; Example: Alaska_boundaries.csv')
     args = parser.parse_args()
     main(args)
