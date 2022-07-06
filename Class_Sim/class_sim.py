@@ -84,15 +84,25 @@ def save_new_dfs(folder_name, save_path, geojson_path, boundary_path):
         bounded_gdf.to_file(layout_name_path)
 
 '''
-DESCRIPTION: loads GeoDataFrame from .shp file from save path
+DESCRIPTION: loads GeoDataFrames from .shp file from save path into a list
 
-INPUT:      
+INPUT:      save_path       path to all saved folders/.shp files
 
-OUTPUT:
+OUTPUT:     gdf_list        returns list of GeoDataFrames
 '''
 
-def load_gdf(save_path):
-    pass
+def load_gdfs(save_path):
+    gdf_list = list()
+    scenario_list = glob.glob(save_path + '/*/', recursive=True)
+    for scenario_path in scenario_list:
+        # getting the path of the file for the scenario_path
+        dirs = scenario_path.split('/')
+        file_name = dirs[len(dirs)-2] + '.shp'
+        scenario_path = scenario_path + file_name
+        gdf = gpd.read_file(scenario_path)
+        gdf_list.append(gdf)
+    
+    return gdf_list
 
 '''
 DESCRIPTION: takes in a GeoDataFrame and computes the random points of buffered polygons
@@ -115,6 +125,7 @@ def compute_random_points(gdf):
     # print(gdf['geometry'])
     # print(gdf['buffer_geometry'])
     # print(gdf['random_points'])
+    print(gdf.head())
 
     # gdf.geometry.plot()
     # gdf.buffer_geometry.plot()
@@ -143,12 +154,19 @@ def main(args):
     folder_name = geojson_temp[len(geojson_temp) - 1].split('.')[0]
     save_path = os.path.join(os.getcwd(), folder_name)
 
-    print('Skip file generation? [y]/other')
+    print('Regenerate files? [y]/other')
     user_input = input()
-    if user_input != 'y':
-        save_new_dfs(folder_name, save_path, geojson_path, boundary_path)
-    
-    print(glob.glob(save_path + '/*/', recursive=True))
+    if user_input == 'y':
+        print('Are you sure? This will take some time. [y]/other')
+        user_input = input()
+        if user_input == 'y':
+            save_new_dfs(folder_name, save_path, geojson_path, boundary_path)
+
+    gdf_list = load_gdfs(save_path)
+
+    for gdf in gdf_list:
+        compute_random_points(gdf)
+
 
 
 
