@@ -8,7 +8,7 @@ import os
 import time
 import sys
 import random
-import pickle
+import glob
 
 os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
@@ -47,7 +47,7 @@ DESCRIPTION:    creates a new geo dataframe with random points within new polygo
 INPUT:  geojson_path    path to geojson file
         boundary_path   path to lat-long box boundaries to narrow down df
 
-OUTPUT: nothing
+OUTPUT: nothing; files are in `folder_name`
 '''
 def save_new_dfs(folder_name, save_path, geojson_path, boundary_path):
     if not os.path.isdir(save_path):
@@ -73,22 +73,52 @@ def save_new_dfs(folder_name, save_path, geojson_path, boundary_path):
     print()
 
     for i in range(len(xmin_list)):
+        # filtering out 
         boundary_box = box(xmin_list[i], ymin_list[i], xmax_list[i], ymax_list[i])
         bounded_gdf = gdf.intersection(boundary_box)
         bounded_gdf = gpd.GeoDataFrame(bounded_gdf[~bounded_gdf.is_empty])
         bounded_gdf = bounded_gdf.rename(columns={0:'geometry'}).set_geometry('geometry')
 
+        # generate save path
         layout_name_path = os.path.join(save_path, folder_name + '_layout_' + str(i))
         bounded_gdf.to_file(layout_name_path)
 
+'''
+DESCRIPTION: loads GeoDataFrame from .shp file from save path
 
+INPUT:      
 
-    # gdf['centroid'] = gdf['geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
-    # centroid_list = gdf['centroid']
-    # print(len(centroid_list))
+OUTPUT:
+'''
 
+def load_gdf(save_path):
+    pass
+
+'''
+DESCRIPTION: takes in a GeoDataFrame and computes the random points of buffered polygons
+
+INPUT:      gdf     GeoDataFrame
+
+OUTPUT:     gdf     GeoDataFrame with the following columns:
+                    geometry | buffer_geometry | random_points
+'''
+
+def compute_random_points(gdf):
+    gdf = gdf.to_crs(epsg=3857)
+    gdf['buffer_geometry'] = gdf.buffer(20)
+    gdf['geometry'] = gdf['geometry'].to_crs(crs=4326)
+    gdf['buffer_geometry'] = gdf['buffer_geometry'].to_crs(crs=4326)
+    gdf['random_points'] = gdf['buffer_geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
     # gdf.plot()
-    # plt.show() # this doesn't show anything yet? plot shapes?
+    # plt.show()
+
+    # print(gdf['geometry'])
+    # print(gdf['buffer_geometry'])
+    # print(gdf['random_points'])
+
+    # gdf.geometry.plot()
+    # gdf.buffer_geometry.plot()
+
 
     '''
     TODO:   shapely --> make smaller geojson file to load (and make an option for that)
@@ -102,6 +132,7 @@ def save_new_dfs(folder_name, save_path, geojson_path, boundary_path):
                 building polygon | centroid of building | then buffer around centroid | random point
             need to attach brf label to random point, so create another column with that
             (I think that should be it...?)
+            figure out how to plot original buildings + buffer + random points to visualize stuff
     '''
 
 def main(args):
@@ -116,6 +147,10 @@ def main(args):
     user_input = input()
     if user_input != 'y':
         save_new_dfs(folder_name, save_path, geojson_path, boundary_path)
+    
+    print(glob.glob(save_path + '/*/', recursive=True))
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
