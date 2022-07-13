@@ -26,6 +26,7 @@ os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
 STIMA_dir = os_sep.join(cwd[:len(cwd)-3])
 
+ACam_path = os.path.join(STIMA_dir, 'ACam', 'CFL')
 database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
 base_path = os.path.join(STIMA_dir, 'bulb_database', 'csv_files')
 gradient_save_path = os.path.join(STIMA_dir, 'Gradient Tests', 'Savgol 31 Moving 50')
@@ -595,8 +596,10 @@ class brf_analysis():
             rising_2 = new_brf[nadir_indice_1:peak_indice_2+1]
             falling_2 = new_brf[peak_indice_2:len(brf)]
 
-            ratio_1 = np.sum(rising_1)/np.sum(falling_1)
-            ratio_2 = np.sum(rising_2)/np.sum(falling_2)
+            # ratio_1 = np.sum(rising_1)/np.sum(falling_1)
+            # ratio_2 = np.sum(rising_2)/np.sum(falling_2)
+            ratio_1 = (np.sum(rising_1)/len(rising_1)) / (np.sum(falling_1)/len(falling_1))
+            ratio_2 = (np.sum(rising_2)/len(rising_2)) / (np.sum(falling_2)/len(falling_2))
 
             set_pt1(peak_indice_1, new_brf[peak_indice_1])
             set_pt2(peak_indice_2, new_brf[peak_indice_2])
@@ -604,6 +607,17 @@ class brf_analysis():
             average_ratio = (ratio_1 + ratio_2)/2
 
             return average_ratio
+
+    def ACam_integral_ratio(brf):
+        peak_index = signal.find_peaks(brf)[0][0]
+        nadir_index = signal.find_peaks(-brf)[0][0]
+        rising = brf[nadir_index:peak_index+1]
+        falling_1 = brf[:nadir_index+1]
+        falling_2 = brf[nadir_index-1:]
+        rising_sum = np.sum(rising)/len(rising)
+        falling_sum = np.sum(falling_1)/len(falling_1) + np.sum(falling_2)/len(falling_2)
+        ratio = rising_sum/falling_sum
+        return ratio
 
     #not good; method has issues and doesn't seem distinct enough for KNN
     def linearity(time, brf, single_or_double, rising_or_falling):
@@ -881,6 +895,7 @@ class brf_analysis():
             else:
                 nadir_indice_1 = nadir_indices[0]
 
+            # nadir_indice_1 is the end of the first cycle
             ratio_1 = peak_indice_1/nadir_indice_1
             ratio_2 = (peak_indice_2-nadir_indice_1)/(len(brf) - nadir_indice_1)
 
@@ -888,6 +903,12 @@ class brf_analysis():
             set_pt2(peak_indice_2, brf[peak_indice_2])
             
             return (ratio_1 + ratio_2)/2
+
+    # peak location divided by the length of the waveform/BRF
+    def ACam_peak_location(brf):
+        peak_index = signal.find_peaks(brf)[0][0]
+        ratio = peak_index/len(brf)
+        return ratio
 
     #cycle integral (so just the sum of the cycle), but need to divide by the cycle length to account of differences in cycle length
     #(integral/cycle length)
@@ -912,6 +933,10 @@ class brf_analysis():
             int_avg_2 = np.sum(brf[nadir_indice_1:len(brf)])/(len(brf) - nadir_indice_1)
 
             return((int_avg_1 + int_avg_2)/2)
+
+    def ACam_cycle_integral_avg(brf):
+        int_avg = np.sum(brf) / len(brf)
+        return int_avg
 
     #gradient analysis
     def brf_gradient_analysis(brf_database, single_or_double, save_path):
@@ -1230,6 +1255,11 @@ class brf_classification():
             expected_output = prediction[1]
             brf_name = prediction[2] #this might be wrong...? have this here just for the future (in case I need it)
 
+            print(input_data)
+            print(expected_output)
+            print(brf_name)
+            print()
+
             output = brf_KNN_model.predict([input_data])[0]
 
             #don't evaluate k closest neighbors with bulb type classification
@@ -1283,7 +1313,6 @@ class brf_classification():
         accuracy = true_positive/total
         print(f'Accuracy: {accuracy}')
 
-
         if not skip:
             print('Do you want to skip plotting? [y]/other')
             val = input()
@@ -1300,7 +1329,13 @@ class brf_classification():
                 plots.confusion_matrix_unique(ground_list, predicted_list, name_list, f'[angle, integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew]\nWeights: {weights}\nConfusion Matrix for {bulb_type} Bulb Type Using KNN\nClosest {num_test_waveforms} Neighbors & KNN Prediction\n(~7 double cycles for training, 3 for testing)\nOverall Correctness: {accuracy}')
 
         if MisClass and classification_type == 'type':
-            return misclassification_array, true_positive, total, true_positive_list, total_list #lists refer to bulb types        
+            return misclassification_array, true_positive, total, true_positive_list, total_list #lists refer to bulb types
+
+        # TEMPORARY
+        # TEMPORARY
+        # TEMPORARY
+        return brf_KNN_model
+
 
     #get different KNN_in, KNN_out, KNN_prediction_list, and then RUN THE METHOD
     def KNN_analysis_pkl(pkl_path, brf_database, classification_type, weights, Entire, num_test_waveforms, num_features, number_neighbors, name_k):
@@ -1311,7 +1346,12 @@ class brf_classification():
 
         if Entire:
             KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, None, classification_type, num_test_waveforms, num_features, k_fold_CV=False, split_number=0)
-            brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, num_features, weights, Entire, name_k, MisClass)
+
+            # TEMPORARY
+            # TEMPORARY
+            # TEMPORARY
+            brf_KNN_model = brf_classification.KNN(brf_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, num_features, weights, Entire, name_k, MisClass)
+            return brf_KNN_model
         else:
             bulb_type_list = database_processing.return_bulb_types(brf_database)
             for bulb_type in bulb_type_list:
@@ -1320,6 +1360,54 @@ class brf_classification():
                 KNN_in, KNN_out, KNN_prediction_list = brf_classification.KNN_in_out_pkl(pkl_path, bulb_type, classification_type, num_test_waveforms, num_features, k_fold_CV=False, split_number=0)
                 brf_classification.KNN(same_type_database, KNN_in, KNN_out, KNN_prediction_list, number_neighbors, classification_type, num_test_waveforms, num_features, weights, Entire, MisClass)
                 print()
+
+    '''
+    DEFINITION: takes in previously trained BRF model; classification is for bulb TYPE
+
+    INPUT:      brf_KNN_model       KNN model
+                csv_path            key-value database of ACam traces; this contains master csv file to access folders
+                                    format should be:
+                                        relative folder path | Bulb type
+                                    
+                                    relative folder path should contain csv files of traces; use glob to access traces
+                                        run stats like pkl_KNN_in_out; note that ACam traces are SINGLE cycle
+
+    OUPUT:      nothing
+    '''
+    def classify_ACam_BRFs(brf_KNN_model, csv_path):
+        cwd = os.getcwd()
+        os.chdir(csv_path)
+        file_list = glob.glob('*.csv')
+
+        KNN_input = list()
+        KNN_output_type = list([])
+
+        for csv_file in file_list:
+            df = pd.read_csv(csv_file)
+            norm_waveform = abs(np.array(df['Intensity']) - 1)
+
+            # EVERYTHING IS W.R.T. THE NADIR
+            integral_ratio = brf_analysis.ACam_integral_ratio(norm_waveform)
+            int_avg = brf_analysis.ACam_cycle_integral_avg(norm_waveform)
+            peak_loc = brf_analysis.ACam_peak_location(norm_waveform)
+            
+            crest_factor = brf_analysis.crest_factor(norm_waveform)
+            kurtosis = brf_analysis.kurtosis(norm_waveform)
+            skew = brf_analysis.skew(norm_waveform)
+
+            input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+            output = brf_KNN_model.predict([input_param])[0]
+            print(output)
+
+
+            # plt.plot(norm_waveform)
+            # plt.show()
+            # quit()
+
+
+        os.chdir(cwd)
+        return KNN_input
+
 
     '''
     DESCRIPTION:
@@ -1478,8 +1566,11 @@ if __name__ == "__main__":
         database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
 
     # runs KNN analysis on pkl file
-    brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
+    # TEMPORARILY RETURNING MODEL
+    brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
+
+    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path)
 
     # k-fold analysis
     # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)

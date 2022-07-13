@@ -100,6 +100,10 @@ def load_gdfs(save_path):
         file_name = dirs[len(dirs)-2] + '.shp'
         scenario_path = scenario_path + file_name
         gdf = gpd.read_file(scenario_path)
+
+        # iloc[row, col]
+        gdf = gdf.iloc[:, 1:] # iloc --> integer location; removing first column (was FID)
+        
         gdf_list.append(gdf)
     
     return gdf_list
@@ -107,20 +111,41 @@ def load_gdfs(save_path):
 '''
 DESCRIPTION: takes in a GeoDataFrame and computes the random points of buffered polygons
 
-INPUT:      gdf     GeoDataFrame
+INPUT:      gdf             GeoDataFrame
+            error_amount    location radial error amount in meters
 
-OUTPUT:     gdf     GeoDataFrame with the following columns:
-                    geometry | buffer_geometry | random_points
+OUTPUT:     gdf             GeoDataFrame with the following columns:
+                            geometry | buffer_geometry | random_points
 '''
 
-def compute_random_points(gdf):
+def compute_random_points(gdf, error_amount):
     gdf = gdf.to_crs(epsg=3857)
-    gdf['buffer_geometry'] = gdf.buffer(20)
+    gdf['buffer_geometry'] = gdf.buffer(20) # 20 represents the approximate distance from street lights to houses
+    gdf['ground_points'] = gdf['buffer_geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
+    gdf_copy = gdf.copy()
+    print(gdf_copy.head())
+    gdf_copy['geometry'] = gdf_copy['ground_points']
+    gdf_copy = gdf_copy.drop('ground_points')
+    gdf_copy = gdf_copy.drop('buffer_geometry')
+    gdf_copy.plot()
+    plt.show()
+
+    gdf['circle_geometry'] = gdf['ground_points'].buffer(error_amount)
+    gdf['estimated_points'] = gdf['circle_geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
+    
+    # convert everything back to 4326 (WGS 84)
     gdf['geometry'] = gdf['geometry'].to_crs(crs=4326)
     gdf['buffer_geometry'] = gdf['buffer_geometry'].to_crs(crs=4326)
-    gdf['random_points'] = gdf['buffer_geometry'].apply(lambda row: generate_random_spatialpoints(1, row))
-    # gdf.plot()
-    # plt.show()
+    gdf['ground_points'] = gdf['ground_points'].to_crs(crs=4326)
+    gdf['circle_geometry'] = gdf['circle_geometry'].to_crs(crs=4326)
+    gdf['estimated_points'] =gdf['estimated_points'].to_crs(crs=4326)
+
+    gdf.plot('geometry')
+    gdf.plot('buffer_geometry')
+    gdf.plot('ground_points')
+    gdf.plot('circle_geometry')
+    gdf.plot('estimated_points')
+    plt.show()
 
     # print(gdf['geometry'])
     # print(gdf['buffer_geometry'])
@@ -147,6 +172,8 @@ def compute_random_points(gdf):
     '''
 
 def main(args):
+    error_amount = 15
+
     geojson_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.geojson_path)
     boundary_path = os.path.join(STIMA_scripts_dir, 'Class_Sim', 'geojson_files', args.boundary_path)
 
@@ -165,7 +192,7 @@ def main(args):
     gdf_list = load_gdfs(save_path)
 
     for gdf in gdf_list:
-        compute_random_points(gdf)
+        compute_random_points(gdf, error_amount)
 
 
 
