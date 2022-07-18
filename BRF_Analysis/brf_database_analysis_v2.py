@@ -26,7 +26,7 @@ os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
 STIMA_dir = os_sep.join(cwd[:len(cwd)-3])
 
-ACam_path = os.path.join(STIMA_dir, 'ACam', 'CFL')
+ACam_path = os.path.join(STIMA_dir, 'ACam')
 database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
 base_path = os.path.join(STIMA_dir, 'bulb_database', 'csv_files')
 gradient_save_path = os.path.join(STIMA_dir, 'Gradient Tests', 'Savgol 31 Moving 50')
@@ -280,7 +280,7 @@ class database_processing():
         Features | Bulb_Type | Name
                     ...
     '''
-    def pkl_KNN_in_out(brf_database, single_or_double, save_path, num_features):
+    def pkl_KNN_in_out(brf_database, ACam_db_path, single_or_double, save_path, num_features):
         brf_database_list = database_processing.database_to_list(brf_database)
         
         KNN_input = list()
@@ -292,6 +292,9 @@ class database_processing():
         max_val = -9999
         min_val = 9999
         down_list = list()
+
+        # making these variables for assertions
+        scope_input_param = None
 
         #index 0: Folder Name
         #index 1: BRF Name
@@ -367,11 +370,52 @@ class database_processing():
                     max_val = downsample_amount
                 down_list.append(downsample_amount)
 
-
+                # store just for assertion later
+                scope_input_param = input_param
                 # plots.show_plot(waveform_list[i])
                 # plots.show_plot(downsampled_BRF)
 
             print(f'{brf_name} Finished') #this is just to make sure the program is running properly
+
+        '''
+        TODO: finish adding in code to retrain model
+        '''
+        # # adding ACam data to training
+        # print()
+        # print('ACam data now:')
+        # cwd = os.getcwd()
+        # os.chdir(ACam_db_path)
+        # ACam_db_df = pd.read_csv(os.path.join(ACam_db_path, 'ACam_db.csv'))
+        # folder_list = ACam_db_df['folder_name']
+        # name_list = ACam_db_df['brf_name']
+        # type_list = ACam_db_df['brf_type']
+
+        # for i in range(len(folder_list)):
+        #     folder_path = os.path.join(ACam_db_path, folder_list[i])
+        #     name = name_list[i]
+        #     type = type_list[i]
+
+        #     os.chdir(folder_path)
+        #     file_list = glob.glob('*.csv')
+
+        #     for csv_file in file_list:
+        #         # print(csv_file)
+        #         df = pd.read_csv(csv_file)
+        #         norm_waveform = abs(np.array(df['Intensity']) - 1)
+
+        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
+        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
+        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
+        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
+
+        #         ACam_input_param = brf_analysis.extract_features_ACam(norm_waveform)
+        #         assert len(scope_input_param) == len(ACam_input_param)
+
+        #         KNN_input.append(ACam_input_param)
+        #         KNN_output_type.append(type)
+        #         KNN_output_name.append(name)
+
+        # quit()
 
         print(f'Min: {min_val}')
         print(f'Max: {max_val}')
@@ -522,6 +566,59 @@ class brf_extraction():
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
+    def reconstruct_ACam_waveform(norm_waveform):
+        peak_indices = signal.find_peaks(norm_waveform)[0]
+        nadir_indices = signal.find_peaks(-norm_waveform)[0]
+
+        # instantiation
+        peak_index = None
+        nadir_index = None
+
+        peak_index_max = 0
+        nadir_index_min = 1
+
+        for index in peak_indices:
+            if norm_waveform[index] > peak_index_max:
+                peak_index = index
+                peak_index_max = norm_waveform[index]
+
+        for index in nadir_indices:
+            if norm_waveform[index] < nadir_index_min:
+                nadir_index = index
+                nadir_index_min = norm_waveform[index]
+
+        if peak_index < nadir_index:
+            falling = norm_waveform[peak_index:nadir_index]
+            rising_1 = norm_waveform[:peak_index]
+            rising_2 = norm_waveform[nadir_index-1:]
+
+            # rising_2 --> rising_1 --> falling
+            reconstructed_waveform = np.concatenate((rising_2, rising_1, falling), axis=0)
+            return reconstructed_waveform
+
+        elif nadir_index < peak_index:
+            rising = norm_waveform[nadir_index:peak_index]
+            falling_1 = norm_waveform[:nadir_index]
+            falling_2 = norm_waveform[peak_index-1:]
+
+            # rising --> falling_2 --> falling_1
+
+            reconstructed_waveform = np.concatenate((rising, falling_2, falling_1), axis=0)
+            return reconstructed_waveform
+
+    def extract_features_ACam(norm_waveform):
+        # EVERYTHING IS W.R.T. THE NADIR
+        integral_ratio = brf_analysis.ACam_integral_ratio(norm_waveform)
+        int_avg = brf_analysis.ACam_cycle_integral_avg(norm_waveform)
+        peak_loc = brf_analysis.ACam_peak_location(norm_waveform)
+        
+        crest_factor = brf_analysis.crest_factor(norm_waveform)
+        kurtosis = brf_analysis.kurtosis(norm_waveform)
+        skew = brf_analysis.skew(norm_waveform)
+
+        input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+        return input_param
+
     #gets distance squared of two BRFs; not euclidean distance (did not sqrt the result)
     #this is the method used in Sheinin's paper
     def min_error(brf_1, brf_2):
@@ -609,14 +706,60 @@ class brf_analysis():
             return average_ratio
 
     def ACam_integral_ratio(brf):
-        peak_index = signal.find_peaks(brf)[0][0]
-        nadir_index = signal.find_peaks(-brf)[0][0]
-        rising = brf[nadir_index:peak_index+1]
-        falling_1 = brf[:nadir_index+1]
-        falling_2 = brf[nadir_index-1:]
-        rising_sum = np.sum(rising)/len(rising)
-        falling_sum = np.sum(falling_1)/len(falling_1) + np.sum(falling_2)/len(falling_2)
-        ratio = rising_sum/falling_sum
+        # peak_indices = signal.find_peaks(brf)[0]
+        # nadir_indices = signal.find_peaks(-brf)[0]
+
+        # # instantiation
+        # peak_index = None
+        # nadir_index = None
+
+        # peak_index_max = 0
+        # nadir_index_min = 1
+
+        # for index in peak_indices:
+        #     if brf[index] > peak_index_max:
+        #         peak_index = index
+        #         peak_index_max = brf[index]
+
+        # for index in nadir_indices:
+        #     if brf[index] < nadir_index_min:
+        #         nadir_index = index
+        #         nadir_index_min = brf[index]
+
+        # if peak_index < nadir_index:
+        #     falling = brf[peak_index:nadir_index+1]
+        #     rising_1 = brf[:peak_index+1]
+        #     rising_2 = brf[nadir_index-1:]
+
+        #     rising_sum = np.sum(rising_1)/len(rising_1) + np.sum(rising_2)/len(rising_2)
+        #     falling_sum = np.sum(falling)/len(falling)
+
+        # elif nadir_index < peak_index:
+        #     rising = brf[nadir_index:peak_index+1]
+        #     falling_1 = brf[:nadir_index+1]
+        #     falling_2 = brf[peak_index-1:]
+
+        #     rising_sum = np.sum(rising)/len(rising)
+        #     falling_sum = np.sum(falling_1)/len(falling_1) + np.sum(falling_2)/len(falling_2)
+
+        # ratio = rising_sum/falling_sum
+
+        peak_indices = signal.find_peaks(brf)[0]
+
+        # instantiation
+        peak_index = None
+
+        peak_index_max = 0
+
+        for index in peak_indices:
+            if brf[index] > peak_index_max:
+                peak_index = index
+                peak_index_max = brf[index]
+
+        rising = brf[0:peak_index+1]
+        falling = brf[peak_index:len(brf)]
+
+        ratio = np.sum(rising)/np.sum(falling)
         return ratio
 
     #not good; method has issues and doesn't seem distinct enough for KNN
@@ -905,8 +1048,46 @@ class brf_analysis():
             return (ratio_1 + ratio_2)/2
 
     # peak location divided by the length of the waveform/BRF
+    # this is W.R.T. the NADIR
     def ACam_peak_location(brf):
-        peak_index = signal.find_peaks(brf)[0][0]
+        # peak_indices = signal.find_peaks(brf)[0]
+        # nadir_indices = signal.find_peaks(-brf)[0]
+
+        # # instantiation
+        # peak_index = None
+        # nadir_index = None
+
+        # peak_index_max = 0
+        # nadir_index_min = 1
+
+        # for index in peak_indices:
+        #     if brf[index] > peak_index_max:
+        #         peak_index = index
+        #         peak_index_max = brf[index]
+
+        # for index in nadir_indices:
+        #     if brf[index] < nadir_index_min:
+        #         nadir_index = index
+        #         nadir_index_min = brf[index]
+
+        # if peak_index < nadir_index:
+        #     peak_loc = len(brf) - nadir_index + peak_index
+
+        # elif nadir_index < peak_index:
+        #     peak_loc = peak_index - nadir_index
+
+        peak_indices = signal.find_peaks(brf)[0]
+
+        # instantiation
+        peak_index = None
+
+        peak_index_max = 0
+
+        for index in peak_indices:
+            if brf[index] > peak_index_max:
+                peak_index = index
+                peak_index_max = brf[index]
+
         ratio = peak_index/len(brf)
         return ratio
 
@@ -1371,10 +1552,14 @@ class brf_classification():
                                     
                                     relative folder path should contain csv files of traces; use glob to access traces
                                         run stats like pkl_KNN_in_out; note that ACam traces are SINGLE cycle
+                folder_name         name of folder to create path and access files
+                debugging           flag to enable more debugging features
 
     OUPUT:      nothing
     '''
-    def classify_ACam_BRFs(brf_KNN_model, csv_path):
+    def classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, classification_type, average_only, debugging):
+        csv_path = os.path.join(ACam_path, folder_name)
+        
         cwd = os.getcwd()
         os.chdir(csv_path)
         file_list = glob.glob('*.csv')
@@ -1382,31 +1567,63 @@ class brf_classification():
         KNN_input = list()
         KNN_output_type = list([])
 
+        num_traces = len(file_list)
+        tru_pos_counter = 0
+
+        # creating empty array of length of entries in CSV file
+        temp_waveform = abs(np.array(pd.read_csv(file_list[0])['Intensity']) - 1)
+        new_temp_waveform = brf_analysis.reconstruct_ACam_waveform(temp_waveform)
+        sum_traces = np.zeros(len(new_temp_waveform))
+
         for csv_file in file_list:
+            # print(csv_file)
             df = pd.read_csv(csv_file)
+
+            # need this step because somehow the waveforms are flipped
             norm_waveform = abs(np.array(df['Intensity']) - 1)
 
-            # EVERYTHING IS W.R.T. THE NADIR
-            integral_ratio = brf_analysis.ACam_integral_ratio(norm_waveform)
-            int_avg = brf_analysis.ACam_cycle_integral_avg(norm_waveform)
-            peak_loc = brf_analysis.ACam_peak_location(norm_waveform)
-            
-            crest_factor = brf_analysis.crest_factor(norm_waveform)
-            kurtosis = brf_analysis.kurtosis(norm_waveform)
-            skew = brf_analysis.skew(norm_waveform)
+            if debugging:
+                print(csv_file)
+                # plt.plot(norm_waveform)
+                # plt.show()
+                # quit()
 
-            input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
+            new_waveform = brf_analysis.reconstruct_ACam_waveform(norm_waveform)
+
+            sum_traces += new_waveform
+
+            if average_only:
+                continue
+
+            input_param = brf_analysis.extract_features_ACam(new_waveform)
             output = brf_KNN_model.predict([input_param])[0]
             print(output)
+            print()
 
+            # TEMPORARY CODE
+            # if output == classification_type:
+            if output == 'Incandescent' or output == 'Halogen':
+                tru_pos_counter += 1
 
-            # plt.plot(norm_waveform)
-            # plt.show()
-            # quit()
+            # if output == 'LED':
+            #     print(csv_file)
+                # print()
 
+        avg_traces = sum_traces/num_traces
+        plt.plot(avg_traces)
+        plt.show()
 
+        avg_traces_input_param = brf_analysis.extract_features_ACam(avg_traces)
+        avg_traces_output = brf_KNN_model.predict([avg_traces_input_param])[0]
+        print(f'Result of averaging traces: {avg_traces_output}')
+
+        if not average_only:
+            accuracy = tru_pos_counter / num_traces * 100
+            print(f'Number of traces: {num_traces}')
+            print(f'Number classified correctly: {tru_pos_counter}')
+            print(f'Accuracy: {accuracy}%')
         os.chdir(cwd)
-        return KNN_input
+        # return KNN_input
 
 
     '''
@@ -1549,7 +1766,10 @@ if __name__ == "__main__":
 
     # brf_database instatiation
     brf_database = database_processing(database_path).brf_database
-    brf_database = database_processing.filtering(brf_database)    
+    brf_database = database_processing.filtering(brf_database)
+
+    # ACam_db path
+    ACam_db_path = os.path.join(STIMA_dir, 'ACam', 'ACam_Training_Data')
     # weights
     #'Entire' is for the entire database
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
@@ -1564,13 +1784,18 @@ if __name__ == "__main__":
     val = input()
     if val == 'y':
         database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
+        # database_processing.pkl_KNN_in_out(brf_database, ACam_db_path, 'double', csv_pkl_save_path, num_features=6)
 
     # runs KNN analysis on pkl file
     # TEMPORARILY RETURNING MODEL
     brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
-    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path)
+    # reconstructed the waveforms to start at nadir and end at nadir
+    # folder_name = 'Incan_Indoor_Test_0'
+    folder_name = 'Incandescent_2'
+    type = 'Incandescent'
+    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, classification_type=type, average_only=False, debugging=False)
 
     # k-fold analysis
     # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
