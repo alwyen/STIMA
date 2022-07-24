@@ -108,6 +108,7 @@ class plots():
         plt.clf()
 
     def plot_three_waveforms(csv_brf_path, save_path, title_name):
+        cwd = os.getcwd()
         os.chdir(csv_brf_path)
         csv_names = glob.glob('*.csv')
         colors = list(['r', 'g', 'b'])
@@ -127,8 +128,9 @@ class plots():
             smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
             smoothed_time = raw_waveform_processing.moving_average(time, mov_avg_w_size)
             # plt.plot(time, brf, colors[i])
+            plt.plot(time, brf, colors[i], linewidth = 3, alpha = 1 - 0.25*i)
             # plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3)
-            plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3, markersize = 1, label = temp_labels[i])
+            # plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3, markersize = 1, label = temp_labels[i])
             # plt.plot(normalized_smoothed, colors[i])
             plt.xlabel('Time (s)', fontsize = font_size)
             plt.ylabel('Normalized Intensity', fontsize = font_size)
@@ -147,6 +149,8 @@ class plots():
         plt.show()
         # plt.savefig(save_path + '\\' + title_name + '.png')
         # plt.clf()
+
+        os.chdir(cwd)
 
     #confusion matrix for bulb types only
     def confusion_matrix_type(ground_list, predicted_list, bulb_types, title):
@@ -280,7 +284,7 @@ class database_processing():
         Features | Bulb_Type | Name
                     ...
     '''
-    def pkl_KNN_in_out(brf_database, ACam_db_path, single_or_double, save_path, num_features):
+    def pkl_KNN_in_out(brf_database, ACam_db_path, single_or_double, save_path, num_features, ACam_train):
         brf_database_list = database_processing.database_to_list(brf_database)
         
         KNN_input = list()
@@ -377,45 +381,36 @@ class database_processing():
 
             print(f'{brf_name} Finished') #this is just to make sure the program is running properly
 
-        '''
-        TODO: finish adding in code to retrain model
-        '''
-        # # adding ACam data to training
-        # print()
-        # print('ACam data now:')
-        # cwd = os.getcwd()
-        # os.chdir(ACam_db_path)
-        # ACam_db_df = pd.read_csv(os.path.join(ACam_db_path, 'ACam_db.csv'))
-        # folder_list = ACam_db_df['folder_name']
-        # name_list = ACam_db_df['brf_name']
-        # type_list = ACam_db_df['brf_type']
+        if ACam_train:
+            # adding ACam data to training
+            print()
+            print('ACam data now:')
+            cwd = os.getcwd()
+            os.chdir(ACam_db_path)
+            ACam_db_df = pd.read_csv(os.path.join(ACam_db_path, 'ACam_db.csv'))
+            folder_list = ACam_db_df['folder_name']
+            name_list = ACam_db_df['brf_name']
+            type_list = ACam_db_df['brf_type']
 
-        # for i in range(len(folder_list)):
-        #     folder_path = os.path.join(ACam_db_path, folder_list[i])
-        #     name = name_list[i]
-        #     type = type_list[i]
+            for i in range(len(folder_list)):
+                folder_path = os.path.join(ACam_db_path, folder_list[i])
+                name = name_list[i]
+                type = type_list[i]
 
-        #     os.chdir(folder_path)
-        #     file_list = glob.glob('*.csv')
+                os.chdir(folder_path)
+                file_list = glob.glob('*.csv')
 
-        #     for csv_file in file_list:
-        #         # print(csv_file)
-        #         df = pd.read_csv(csv_file)
-        #         norm_waveform = abs(np.array(df['Intensity']) - 1)
+                for csv_file in file_list:
+                    # print(csv_file)
+                    df = pd.read_csv(csv_file)
+                    norm_waveform = abs(np.array(df['Intensity']) - 1)
+                    new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+                    ACam_input_param = brf_analysis.extract_features_ACam(new_waveform)
+                    assert len(scope_input_param) == len(ACam_input_param)
 
-        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
-        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
-        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
-        #         # INCORPORATE WAVEFORM RECONSTRUCTION HERE
-
-        #         ACam_input_param = brf_analysis.extract_features_ACam(norm_waveform)
-        #         assert len(scope_input_param) == len(ACam_input_param)
-
-        #         KNN_input.append(ACam_input_param)
-        #         KNN_output_type.append(type)
-        #         KNN_output_name.append(name)
-
-        # quit()
+                    KNN_input.append(ACam_input_param)
+                    KNN_output_type.append(type)
+                    KNN_output_name.append(name)
 
         print(f'Min: {min_val}')
         print(f'Max: {max_val}')
@@ -480,6 +475,13 @@ class raw_waveform_processing():
         self.time = np.hstack(time)
         self.brf = np.hstack(brf)
         self.voltage = np.hstack(voltage)
+        # brf_df = pd.read_csv(brf_path)
+        # time = np.array((brf_df['Time']))
+        # brf = np.array((brf_df['Intensity']))
+        # voltage = np.array((brf_df['Voltage']))
+        # self.time = time
+        # self.brf = brf
+        # self.voltage = voltage
 
 ##################################################################################################################
 ##################################################################################################################
@@ -605,6 +607,30 @@ class brf_analysis():
 
             reconstructed_waveform = np.concatenate((rising, falling_2, falling_1), axis=0)
             return reconstructed_waveform
+
+    def reconstruct_LIVE_ACam_waveform(norm_waveform):
+        peak_indices = signal.find_peaks(norm_waveform)[0]
+        nadir_indices = signal.find_peaks(-norm_waveform)[0]
+
+        # instantiation
+        peak_index = None
+        nadir_index = None
+
+        peak_index_max = 0
+        nadir_index_min = 1
+
+        for index in peak_indices:
+            if norm_waveform[index] > peak_index_max:
+                peak_index = index
+                peak_index_max = norm_waveform[index]
+
+        for index in nadir_indices:
+            if norm_waveform[index] < nadir_index_min:
+                nadir_index = index
+                nadir_index_min = norm_waveform[index]
+
+        reconstructed_waveform = np.concatenate((norm_waveform[nadir_index:], norm_waveform[:nadir_index]), axis=0)
+        return reconstructed_waveform
 
     def extract_features_ACam(norm_waveform):
         # EVERYTHING IS W.R.T. THE NADIR
@@ -1557,7 +1583,7 @@ class brf_classification():
 
     OUPUT:      nothing
     '''
-    def classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, classification_type, average_only, debugging):
+    def classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct, classification_type, binary_classification, average_only, debugging):
         csv_path = os.path.join(ACam_path, folder_name)
         
         cwd = os.getcwd()
@@ -1569,10 +1595,16 @@ class brf_classification():
 
         num_traces = len(file_list)
         tru_pos_counter = 0
+        bin_tru_pos_counter = 0
 
         # creating empty array of length of entries in CSV file
         temp_waveform = abs(np.array(pd.read_csv(file_list[0])['Intensity']) - 1)
-        new_temp_waveform = brf_analysis.reconstruct_ACam_waveform(temp_waveform)
+        new_temp_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(temp_waveform)
+
+        if reconstruct:
+            new_temp_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(temp_waveform)
+        else:
+            new_temp_waveform = temp_waveform
         sum_traces = np.zeros(len(new_temp_waveform))
 
         for csv_file in file_list:
@@ -1581,14 +1613,19 @@ class brf_classification():
 
             # need this step because somehow the waveforms are flipped
             norm_waveform = abs(np.array(df['Intensity']) - 1)
+            if reconstruct:
+                # new_waveform = brf_analysis.reconstruct_ACam_waveform(norm_waveform)
+                new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+            else:
+                new_waveform = norm_waveform
 
             if debugging:
                 print(csv_file)
-                # plt.plot(norm_waveform)
-                # plt.show()
+                plt.plot(new_waveform)
+                plt.xlabel('Sample Number')
+                plt.ylabel('Normalized Intensity')
+                plt.show()
                 # quit()
-
-            new_waveform = brf_analysis.reconstruct_ACam_waveform(norm_waveform)
 
             sum_traces += new_waveform
 
@@ -1600,28 +1637,37 @@ class brf_classification():
             print(output)
             print()
 
-            # TEMPORARY CODE
-            # if output == classification_type:
-            if output == 'Incandescent' or output == 'Halogen':
+            # TEMPORARY CODE; this needs to be fixed for binary classification
+            if output == classification_type:
                 tru_pos_counter += 1
+
+            if binary_classification == 'IH':
+                if output == 'Incandescent' or output == 'Halogen':
+                    bin_tru_pos_counter += 1
+            elif binary_classification == 'CL':
+                if output == 'CFL' or output == 'LED':
+                    bin_tru_pos_counter += 1
 
             # if output == 'LED':
             #     print(csv_file)
                 # print()
 
-        avg_traces = sum_traces/num_traces
-        plt.plot(avg_traces)
-        plt.show()
+        # avg_traces = sum_traces/num_traces
+        # plt.plot(avg_traces)
+        # plt.show()
 
-        avg_traces_input_param = brf_analysis.extract_features_ACam(avg_traces)
-        avg_traces_output = brf_KNN_model.predict([avg_traces_input_param])[0]
-        print(f'Result of averaging traces: {avg_traces_output}')
+        # avg_traces_input_param = brf_analysis.extract_features_ACam(avg_traces)
+        # avg_traces_output = brf_KNN_model.predict([avg_traces_input_param])[0]
+        # print(f'Result of averaging traces: {avg_traces_output}')
 
         if not average_only:
             accuracy = tru_pos_counter / num_traces * 100
+            bin_accuracy = bin_tru_pos_counter / num_traces * 100
             print(f'Number of traces: {num_traces}')
             print(f'Number classified correctly: {tru_pos_counter}')
-            print(f'Accuracy: {accuracy}%')
+            print(f'Type classification accuracy: {accuracy}%')
+            print(f'Number of correct binary classification: {bin_tru_pos_counter}')
+            print(f'Binary classification accuracy: {bin_accuracy}%')
         os.chdir(cwd)
         # return KNN_input
 
@@ -1770,6 +1816,7 @@ if __name__ == "__main__":
 
     # ACam_db path
     ACam_db_path = os.path.join(STIMA_dir, 'ACam', 'ACam_Training_Data')
+
     # weights
     #'Entire' is for the entire database
     # weights = np.array([0.25, 0.0, 0.75, 0.5, 0.75, 1.0, 1.0])
@@ -1779,23 +1826,37 @@ if __name__ == "__main__":
     weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) # --> integral ratio, integral average, peak location, crest, kurtosis, skew
     # weights = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     
+    ############################################################################################
+    ############################################################################################
+    ############################################################################################
+
+    # reconstructed the waveforms to start at nadir and end at nadir
+    # folder_name = 'CFL_1'
+    # folder_name = 'ACam_Training_Data/Philips_Halogen_39W'
+    # folder_name = 'ACam_Training_Data/GE_Incandescent_40W'
+    # folder_name = 'Incan_Indoor_Test_3'
+    # folder_name = 'Mixed_Outdoor_Test_7_20_22/Mixed_Outdoor_Test_3/CFL'
+    ACam_train = False
+    folder_name = 'LIVE/LIVE_Mixed_Outdoor_Test_7_23_22/LIVE_Mixed_Outdoor_Test_1/Incan'
+    reconstruct = True
+    type = 'Incandescent'
+    bin_class = 'IH'    # "IH" for incandescent/halogen
+                        # "CL" for CFL or LED
+
+
     # pickles features
     print('Run preprocessing? [y]/other')
     val = input()
     if val == 'y':
-        database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
-        # database_processing.pkl_KNN_in_out(brf_database, ACam_db_path, 'double', csv_pkl_save_path, num_features=6)
+        # database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
+        database_processing.pkl_KNN_in_out(brf_database, ACam_db_path, 'double', csv_pkl_save_path, num_features=6, ACam_train=ACam_train)
 
     # runs KNN analysis on pkl file
     # TEMPORARILY RETURNING MODEL
     brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
-    # reconstructed the waveforms to start at nadir and end at nadir
-    # folder_name = 'Incan_Indoor_Test_0'
-    folder_name = 'Incandescent_2'
-    type = 'Incandescent'
-    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, classification_type=type, average_only=False, debugging=False)
+    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=False, debugging=False)
 
     # k-fold analysis
     # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
@@ -1806,16 +1867,16 @@ if __name__ == "__main__":
 
     # #plotting
     # '''
-    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\CFL'
+    # smoothed_brf_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples', 'CFL')
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'CFL')
 
-    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\Halogen'
+    # smoothed_brf_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples', 'Halogen')
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Halogen')
 
-    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\Incandescent'
+    # smoothed_brf_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples', 'Incandescent')
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'Incandescent')
 
-    # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\LED'
+    # smoothed_brf_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples', 'LED')
     # plots.plot_three_waveforms(smoothed_brf_path, smoothed_save_path, 'LED')
 
     # smoothed_brf_path = r'C:\Users\alexy\Dropbox\STIMA\bulb_database\smoothed_brf_examples\GRFP'
