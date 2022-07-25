@@ -465,6 +465,67 @@ class database_processing():
 
         return brf_database
 
+    '''
+    DESCRIPTION: renames files into a the `consolidated_folder_path` directory
+
+    INPUT:      file_renaming_path      path of the all the consolidated files
+                    ex. file_renaming
+    '''
+
+    def ACam_renaming(file_renaming_path, consolidated_folder_path):
+        cwd = os.getcwd()
+
+        # example folder: LIVE_Mixed_Outdoor_Test_0
+        os.chdir(file_renaming_path)
+        test_folders = glob.glob('*')
+
+        # example: CFL, Halogen, Incandescent, LED
+        os.chdir(consolidated_folder_path)
+        type_folders = glob.glob('*')
+
+        min_count = 0
+        max_count = 0
+
+        for type in type_folders:
+
+            # ex. Outdoor_Testing/CFL
+            type_folders_path = os.path.join(consolidated_folder_path, type)
+            # print(type_folders_path)
+
+            for folder in test_folders: # folder => LIVE_Mixed_Outdoor_Test_0
+                data_path = os.path.join(file_renaming_path, folder)
+                # print(data_path)
+
+                os.chdir(data_path)
+                type_data_path = glob.glob('*') # should spit out the folder types
+                
+                for type_data_folder in type_data_path:
+                    if type == type_data_folder:
+                        
+                        # ex: LIVE_Mixed_Outdoor_Test_0/CFL/
+                        ACam_data_path = os.path.join(data_path, type_data_folder)
+                        # print(ACam_data_path)
+                        # quit()
+
+                        os.chdir(ACam_data_path)
+
+                        # ex. ACam_0.csv, ACam_1.csv, etc...
+                        ACam_list = glob.glob('*.csv')
+
+                        max_count += len(ACam_list)
+                        for file_name in ACam_list:
+
+                            new_file_name = os.path.join(type_folders_path, 'ACam_' + str(min_count) + '.csv')
+
+                            os.rename(file_name, new_file_name)
+                            min_count += 1
+                    min_count = max_count
+            min_count = 0
+            max_count = 0
+
+
+
+
 #extracts time, brf, and voltage data from a CSV file
 #does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
 class raw_waveform_processing():
@@ -1596,6 +1657,8 @@ class brf_classification():
         num_traces = len(file_list)
         tru_pos_counter = 0
         bin_tru_pos_counter = 0
+        type_correct = False
+        bin_correct = False
 
         # creating empty array of length of entries in CSV file
         temp_waveform = abs(np.array(pd.read_csv(file_list[0])['Intensity']) - 1)
@@ -1619,14 +1682,6 @@ class brf_classification():
             else:
                 new_waveform = norm_waveform
 
-            if debugging:
-                print(csv_file)
-                plt.plot(new_waveform)
-                plt.xlabel('Sample Number')
-                plt.ylabel('Normalized Intensity')
-                plt.show()
-                # quit()
-
             sum_traces += new_waveform
 
             if average_only:
@@ -1640,13 +1695,45 @@ class brf_classification():
             # TEMPORARY CODE; this needs to be fixed for binary classification
             if output == classification_type:
                 tru_pos_counter += 1
+                type_correct = True
+            else:
+                type_correct = False
 
             if binary_classification == 'IH':
                 if output == 'Incandescent' or output == 'Halogen':
                     bin_tru_pos_counter += 1
+                    bin_correct = True
+                else:
+                    bin_correct = False
+
             elif binary_classification == 'CL':
                 if output == 'CFL' or output == 'LED':
                     bin_tru_pos_counter += 1
+                    bin_correct = True
+                else:
+                    bin_correct = False
+
+            if debugging:
+                print(csv_file)
+                plt.plot(new_waveform)
+                plt.xlabel('Sample Number')
+                plt.ylabel('Normalized Intensity')
+                plt.show()
+                # quit()
+
+            # turn off error plotting
+            if not debugging:
+                if type_correct:
+                    plt.plot(new_waveform, 'g')
+                else:
+                    plt.plot(new_waveform, 'r')
+
+        
+        if not debugging:
+            plt.xlabel('Sample Number')
+            plt.ylabel('Normalized Intensity')
+            plt.show()
+                
 
             # if output == 'LED':
             #     print(csv_file)
@@ -1830,19 +1917,26 @@ if __name__ == "__main__":
     ############################################################################################
     ############################################################################################
 
+    file_renaming_path = os.path.join(ACam_path, 'LIVE', 'file_renaming')
+    consolidated_folder_path = os.path.join(ACam_path, 'LIVE', 'Outdoor_Testing')
+    database_processing.ACam_renaming(file_renaming_path, consolidated_folder_path)
+    quit()
+
     # reconstructed the waveforms to start at nadir and end at nadir
     # folder_name = 'CFL_1'
     # folder_name = 'ACam_Training_Data/Philips_Halogen_39W'
     # folder_name = 'ACam_Training_Data/GE_Incandescent_40W'
     # folder_name = 'Incan_Indoor_Test_3'
     # folder_name = 'Mixed_Outdoor_Test_7_20_22/Mixed_Outdoor_Test_3/CFL'
-    ACam_train = False
-    folder_name = 'LIVE/LIVE_Mixed_Outdoor_Test_7_23_22/LIVE_Mixed_Outdoor_Test_1/Incan'
-    reconstruct = True
-    type = 'Incandescent'
-    bin_class = 'IH'    # "IH" for incandescent/halogen
-                        # "CL" for CFL or LED
 
+    ACam_train = False
+    folder_name = 'LIVE/LIVE_Mixed_Outdoor_Test_7_24_22/LIVE_Mixed_Outdoor_Test_5/LED'
+    reconstruct = True
+    type = 'LED'
+    bin_class = 'CL'    # "IH" for incandescent/halogen
+                        # "CL" for CFL or LED
+    average_only = False
+    debugging = False
 
     # pickles features
     print('Run preprocessing? [y]/other')
@@ -1856,7 +1950,7 @@ if __name__ == "__main__":
     brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
-    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=False, debugging=False)
+    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
 
     # k-fold analysis
     # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
