@@ -231,6 +231,134 @@ class plots():
         plt.legend()
         plt.show()
 
+    '''
+    this is a very specific plot
+
+    folder_name_0 should be for `halogen`
+    folder_name_1 should be for 'incandescent'
+
+    '''
+    def ACam_plot_similar_BRFs(brf_KNN_model, ACam_path, folder_name_0, folder_name_1):
+        csv_path_0 = os.path.join(ACam_path, folder_name_0)
+        csv_path_1 = os.path.join(ACam_path, folder_name_1)
+        
+        cwd = os.getcwd()
+
+        os.chdir(csv_path_0)
+        file_list_0 = glob.glob('*.csv')
+
+        h_once = True
+        i_once = True
+
+        halogen_LED_list = list()
+        incan_LED_list = list()
+
+        for csv_file in file_list_0:
+            # print(csv_file)
+            df = pd.read_csv(csv_file)
+
+            # need this step because somehow the waveforms are flipped
+            norm_waveform = abs(np.array(df['Intensity']) - 1)
+            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+
+            input_param = brf_analysis.extract_features_ACam(new_waveform)
+            output = brf_KNN_model.predict([input_param])[0]
+
+            if output != 'Halogen':
+                if output == 'Incandescent':
+                    if h_once:
+                        plt.plot(new_waveform, color='b', label='Halogen', alpha=0.5)
+                        h_once = False
+                    else:
+                        plt.plot(new_waveform, color='b', alpha=0.5)
+                if output == 'LED':
+                    halogen_LED_list.append(new_waveform)
+
+
+        os.chdir(csv_path_1)
+        file_list_1 = glob.glob('*.csv')
+
+        for csv_file in file_list_1:
+            # print(csv_file)
+            df = pd.read_csv(csv_file)
+
+            # need this step because somehow the waveforms are flipped
+            norm_waveform = abs(np.array(df['Intensity']) - 1)
+            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+
+            input_param = brf_analysis.extract_features_ACam(new_waveform)
+            output = brf_KNN_model.predict([input_param])[0]
+
+            if output != 'Incandescent':
+                if output == 'Halogen':
+                    if i_once:
+                        plt.plot(new_waveform, color='orange', label='Incandescent', alpha=0.5)
+                        i_once = False
+                    else:
+                        plt.plot(new_waveform, color='orange', alpha=0.5)
+                if output == 'LED':
+                    incan_LED_list.append(new_waveform)
+
+        font_size = 13
+
+        plt.legend(fontsize=font_size, loc='lower center')
+        plt.xlabel('Sample Number', fontsize=font_size)
+        plt.xticks(np.arange(0, len(new_waveform)+1, step=20), fontsize=font_size)
+        plt.ylabel('Normalized Intensity', fontsize=font_size)
+        plt.yticks(np.arange(0, 1.1, step=0.25), fontsize=font_size)
+        plt.tight_layout()
+        plt.show()
+        
+        os.chdir(cwd)
+
+        return halogen_LED_list, incan_LED_list
+
+    def compare_incan_halogen_LED_plots(halogen_LED_list, incan_LED_list, LED_path):
+        h_once = True
+        i_once = True
+        l_once = True
+
+        cwd = os.getcwd()
+        os.chdir(LED_path)
+        led_folder_list = glob.glob('*')
+        
+        for brf in halogen_LED_list:
+            if h_once:
+                plt.plot(brf, color='b', label='Halogen', alpha=0.5)
+                h_once = False
+            else:
+                plt.plot(brf, color='b', alpha=0.5)
+
+        for brf in incan_LED_list:
+            if i_once:
+                plt.plot(brf, color='orange', label='Incandescent', alpha=0.5)
+                i_once = False
+            else:
+                plt.plot(brf, color='orange', alpha=0.5)
+
+        for led_folder in led_folder_list:
+            waveform_list = brf_extraction(led_folder, 'double').brf_list
+            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[1], savgol_window), mov_avg_w_size)
+            nadir_indices = signal.find_peaks(-smoothed, distance = 750)[0]
+            single_cycle = smoothed[:nadir_indices[0]]
+            downsampled_single_cycle = raw_waveform_processing.normalize(signal.resample(single_cycle, 80))
+            if l_once:
+                plt.plot(downsampled_single_cycle, color='g', label='LED', alpha = 0.5)
+                l_once = False
+            else:
+                plt.plot(downsampled_single_cycle, color='g', alpha = 0.5)
+        
+        font_size = 13
+        plt.legend(fontsize=font_size, loc='lower center')
+        plt.xlabel('Sample Number', fontsize=font_size)
+        plt.xticks(np.arange(0, len(brf)+1, step=20), fontsize=font_size)
+        plt.ylabel('Normalized Intensity', fontsize=font_size)
+        plt.yticks(np.arange(0, 1.1, step=0.25), fontsize=font_size)
+        plt.tight_layout()
+        plt.show()
+        # for brf in halogen_LED_list:
+        #     plt.plot(brf)
+
 '''
 this class does all the processing on the database side from the master CSV file; df has the following columns:
     Folder_Name
@@ -333,6 +461,7 @@ class database_processing():
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
 
                 # these values are not downsized; we're not even using the smoothed values for our analyses
+                # integral_ratio = brf_analysis.integral_ratio(waveform_list[i], single_or_double)
                 int_avg = brf_analysis.cycle_integral_avg(waveform_list[i], single_or_double)
                 peak_loc = brf_analysis.peak_location(waveform_list[i], single_or_double)
                 crest_factor = brf_analysis.crest_factor(waveform_list[i])
@@ -590,42 +719,42 @@ class raw_waveform_processing():
 #uses the raw_waveform_processing class to extract the processed data
 #brf_extraction class manipulates data into a list of BRF waveforms or one concatenated BRF waveform
 class brf_extraction():
-        def __init__(self, brf_folder_name, single_or_double):
-            cwd = os.getcwd()
-            time_list = []
-            brf_list = []
-            path = base_path + os_sep + brf_folder_name
-            os.chdir(path)
-            csv_list = glob.glob('*.csv')
-            # num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
-            # assert len(csv_list) == num_files
-            for brf_path in csv_list:
-                # brf_path = path + os_sep + 'waveform_' + str(i) + '.csv'
-                processed = raw_waveform_processing(brf_path)
-                time = processed.time
-                brf = processed.brf
-                time, brf = raw_waveform_processing.clean_brf(time, brf)
-                brf = raw_waveform_processing.normalize(brf)
-                nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
-                time1, brf1 = time[0:nadir_indices[1]], brf[0:nadir_indices[1]]
-                time2, brf2 = time[nadir_indices[1]:len(brf)], brf[nadir_indices[1]:len(brf)]
-                if single_or_double == 'double':
-                    time_list.append(time)
-                    brf_list.append(brf)
-                elif single_or_double == 'single':
-                    time_list.append(time1)
-                    time_list.append(time2)
-                    brf_list.append(brf1)
-                    brf_list.append(brf2)
-            self.time_list = time_list
-            self.brf_list = brf_list
-            os.chdir(cwd)
+    def __init__(self, brf_folder_name, single_or_double):
+        cwd = os.getcwd()
+        time_list = []
+        brf_list = []
+        path = base_path + os_sep + brf_folder_name
+        os.chdir(path)
+        csv_list = glob.glob('*.csv')
+        # num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
+        # assert len(csv_list) == num_files
+        for brf_path in csv_list:
+            # brf_path = path + os_sep + 'waveform_' + str(i) + '.csv'
+            processed = raw_waveform_processing(brf_path)
+            time = processed.time
+            brf = processed.brf
+            time, brf = raw_waveform_processing.clean_brf(time, brf)
+            brf = raw_waveform_processing.normalize(brf)
+            nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
+            time1, brf1 = time[0:nadir_indices[1]], brf[0:nadir_indices[1]]
+            time2, brf2 = time[nadir_indices[1]:len(brf)], brf[nadir_indices[1]:len(brf)]
+            if single_or_double == 'double':
+                time_list.append(time)
+                brf_list.append(brf)
+            elif single_or_double == 'single':
+                time_list.append(time1)
+                time_list.append(time2)
+                brf_list.append(brf1)
+                brf_list.append(brf2)
+        self.time_list = time_list
+        self.brf_list = brf_list
+        os.chdir(cwd)
 
-        def concatenate_waveforms(waveform_list):
-            waveform = np.array([])
-            for i in range(len(waveform_list)):
-                waveform = np.concatenate((waveform, waveform_list[i]),0)
-            return waveform
+    def concatenate_waveforms(waveform_list):
+        waveform = np.array([])
+        for i in range(len(waveform_list)):
+            waveform = np.concatenate((waveform, waveform_list[i]),0)
+        return waveform
 
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
@@ -846,7 +975,7 @@ class brf_analysis():
         rising = brf[0:peak_index+1]
         falling = brf[peak_index:len(brf)]
 
-        ratio = np.sum(rising)/np.sum(falling)
+        ratio = (np.sum(rising)/len(rising))/(np.sum(falling)/len(falling))
         return ratio
 
     #not good; method has issues and doesn't seem distinct enough for KNN
@@ -1721,18 +1850,48 @@ class brf_classification():
                 plt.show()
                 # quit()
 
-            # turn off error plotting
-            if not debugging:
-                if type_correct:
-                    plt.plot(new_waveform, 'g')
-                else:
-                    plt.plot(new_waveform, 'r')
-
+        #     # turn off error plotting
+        #     if not debugging:
+        #         if type_correct:
+        #             if g_once:
+        #                 plt.plot(new_waveform, color='g', label='Type Correct')
+        #                 g_once = False
+        #             else:
+        #                 plt.plot(new_waveform, color='g')
+        #         elif bin_correct:
+        #             if y_once:
+        #                 plt.plot(new_waveform, color='y', label='Binary Correct')
+        #                 y_once = False
+        #             else:
+        #                 plt.plot(new_waveform, color='y')
+        #         else:
+        #             if r_once:
+        #                 plt.plot(new_waveform, color='r', label='Incorrect')
+        #                 r_once = False
+        #             else:
+        #                 plt.plot(new_waveform, color='r')
         
-        if not debugging:
-            plt.xlabel('Sample Number')
-            plt.ylabel('Normalized Intensity')
-            plt.show()
+        # if not debugging:
+        #     handles, labels = plt.gca().get_legend_handles_labels()
+        #     label_order = ['Type Correct', 'Binary Correct', 'Incorrect']
+        #     # label_order = ['Type Correct', 'Binary Correct']
+
+        #     order_list = [0, 0, 0]
+        #     # order_list = [0, 0]
+
+        #     for i in range(len(label_order)):
+        #         order_list[i] = labels.index(label_order[i])
+
+        #     print(order_list)
+
+        #     # # pass handle & labels lists along with order as below
+        #     plt.legend([handles[i] for i in order_list], [labels[i] for i in order_list])
+        #     plt.xlabel('Sample Number', fontsize=18)
+        #     plt.xticks(np.arange(0, len(new_waveform)+1, step=20), fontsize=18)
+        #     plt.ylabel('Normalized Intensity', fontsize=18)
+        #     plt.yticks(np.arange(0, 1.1, step=0.25), fontsize=18)
+        #     plt.tight_layout()
+        #     plt.show()
                 
 
             # if output == 'LED':
@@ -1919,21 +2078,22 @@ if __name__ == "__main__":
 
     file_renaming_path = os.path.join(ACam_path, 'LIVE', 'file_renaming')
     consolidated_folder_path = os.path.join(ACam_path, 'LIVE', 'Outdoor_Testing')
-    database_processing.ACam_renaming(file_renaming_path, consolidated_folder_path)
-    quit()
+    # database_processing.ACam_renaming(file_renaming_path, consolidated_folder_path)
+    # quit()
 
     # reconstructed the waveforms to start at nadir and end at nadir
     # folder_name = 'CFL_1'
     # folder_name = 'ACam_Training_Data/Philips_Halogen_39W'
     # folder_name = 'ACam_Training_Data/GE_Incandescent_40W'
     # folder_name = 'Incan_Indoor_Test_3'
-    # folder_name = 'Mixed_Outdoor_Test_7_20_22/Mixed_Outdoor_Test_3/CFL'
 
     ACam_train = False
-    folder_name = 'LIVE/LIVE_Mixed_Outdoor_Test_7_24_22/LIVE_Mixed_Outdoor_Test_5/LED'
+    # folder_name = 'LIVE/Halogen_Indoor_Test_1'
+    # folder_name = 'LIVE/LIVE_Mixed_Outdoor_Test_7_25_22/LIVE_Mixed_Outdoor_Test_7/CFL'
+    folder_name = 'LIVE/Outdoor_Testing/Halogen'
     reconstruct = True
-    type = 'LED'
-    bin_class = 'CL'    # "IH" for incandescent/halogen
+    type = 'Halogen'
+    bin_class = 'IH'    # "IH" for incandescent/halogen
                         # "CL" for CFL or LED
     average_only = False
     debugging = False
@@ -1951,6 +2111,15 @@ if __name__ == "__main__":
     #after choosing K, train on train+validation set; final with test set
 
     brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
+
+    folder_name_0 = 'LIVE/Outdoor_Testing/Halogen'
+    folder_name_1 = 'LIVE/Outdoor_Testing/Incandescent'
+
+    # have this method return the BRFs that were misclassified as LEDs
+    halogen_LED_list, incan_LED_list = plots.ACam_plot_similar_BRFs(brf_KNN_model, ACam_path, folder_name_0, folder_name_1)
+
+    scope_LED_path = os.path.join(STIMA_dir, 'bulb_database', 'incan_halogen_LED')
+    plots.compare_incan_halogen_LED_plots(halogen_LED_list, incan_LED_list, scope_LED_path)
 
     # k-fold analysis
     # brf_classification.k_fold_analysis(pkl_path, brf_database, 'type', weights, num_test_waveforms = 999, num_features = 5, min_num_neighbors = 2, max_num_neighbors = 10, num_splits = 12, MisClass = True)
