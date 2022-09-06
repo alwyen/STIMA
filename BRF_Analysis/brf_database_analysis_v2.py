@@ -16,11 +16,10 @@ import glob
 import pdb
 
 #CLEAN UP TIME
-#TODO: feature_analysis: condense and make it so that I can just include different feature names and they'll spit out the right graphs; clear_lists has gotta go
 #fix all the global methods/variable names
 #remove data_processing class methods that aren't being used; just look up pandas methods dude
 #make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
-#check is "train_KNN" and "KNN" can be simplified
+#check if "train_KNN" and "KNN" can be simplified
 
 os_sep = os.sep
 cwd = list(os.getcwd().split(os_sep))
@@ -107,6 +106,9 @@ class plots():
         plt.savefig(plot_name + '.png')
         plt.clf()
 
+    '''
+    plotting three different waveforms for Figure 1 in BuildSys paper
+    '''
     def plot_three_waveforms(csv_brf_path, save_path, title_name):
         cwd = os.getcwd()
         os.chdir(csv_brf_path)
@@ -208,6 +210,9 @@ class plots():
         plt.tight_layout()
         plt.show()
 
+    '''
+    not using this anymore
+    '''
     def misclass_bar_graph(name_list, misclassification_array, plot_title):
         # plt.figure(figsize = (15,8))
         plt.figure(figsize = (15,5))
@@ -218,7 +223,6 @@ class plots():
         plt.show()
 
     def k_and_k_fold(k_list, overall_accuracy, cfl_accuracy, halogen_accuracy, incandescent_accuracy, led_accuracy, title):
-        
         plt.plot(overall_accuracy, label = 'Overall Accuracy')
         plt.plot(cfl_accuracy, label = 'CFL Accuracy')
         plt.plot(halogen_accuracy, label = 'Halogen Accuracy')
@@ -232,7 +236,7 @@ class plots():
         plt.show()
 
     '''
-    this is a very specific plot
+    this is a very specific plot; another plot for the BuildSys paper
 
     folder_name_0 should be for `halogen`
     folder_name_1 should be for 'incandescent'
@@ -313,6 +317,9 @@ class plots():
 
         return halogen_LED_list, incan_LED_list
 
+    '''
+    plotting similarities between halogen, incandescent, and LED BRFs for buildsys paper
+    '''
     def compare_incan_halogen_LED_plots(halogen_LED_list, incan_LED_list, LED_path):
         h_once = True
         i_once = True
