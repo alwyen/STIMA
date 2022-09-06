@@ -866,52 +866,11 @@ class brf_analysis():
             ratio_1 = (np.sum(rising_1)/len(rising_1)) / (np.sum(falling_1)/len(falling_1))
             ratio_2 = (np.sum(rising_2)/len(rising_2)) / (np.sum(falling_2)/len(falling_2))
 
-            set_pt1(peak_indice_1, new_brf[peak_indice_1])
-            set_pt2(peak_indice_2, new_brf[peak_indice_2])
-
             average_ratio = (ratio_1 + ratio_2)/2
 
             return average_ratio
 
     def ACam_integral_ratio(brf):
-        # peak_indices = signal.find_peaks(brf)[0]
-        # nadir_indices = signal.find_peaks(-brf)[0]
-
-        # # instantiation
-        # peak_index = None
-        # nadir_index = None
-
-        # peak_index_max = 0
-        # nadir_index_min = 1
-
-        # for index in peak_indices:
-        #     if brf[index] > peak_index_max:
-        #         peak_index = index
-        #         peak_index_max = brf[index]
-
-        # for index in nadir_indices:
-        #     if brf[index] < nadir_index_min:
-        #         nadir_index = index
-        #         nadir_index_min = brf[index]
-
-        # if peak_index < nadir_index:
-        #     falling = brf[peak_index:nadir_index+1]
-        #     rising_1 = brf[:peak_index+1]
-        #     rising_2 = brf[nadir_index-1:]
-
-        #     rising_sum = np.sum(rising_1)/len(rising_1) + np.sum(rising_2)/len(rising_2)
-        #     falling_sum = np.sum(falling)/len(falling)
-
-        # elif nadir_index < peak_index:
-        #     rising = brf[nadir_index:peak_index+1]
-        #     falling_1 = brf[:nadir_index+1]
-        #     falling_2 = brf[peak_index-1:]
-
-        #     rising_sum = np.sum(rising)/len(rising)
-        #     falling_sum = np.sum(falling_1)/len(falling_1) + np.sum(falling_2)/len(falling_2)
-
-        # ratio = rising_sum/falling_sum
-
         peak_indices = signal.find_peaks(brf)[0]
 
         # instantiation
@@ -1009,21 +968,9 @@ class brf_analysis():
             cc_4 = np.corrcoef(falling_2, y_falling_2)
 
             if rising_or_falling == 'rising':
-                set_x1(x_rising_1)
-                set_y1(y_rising_1)
-                
-                set_x2(x_rising_2)
-                set_y2(y_rising_2)
-
                 return (cc_1[0][1] + cc_3[0][1])/2 #return the average of rising correlations
 
             elif rising_or_falling == 'falling':
-                set_x1(x_falling_1)
-                set_y1(y_falling_1)
-
-                set_x2(x_falling_2)
-                set_y2(y_falling_2)
-
                 return (cc_2[0][1] + cc_4[0][1])/2 #return the average of falling correlations
 
     #single cycle isn't implemented
@@ -1070,29 +1017,11 @@ class brf_analysis():
             cc_4 = np.corrcoef(falling_2, y_falling_2)
 
             if rising_or_falling == 'rising':
-                set_x1(x_rising_1)
-                set_y1(y_rising_1)
-                
-                set_x2(x_rising_2)
-                set_y2(y_rising_2)
-
                 avg_cc = (cc_1[0][1] + cc_3[0][1])/2
 
                 return avg_cc #return the average of rising correlations
 
             elif rising_or_falling == 'falling':
-                #debugging
-                ######################################################
-                set_x1(x_falling_1)
-                set_y1(y_falling_1)
-
-                set_x2(x_falling_2)
-                set_y2(y_falling_2)
-
-                set_pt1(peak_indice_1, brf[peak_indice_1])
-                set_pt2(peak_indice_2, brf[peak_indice_2])
-                ######################################################
-
                 avg_cc = (cc_2[0][1] + cc_4[0][1])/2
                 print(avg_cc)
 
@@ -1172,10 +1101,6 @@ class brf_analysis():
             #getting corresponding x values to show in a plot; setting the corresponding x and y values of a line to global variables
             x1 = np.arange(nadir_indice_1-line_length+1, nadir_indice_1+1, 1)
             x2 = np.arange(nadir_indice_1+1, nadir_indice_1+line_length+1, 1)
-            set_x1(x1)
-            set_y1(y_pred1)
-            set_x2(x2)
-            set_y2(y_pred2)
 
             #calculating angles for peaks and nadir
             peak_angle_1 = math.atan(peak_rising_slope_1) - math.atan(peak_falling_slope_1)
@@ -1209,41 +1134,12 @@ class brf_analysis():
             # nadir_indice_1 is the end of the first cycle
             ratio_1 = peak_indice_1/nadir_indice_1
             ratio_2 = (peak_indice_2-nadir_indice_1)/(len(brf) - nadir_indice_1)
-
-            set_pt1(peak_indice_1, brf[peak_indice_1])
-            set_pt2(peak_indice_2, brf[peak_indice_2])
             
             return (ratio_1 + ratio_2)/2
 
     # peak location divided by the length of the waveform/BRF
     # this is W.R.T. the NADIR
     def ACam_peak_location(brf):
-        # peak_indices = signal.find_peaks(brf)[0]
-        # nadir_indices = signal.find_peaks(-brf)[0]
-
-        # # instantiation
-        # peak_index = None
-        # nadir_index = None
-
-        # peak_index_max = 0
-        # nadir_index_min = 1
-
-        # for index in peak_indices:
-        #     if brf[index] > peak_index_max:
-        #         peak_index = index
-        #         peak_index_max = brf[index]
-
-        # for index in nadir_indices:
-        #     if brf[index] < nadir_index_min:
-        #         nadir_index = index
-        #         nadir_index_min = brf[index]
-
-        # if peak_index < nadir_index:
-        #     peak_loc = len(brf) - nadir_index + peak_index
-
-        # elif nadir_index < peak_index:
-        #     peak_loc = peak_index - nadir_index
-
         peak_indices = signal.find_peaks(brf)[0]
 
         # instantiation
