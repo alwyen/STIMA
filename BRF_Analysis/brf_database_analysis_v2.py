@@ -15,75 +15,17 @@ import glob
 
 import pdb
 
+import define
+
 #CLEAN UP TIME
 #fix all the global methods/variable names
 #remove data_processing class methods that aren't being used; just look up pandas methods dude
 #make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
 #check if "train_KNN" and "KNN" can be simplified
 
-os_sep = os.sep
-cwd = list(os.getcwd().split(os_sep))
-STIMA_dir = os_sep.join(cwd[:len(cwd)-3])
 
-ACam_path = os.path.join(STIMA_dir, 'ACam')
-database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')
-base_path = os.path.join(STIMA_dir, 'bulb_database', 'csv_files')
-gradient_save_path = os.path.join(STIMA_dir, 'Gradient Tests', 'Savgol 31 Moving 50')
-raw_waveform_save_path = os.path.join(STIMA_dir, 'bulb_database', 'Raw BRFs')
 savgol_window = 31
 mov_avg_w_size = 50
-
-brf_analysis_save_path = os.path.join(STIMA_dir, 'BRF_Analysis')
-feature_analysis_save_directory = os.path.join(STIMA_dir, 'BRF_Analysis', 'Feature Analysis')
-############################################################
-#debugging
-falling_slope = 0
-rising_slope = 0
-nadir = 0
-x1 = None
-y1 = None
-x2 = None
-y2 = None
-
-x_pt1 = None
-y_pt1 = None
-
-x_pt2 = None
-y_pt2 = None
-
-#these methods are for showing lines on a graph
-def set_x1(data):
-    global x1
-    x1 = data
-
-def set_y1(data):
-    global y1
-    y1 = data
-
-def set_x2(data):
-    global x2
-    x2 = data
-
-def set_y2(data):
-    global y2
-    y2 = data
-
-#set_pt1 and set_pt2 are for displaying a point on a graph
-def set_pt1(x, y):
-    global x_pt1
-    global y_pt1
-
-    x_pt1 = x
-    y_pt1 = y
-
-def set_pt2(x, y):
-    global x_pt2
-    global y_pt2
-
-    x_pt2 = x
-    y_pt2 = y
-
-############################################################
 
 #for skipping plotting in KNN
 skip = False
@@ -602,7 +544,10 @@ class database_processing():
         return brf_database
 
     '''
-    DESCRIPTION: renames files into a the `consolidated_folder_path` directory
+    this should be in a preprocessing file
+
+    DESCRIPTION: renames files (e.g. ACam_0.csv, ACam_1.csv, etc.) into a the `consolidated_folder_path` directory
+                 (files are in multiple directories)
 
     INPUT:      file_renaming_path      path of the all the consolidated files
                     ex. file_renaming
@@ -730,13 +675,13 @@ class brf_extraction():
         cwd = os.getcwd()
         time_list = []
         brf_list = []
-        path = base_path + os_sep + brf_folder_name
+        path = base_path + os.sep + brf_folder_name
         os.chdir(path)
         csv_list = glob.glob('*.csv')
         # num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
         # assert len(csv_list) == num_files
         for brf_path in csv_list:
-            # brf_path = path + os_sep + 'waveform_' + str(i) + '.csv'
+            # brf_path = path + os.sep + 'waveform_' + str(i) + '.csv'
             processed = raw_waveform_processing(brf_path)
             time = processed.time
             brf = processed.brf
@@ -2056,19 +2001,16 @@ class brf_classification():
 
 if __name__ == "__main__":
     # pkl save path
-    csv_pkl_save_path = os.path.join(STIMA_dir, 'bulb_database')
-    smoothed_save_path = os.path.join(STIMA_dir, 'bulb_database', 'smoothed_brf_examples')
+    csv_pkl_save_path = os.path.join(define.STIMA_dir, 'bulb_database')
+    smoothed_save_path = os.path.join(define.STIMA_dir, 'bulb_database', 'smoothed_brf_examples')
 
     # pkl file path
-    pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized.pkl')
+    pkl_path = os.path.join(define.STIMA_dir, 'bulb_database', 'KNN_downsized.pkl')
     # pkl_path = os.path.join(STIMA_dir, 'bulb_database', 'KNN_downsized_orig.pkl') # this is from July 2021
 
     # brf_database instatiation
-    brf_database = database_processing(database_path).brf_database
+    brf_database = database_processing(define.database_path).brf_database
     brf_database = database_processing.filtering(brf_database)
-
-    # ACam_db path
-    ACam_db_path = os.path.join(STIMA_dir, 'ACam', 'ACam_Training_Data')
 
     # weights
     #'Entire' is for the entire database
@@ -2083,9 +2025,7 @@ if __name__ == "__main__":
     ############################################################################################
     ############################################################################################
 
-    file_renaming_path = os.path.join(ACam_path, 'LIVE', 'file_renaming')
-    consolidated_folder_path = os.path.join(ACam_path, 'LIVE', 'Outdoor_Testing')
-    # database_processing.ACam_renaming(file_renaming_path, consolidated_folder_path)
+    # database_processing.ACam_renaming(define.file_renaming_path, define.consolidated_folder_path)
     # quit()
 
     # reconstructed the waveforms to start at nadir and end at nadir
@@ -2110,22 +2050,22 @@ if __name__ == "__main__":
     val = input()
     if val == 'y':
         # database_processing.pkl_KNN_in_out(brf_database, 'double', csv_pkl_save_path, num_features=6)
-        database_processing.pkl_KNN_in_out(brf_database, ACam_db_path, 'double', csv_pkl_save_path, num_features=6, ACam_train=ACam_train)
+        database_processing.pkl_KNN_in_out(brf_database, define.ACam_db_path, 'double', csv_pkl_save_path, num_features=6, ACam_train=ACam_train)
 
     # runs KNN analysis on pkl file
     # TEMPORARILY RETURNING MODEL
     brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
-    brf_classification.classify_ACam_BRFs(brf_KNN_model, ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
+    brf_classification.classify_ACam_BRFs(brf_KNN_model, define.ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
 
     folder_name_0 = 'LIVE/Outdoor_Testing/Halogen'
     folder_name_1 = 'LIVE/Outdoor_Testing/Incandescent'
 
     # have this method return the BRFs that were misclassified as LEDs
-    halogen_LED_list, incan_LED_list = plots.ACam_plot_similar_BRFs(brf_KNN_model, ACam_path, folder_name_0, folder_name_1)
+    halogen_LED_list, incan_LED_list = plots.ACam_plot_similar_BRFs(brf_KNN_model, define.ACam_path, folder_name_0, folder_name_1)
 
-    scope_LED_path = os.path.join(STIMA_dir, 'bulb_database', 'incan_halogen_LED')
+    scope_LED_path = os.path.join(define.STIMA_dir, 'bulb_database', 'incan_halogen_LED')
     plots.compare_incan_halogen_LED_plots(halogen_LED_list, incan_LED_list, scope_LED_path)
 
     # k-fold analysis
