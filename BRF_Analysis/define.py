@@ -17,3 +17,7 @@ consolidated_folder_path = os.path.join(ACam_path, 'LIVE', 'Outdoor_Testing')
 
 # ACam_db path
 ACam_db_path = os.path.join(STIMA_dir, 'ACam', 'ACam_Training_Data')
+
+# "global" variables
+savgol_window = 31
+mov_avg_w_size = 50

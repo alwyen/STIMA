@@ -10,12 +10,14 @@ from itertools import product
 import matplotlib.pyplot as plt
 import math
 import os
-import seaborn as sn
 import glob
 
 import pdb
 
+# local file imports
 import define
+from plotting import plots
+from scope_processing import raw_waveform_processing
 
 #CLEAN UP TIME
 #fix all the global methods/variable names
@@ -23,290 +25,12 @@ import define
 #make export_all_to_csv dynamic; maybe the solution is to hand in a list of features to be analyzed? somehow need to call the method name then; associate "method name" with "name"?
 #check if "train_KNN" and "KNN" can be simplified
 
-
-savgol_window = 31
-mov_avg_w_size = 50
-
 #for skipping plotting in KNN
 skip = False
 
 def skip_plots(val):
     global skip
     skip = val
-
-#plotting
-class plots():
-    #show plot
-    def show_plot(waveform):
-        plt.plot(waveform)
-        plt.show()
-    
-    #save plot
-    def save_plot(waveform, plot_name):
-        plt.plot(waveform)
-        plt.title(plot_name)
-        plt.savefig(plot_name + '.png')
-        plt.clf()
-
-    '''
-    plotting three different waveforms for Figure 1 in BuildSys paper
-    '''
-    def plot_three_waveforms(csv_brf_path, save_path, title_name):
-        cwd = os.getcwd()
-        os.chdir(csv_brf_path)
-        csv_names = glob.glob('*.csv')
-        colors = list(['r', 'g', 'b'])
-        temp_labels = list(['Incandescent', 'CFL', 'LED'])
-
-        # font_size = 18
-        plt.rcParams["font.family"] = "Times New Roman"
-        font_size = 11
-
-        # fig, axs = plt.subplots(len(csv_names), constrained_layout=True, figsize = (8,15))
-        for i in range(len(csv_names)):
-            processed = raw_waveform_processing(csv_names[i])
-            time = processed.time
-            brf = processed.brf
-            # time, brf = raw_waveform_processing.clean_brf(time, brf)
-            brf = raw_waveform_processing.normalize(brf)
-            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(brf, savgol_window), mov_avg_w_size)
-            smoothed_time = raw_waveform_processing.moving_average(time, mov_avg_w_size)
-            # plt.plot(time, brf, colors[i])
-            plt.plot(time, brf, colors[i], linewidth = 3, alpha = 1 - 0.25*i)
-            # plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3)
-            # plt.plot(smoothed_time, smoothed, colors[i], linewidth = 3, markersize = 1, label = temp_labels[i])
-            # plt.plot(normalized_smoothed, colors[i])
-            plt.xlabel('Time (s)', fontsize = font_size)
-            plt.ylabel('Normalized Intensity', fontsize = font_size)
-            plt.xticks(fontsize = font_size)
-            plt.yticks(fontsize = font_size)
-            plt.locator_params(axis='x', nbins=5)
-            # plt.tight_layout()
-            plt.gcf().subplots_adjust(bottom=0.15)
-            # axs[i].plot(time, brf)
-            # axs[i].set_xlabel('Time (s)', fontsize = 18)
-            # axs[i].set_ylabel('Normalized Intensity', fontsize = 18)
-
-        # plt.title(title_name, fontsize = 18)
-        plt.legend(loc = 'upper left', fontsize = font_size, prop={'size': 9})
-        plt.tight_layout()
-        plt.show()
-        # plt.savefig(save_path + '\\' + title_name + '.png')
-        # plt.clf()
-
-        os.chdir(cwd)
-
-    #confusion matrix for bulb types only
-    def confusion_matrix_type(ground_list, predicted_list, bulb_types, title):
-        bulb_types_list = list(bulb_types[:4])
-        bulb_types = list(bulb_types)
-        prediction_matrix = np.zeros((len(bulb_types_list),len(bulb_types_list)))
-        total = np.zeros((len(bulb_types_list),len(bulb_types_list)))
-
-        assert len(ground_list) == len(predicted_list)
-
-        for i in range(len(ground_list)):
-            ground_index = bulb_types.index(ground_list[i])
-            predicted_index = bulb_types.index(predicted_list[i])
-            if ground_index < 4 and predicted_index < 4: #excluding halogen-xenon and halogen-incandescent
-                prediction_matrix[ground_index][predicted_index] += 1
-                total[ground_index][:] += 1
-
-        confusion_matrix = np.divide(prediction_matrix, total)
-        
-        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in bulb_types_list], columns = [i for i in bulb_types_list])
-        #(12,7) if just figure title
-        plt.figure(figsize = (13,9))
-        sn.heatmap(df_cm, annot=True)
-        plt.title(title)
-        plt.xlabel('Predicted', fontsize = 16)
-        plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(va = 'center')
-        plt.show()
-
-    #issues with the ticks for a confusion matrix of the entire BRF database
-    #show the confusion matrix for unique BRFs
-    def confusion_matrix_unique(ground_list, predicted_list, unique_brf_names, title):
-        prediction_matrix = np.zeros((len(unique_brf_names),len(unique_brf_names)))
-        total_matrix = np.zeros((len(unique_brf_names),len(unique_brf_names)))
-
-        assert len(ground_list) == len(predicted_list)
-
-        for i in range(len(ground_list)):
-            ground_index = unique_brf_names.index(ground_list[i])
-            predicted_index = unique_brf_names.index(predicted_list[i])
-            prediction_matrix[ground_index][predicted_index] += 1
-            total_matrix[ground_index][:] += 1
-
-        confusion_matrix = np.divide(prediction_matrix, total_matrix)
-
-        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in unique_brf_names], columns = [i for i in unique_brf_names])
-        plt.figure(figsize = (8,7)).tight_layout()
-        sn.heatmap(df_cm)
-        plt.title(title)
-        plt.xlabel('Predicted', fontsize = 16)
-        #font size is too small, and not sure if can make it smaller
-        plt.xticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, ha = 'right', fontsize = 6)
-        plt.ylabel('Expected', fontsize = 16)
-        plt.yticks(np.arange(0.5, len(unique_brf_names), 1), unique_brf_names, rotation = 45, va = 'top', fontsize = 6)
-        plt.tight_layout()
-        plt.show()
-
-    '''
-    not using this anymore
-    '''
-    def misclass_bar_graph(name_list, misclassification_array, plot_title):
-        # plt.figure(figsize = (15,8))
-        plt.figure(figsize = (15,5))
-        plt.bar(name_list, misclassification_array)
-        plt.xticks(rotation = 45, ha = 'right', fontsize = 8)
-        plt.tight_layout()
-        plt.title(plot_title)
-        plt.show()
-
-    def k_and_k_fold(k_list, overall_accuracy, cfl_accuracy, halogen_accuracy, incandescent_accuracy, led_accuracy, title):
-        plt.plot(overall_accuracy, label = 'Overall Accuracy')
-        plt.plot(cfl_accuracy, label = 'CFL Accuracy')
-        plt.plot(halogen_accuracy, label = 'Halogen Accuracy')
-        plt.plot(incandescent_accuracy, label = 'Incandescent Accuracy')
-        plt.plot(led_accuracy, label = 'LED Accuracy')
-        plt.xticks(np.arange(0,len(k_list), 1), k_list.astype('str'))
-        plt.xlabel('Value of \'k\' for KNN')
-        plt.ylabel('Accuracy')
-        plt.title(title)
-        plt.legend()
-        plt.show()
-
-    '''
-    this is a very specific plot; another plot for the BuildSys paper
-
-    folder_name_0 should be for `halogen`
-    folder_name_1 should be for 'incandescent'
-
-    '''
-    def ACam_plot_similar_BRFs(brf_KNN_model, ACam_path, folder_name_0, folder_name_1):
-        csv_path_0 = os.path.join(ACam_path, folder_name_0)
-        csv_path_1 = os.path.join(ACam_path, folder_name_1)
-        
-        cwd = os.getcwd()
-
-        os.chdir(csv_path_0)
-        file_list_0 = glob.glob('*.csv')
-
-        h_once = True
-        i_once = True
-
-        halogen_LED_list = list()
-        incan_LED_list = list()
-
-        for csv_file in file_list_0:
-            # print(csv_file)
-            df = pd.read_csv(csv_file)
-
-            # need this step because somehow the waveforms are flipped
-            norm_waveform = abs(np.array(df['Intensity']) - 1)
-            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
-
-            input_param = brf_analysis.extract_features_ACam(new_waveform)
-            output = brf_KNN_model.predict([input_param])[0]
-
-            if output != 'Halogen':
-                if output == 'Incandescent':
-                    if h_once:
-                        plt.plot(new_waveform, color='b', label='Halogen', alpha=0.5)
-                        h_once = False
-                    else:
-                        plt.plot(new_waveform, color='b', alpha=0.5)
-                if output == 'LED':
-                    halogen_LED_list.append(new_waveform)
-
-
-        os.chdir(csv_path_1)
-        file_list_1 = glob.glob('*.csv')
-
-        for csv_file in file_list_1:
-            # print(csv_file)
-            df = pd.read_csv(csv_file)
-
-            # need this step because somehow the waveforms are flipped
-            norm_waveform = abs(np.array(df['Intensity']) - 1)
-            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
-
-            input_param = brf_analysis.extract_features_ACam(new_waveform)
-            output = brf_KNN_model.predict([input_param])[0]
-
-            if output != 'Incandescent':
-                if output == 'Halogen':
-                    if i_once:
-                        plt.plot(new_waveform, color='orange', label='Incandescent', alpha=0.5)
-                        i_once = False
-                    else:
-                        plt.plot(new_waveform, color='orange', alpha=0.5)
-                if output == 'LED':
-                    incan_LED_list.append(new_waveform)
-
-        font_size = 13
-
-        plt.legend(fontsize=font_size, loc='lower center')
-        plt.xlabel('Sample Number', fontsize=font_size)
-        plt.xticks(np.arange(0, len(new_waveform)+1, step=20), fontsize=font_size)
-        plt.ylabel('Normalized Intensity', fontsize=font_size)
-        plt.yticks(np.arange(0, 1.1, step=0.25), fontsize=font_size)
-        plt.tight_layout()
-        plt.show()
-        
-        os.chdir(cwd)
-
-        return halogen_LED_list, incan_LED_list
-
-    '''
-    plotting similarities between halogen, incandescent, and LED BRFs for buildsys paper
-    '''
-    def compare_incan_halogen_LED_plots(halogen_LED_list, incan_LED_list, LED_path):
-        h_once = True
-        i_once = True
-        l_once = True
-
-        cwd = os.getcwd()
-        os.chdir(LED_path)
-        led_folder_list = glob.glob('*')
-        
-        for brf in halogen_LED_list:
-            if h_once:
-                plt.plot(brf, color='b', label='Halogen', alpha=0.5)
-                h_once = False
-            else:
-                plt.plot(brf, color='b', alpha=0.5)
-
-        for brf in incan_LED_list:
-            if i_once:
-                plt.plot(brf, color='orange', label='Incandescent', alpha=0.5)
-                i_once = False
-            else:
-                plt.plot(brf, color='orange', alpha=0.5)
-
-        for led_folder in led_folder_list:
-            waveform_list = brf_extraction(led_folder, 'double').brf_list
-            smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[1], savgol_window), mov_avg_w_size)
-            nadir_indices = signal.find_peaks(-smoothed, distance = 750)[0]
-            single_cycle = smoothed[:nadir_indices[0]]
-            downsampled_single_cycle = raw_waveform_processing.normalize(signal.resample(single_cycle, 80))
-            if l_once:
-                plt.plot(downsampled_single_cycle, color='g', label='LED', alpha = 0.5)
-                l_once = False
-            else:
-                plt.plot(downsampled_single_cycle, color='g', alpha = 0.5)
-        
-        font_size = 13
-        plt.legend(fontsize=font_size, loc='lower center')
-        plt.xlabel('Sample Number', fontsize=font_size)
-        plt.xticks(np.arange(0, len(brf)+1, step=20), fontsize=font_size)
-        plt.ylabel('Normalized Intensity', fontsize=font_size)
-        plt.yticks(np.arange(0, 1.1, step=0.25), fontsize=font_size)
-        plt.tight_layout()
-        plt.show()
-        # for brf in halogen_LED_list:
-        #     plt.plot(brf)
 
 '''
 this class does all the processing on the database side from the master CSV file; df has the following columns:
@@ -404,7 +128,7 @@ class database_processing():
                 # skew = brf_analysis.skew(downsampled_BRF)
                 '''
 
-                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], savgol_window), mov_avg_w_size)
+                smoothed = raw_waveform_processing.moving_average(raw_waveform_processing.savgol(waveform_list[i], define.savgol_window), define.mov_avg_w_size)
                 # linearity = brf_analysis.linearity(time_list[i], smoothed, single_or_double, 'falling')
                 # angle = brf_analysis.angle_of_inflection(time_list[i], smoothed, single_or_double, 'nadir')
                 integral_ratio = brf_analysis.integral_ratio(smoothed, single_or_double)
@@ -604,110 +328,6 @@ class database_processing():
             min_count = 0
             max_count = 0
 
-
-
-
-#extracts time, brf, and voltage data from a CSV file
-#does initial processing, such as cleaning the raw data (extracting clean cycles), normalizes, and smooths
-class raw_waveform_processing():
-    def __init__(self, brf_path):
-        brf_data = np.genfromtxt(brf_path, delimiter = ',')
-        brf_data = brf_data[1:len(brf_data)] #removing first row
-        time, brf, voltage = np.hsplit(brf_data, len(brf_data[0]))
-        self.time = np.hstack(time)
-        self.brf = np.hstack(brf)
-        self.voltage = np.hstack(voltage)
-        # brf_df = pd.read_csv(brf_path)
-        # time = np.array((brf_df['Time']))
-        # brf = np.array((brf_df['Intensity']))
-        # voltage = np.array((brf_df['Voltage']))
-        # self.time = time
-        # self.brf = brf
-        # self.voltage = voltage
-
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-#NOTE: 750 IS HARDCODED; NEEDS TO BE CHANGED/AUTOMATED
-# SOLUTION: find max values of BRF and get distance from that
-    def clean_brf(time, brf):
-        nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
-        corresponding_time = time[nadir_indices[0]:nadir_indices[2]]
-        cleaned_brf = brf[nadir_indices[0]:nadir_indices[2]] #first and third nadir
-        return corresponding_time, cleaned_brf
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-
-    #normalize an array to be between 0 and 1
-    def normalize(array):
-        min = np.amin(array)
-        max = np.amax(array)
-        normalized = (array-min)/(max-min)
-        return normalized
-
-    #savgol filter
-    def savgol(brf, savgol_window):
-        smoothed = signal.savgol_filter(brf, savgol_window, 3)
-        return smoothed
-
-    #moving average; just done with convolution of a np.ones array
-    def moving_average(data, window_size):
-        return signal.convolve(data, np.ones(window_size) , mode = 'valid') / window_size
-
-    #truncates the longer BRF
-    def truncate_longer(brf_1, brf_2):
-        if len(brf_1) > len(brf_2):
-            brf_1 = brf_1[0:len(brf_2)]
-        else:
-            brf_2 = brf_2[0:len(brf_1)]
-        return brf_1, brf_2
-
-
-#uses the raw_waveform_processing class to extract the processed data
-#brf_extraction class manipulates data into a list of BRF waveforms or one concatenated BRF waveform
-class brf_extraction():
-    def __init__(self, brf_folder_name, single_or_double):
-        cwd = os.getcwd()
-        time_list = []
-        brf_list = []
-        path = base_path + os.sep + brf_folder_name
-        os.chdir(path)
-        csv_list = glob.glob('*.csv')
-        # num_files = (len([name for name in os.listdir(path) if os.path.isfile(name)]))
-        # assert len(csv_list) == num_files
-        for brf_path in csv_list:
-            # brf_path = path + os.sep + 'waveform_' + str(i) + '.csv'
-            processed = raw_waveform_processing(brf_path)
-            time = processed.time
-            brf = processed.brf
-            time, brf = raw_waveform_processing.clean_brf(time, brf)
-            brf = raw_waveform_processing.normalize(brf)
-            nadir_indices = signal.find_peaks(-brf, distance = 750)[0]
-            time1, brf1 = time[0:nadir_indices[1]], brf[0:nadir_indices[1]]
-            time2, brf2 = time[nadir_indices[1]:len(brf)], brf[nadir_indices[1]:len(brf)]
-            if single_or_double == 'double':
-                time_list.append(time)
-                brf_list.append(brf)
-            elif single_or_double == 'single':
-                time_list.append(time1)
-                time_list.append(time2)
-                brf_list.append(brf1)
-                brf_list.append(brf2)
-        self.time_list = time_list
-        self.brf_list = brf_list
-        os.chdir(cwd)
-
-    def concatenate_waveforms(waveform_list):
-        waveform = np.array([])
-        for i in range(len(waveform_list)):
-            waveform = np.concatenate((waveform, waveform_list[i]),0)
-        return waveform
-
 #brf_analysis class contains all the statistical tests/analysis methods
 class brf_analysis():
     def reconstruct_ACam_waveform(norm_waveform):
@@ -789,7 +409,7 @@ class brf_analysis():
 
     #gets distance squared of two BRFs; not euclidean distance (did not sqrt the result)
     #this is the method used in Sheinin's paper
-    def min_error(brf_1, brf_2):
+    def sheinin_min_error(brf_1, brf_2):
         brf_1, brf_2 = raw_waveform_processing.truncate_longer(brf_1, brf_2)
         error = np.sum(np.square(np.absolute(np.array(brf_1) - np.array(brf_2))))
         return error
@@ -1222,7 +842,7 @@ class brf_analysis():
 
 
 class brf_classification():
-    #Sheinin et al. BRF comparison method 
+    #Sheinin et al. BRF comparison method
     def compare_brfs(brf_database, num_comparisons, single_or_double): #num_comparisons is the number of comparisons we want to make (e.g. 3)
         bulb_types = brf_database.Bulb_Type.unique()
         brf_database_list = database_processing.database_to_list(brf_database)
@@ -1256,7 +876,7 @@ class brf_classification():
                         brf_2 = brf_extraction(brf_database_list[j][0], single_or_double).brf_list[k]
                         brf_name_2 = brf_database_list[j][1]
                         brf_type_2 = brf_database_list[j][2]
-                        error_score = brf_analysis.min_error(brf_1, brf_2)
+                        error_score = brf_analysis.sheinin_min_error(brf_1, brf_2)
                         error_list.append((error_score, brf_name_1, brf_name_2))
 
                     '''
