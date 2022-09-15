@@ -17,7 +17,7 @@ import pdb
 # local file imports
 import define
 from plotting import plots
-from scope_processing import raw_waveform_processing
+from scope_processing import raw_waveform_processing, brf_extraction
 
 #CLEAN UP TIME
 #fix all the global methods/variable names
@@ -434,7 +434,7 @@ class brf_analysis():
         horizontal_gradient = np.array([1, 0, -1])
         # horizontal_gradient = np.array([1/12, -2/3, 0, 2/3, -1/12])
         gradient_x = signal.convolve(data, horizontal_gradient, mode = 'valid')
-        smoothed_gradient = raw_waveform_processing.savgol(gradient_x, savgol_window)
+        smoothed_gradient = raw_waveform_processing.savgol(gradient_x, define.savgol_window)
         # plots.save_gradient_plot(data, smoothed_gradient, name)
         plots.save_gradient_plot(data, gradient_x, name)
         return gradient_x
@@ -832,8 +832,8 @@ class brf_analysis():
 
         for i in range(len(comparison_list)):
             print(name_list[i])
-            smoothed_brf = raw_waveform_processing.savgol(comparison_list[i], savgol_window)
-            averaged_brf = raw_waveform_processing.moving_average(smoothed_brf, mov_avg_w_size)
+            smoothed_brf = raw_waveform_processing.savgol(comparison_list[i], define.savgol_window)
+            averaged_brf = raw_waveform_processing.moving_average(smoothed_brf, define.mov_avg_w_size)
             brf_analysis.gradient(averaged_brf, name_list[i])
             print(f'{name_list[i]} + done')
 
@@ -1570,8 +1570,10 @@ if __name__ == "__main__":
 
     # runs KNN analysis on pkl file
     # TEMPORARILY RETURNING MODEL
-    brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=6, num_features=6, name_k=3)
+    brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=4, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
+
+    quit()
 
     brf_classification.classify_ACam_BRFs(brf_KNN_model, define.ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
 
