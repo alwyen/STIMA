@@ -1,13 +1,11 @@
 import math
+import signal
+import numpy as np
 
 class scope():
     pass
 
 class ACam():
-    pass
-
-#brf_analysis class contains all the statistical tests/analysis methods
-class brf_analysis():
     def reconstruct_ACam_waveform(norm_waveform):
         peak_indices = signal.find_peaks(norm_waveform)[0]
         nadir_indices = signal.find_peaks(-norm_waveform)[0]
@@ -85,6 +83,8 @@ class brf_analysis():
         input_param = np.array([integral_ratio, int_avg, peak_loc, crest_factor, kurtosis, skew])
         return input_param
 
+#brf_analysis class contains all the statistical tests/analysis methods
+class brf_analysis():
     #gets distance squared of two BRFs; not euclidean distance (did not sqrt the result)
     #this is the method used in Sheinin's paper
     def sheinin_min_error(brf_1, brf_2):
