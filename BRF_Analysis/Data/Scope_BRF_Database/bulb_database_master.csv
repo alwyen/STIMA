@@ -1,0 +1,75 @@
+Folder_Name,Name,Bulb/Sensor Distance (cm),Company Name,Manufactured in Country,Price/Unit,Bulb_Type,Labeled Wattage,Recorded Wattage,Recorded Current,Oscilloscope Resolution (Volts/Division),Lux (40cm),Notes:
+eiko_cfl_13w,Eiko CFL 13W,30,Eiko,USA,4.19,CFL,13,10.7,0.2,0.2,462.84,
+eiko_cfl_23w,Eiko CFL 23W,30,Eiko,USA,4.49,CFL,23,17.4,0.35,0.2,760.26,
+eiko_cfl_32w,Eiko CFL 32W,30,Eiko,USA,5.49,CFL,32,24.7,0.5,0.2,1.02k,
+eiko_halogen_72w,Eiko Halogen 72W,40,Eiko,USA,1.79,Halogen,72,69.7,0.6,0.2,1.13k,
+eiko_halogen_150w,Eiko Halogen 150W,60,Eiko,USA,4.79,Halogen,150,139,1.13,0.2,889.99,
+eiko_incandescent_100w,Eiko Incandescent 100W,50,Eiko,USA,2.99,Incandescent,100,87.7,0.75,0.2,656.43,
+eiko_led_11w,Eiko LED 11W,40,Eiko,USA,4.09,LED,11,10.4,0.09,0.2,1.11k,
+eiko_led_12w,Eiko LED 12W,40,Eiko,USA,11.39,LED,12,11.8,0.13,0.2,2.27k,
+eiko_led_15w,Eiko LED 15W,40,Eiko,USA,6.79,LED,15,13.8,0.13,0.2,1.47k,
+eiko_led_8w,Eiko LED 8W,40,Eiko,USA,3.39,LED,8,7.9,0.08,0.2,679.87,lux decays with time(?)
+eiko_ledflood_8w,Eiko LED 8W (Flood),40,Eiko,USA,3.99,LED,8,7.8,0.09,0.2,1.47k,
+ge_incandescent_60w,Ge Incandescent 60W,40,Ge,USA,6.7,Incandescent,60,51.2,0.43,0.2,239.62,
+halco_cfl_15w,Halco CFL 15W,30,Halco,USA,4.99,CFL,15,11.4,0.23,0.2,542.63,ProLume
+halco_cfl_23w,Halco CFL 23W,30,Halco,USA,3.99,CFL,23,17.4,0.34,0.2,N/A,broke the bulb
+halco_cfl_32w,Halco CFL 32W,30,Halco,USA,5.99,CFL,32,25,0.5,0.2,1.04k,
+halco_halogenxenon_39w,Halco Halogen_Xenon 39W,40,Halco,USA,7.99,Halogen_Xenon,39,37.4,0.31,0.2,10.17k,used paper diffuser; some halogens are brighter when looking at the side view
+halco_incandescent_60w,Halco Incandescent 60W,40,Halco,USA,1.59,Incandescent,60,51,0.43,0.2,293.18,
+halco_incandescent_75w,Halco Incandescent 75W,40,Halco,USA,3.89,Incandescent,75,65.7,0.56,0.2,404.67,
+halco_incandescent_100w,Halco Incandescent 100W,40,Halco,USA,4.49,Incandescent,100,83.2,0.71,0.2,484.94,rubber on outsides can burn
+halco_led_4w,Halco LED 4W,40,Halco,USA,10.99,LED,4,3.8,0.03,0.2,332.27,
+halco_led_4p5w,Halco LED 4.5W,40,Halco,USA,7.09,LED,4.5,3.8,0.04,0.2,167.27,bulb uses lens to focus light(?)
+halco_led_9p5w,Halco LED 9.5W,50,Halco,USA,10.09,LED,9.5,8.9,0.08,0.2,1.97k,lux decays with time(?)
+halco_led_10w,Halco LED 10W,40,Halco,USA,17.99,LED,10,9.2,0.08,0.2,1.72k,
+halco_led_16w,Halco LED 16W,50,Halco,USA,10.49,LED,16,14,0.13,0.2,1.41k,
+kobielectric_led_7w,Kobi Electric LED 7W,30,Kobi Electric,USA,4.99,LED,7,6.6,0.06,0.2,234.72,
+philips_cfl_9w,Phillips CFL 9W,30,Phillips,USA,4.99,CFL,9,7.3,0.14,0.2,352.39,
+philips_cfl_13w,Phillips CFL 13W,30,Phillips,USA,5.49,CFL,13,10.6,0.2,0.2,538.8,
+philips_cfl_26w,Philips CFL 26W,30,Philips,USA,5.99,CFL,26,18.8,0.39,0.2,934.25,
+philips_halogen_39w,Phillips Halogen 39W,40,Phillips,USA,11.49,Halogen,39,37.2,0.31,0.2,6.43k,Used paper diffuser
+philips_incandescent_200w,Phillips Incandescent 200W,50,Phillips,USA,N/A,Incandescent,200,187,1.54,0.2,844.29,
+philips_halogenincandescent_72w,Phillips Incandescent 72W,40,Phillips,USA,3.3,Incandescent,72,69,0.59,0.2,1.15k,
+philips_led_6p5w,Philips LED 6.5W,40,Philips,USA,4.99,LED,6.5,5.5,0.08,0.2,449.03,
+philips_led_7w,Philips LED 7W,40,Philips,USA,7.99,LED,7,6.6,0.6,0.2,744.82,"glass ""lens"""
+philips_led_8w,Philips LED 8W,N/A,Philips,USA,2.89,LED,8,6.2,0.11,0.2,823.35,No waveform data
+philips_led_10w,Phillips LED 10W,40,Phillips,USA,8.99,LED,10,9.1,0.08,0.2,592.37,"glass ""lens"""
+philips_led_18w,Phillips LED 18W,40,Phillips,USA,7.49,LED,18,15.4,0.14,0.2,1.27k,lux decays with time(?)
+satco_cfl_11w,Satco CFL 11W,30,Satco,USA,3.49,CFL,11,9.4,0.18,0.2,427.91,
+satco_cfl_18w,Satco CFL 18W,30,Satco,USA,5.09,CFL,18,13.1,0.25,0.2,601.04,
+satco_cfl_26w,Satco CFL 26W,30,Satco,USA,5.89,CFL,26,18.7,0.38,0.2,778,
+satco_halogen_53w,Satco Halogen 53W,40,Satco,USA,1.6,Halogen,53,50.5,0.43,0.2,N/A,
+satco_halogen_72w,Satco Halogen 72W,50,Satco,USA,1.75,Halogen,72,69.3,0.59,0.2,556.99,
+satco_led_9p5w,Satco LED 9.5W,40,Satco,USA,7.99,LED,9.5,10.2,0.09,0.2,1.83k,
+satco_led_9p8w,Satco LED 9.8W,40,Satco,USA,4.99,LED,9.8,9.5,0.08,0.5,702.01,
+satco_led_11w,Satco LED 11W,40,Satco,USA,6.59,LED,11,10.4,0.09,0.2,977.07,
+satco_led_16w,Satco LED 16W,40,Satco,USA,6.59,LED,16,15.7,0.14,0.5,1.63k,
+satco_led_16p5w,Satco LED 16.5W,40,Satco,USA,11.59,LED,16.5,10.3,0.14,0.2,2.72k,
+sylvania_halogenincandescent_65w,Sylvania Halogen_Incandescent 65W,50,Sylvania,USA,7.39,Halogen_Incandescent,65,60.5,0.51,0.2,1.08k,
+sylvania_cfl_13w,Sylvania CFL 13W,30,Sylvania,USA,5.89,CFL,13,10.8,0.19,0.2,522.86,
+sylvania_halogen_39w,Sylvania Halogen 39W,50,Sylvania,USA,6.99,Halogen,39,34.3,0.29,0.2,7.18k,Used paper diffuser
+sylvania_halogen_60w,Sylvania Halogen 60W,50,Sylvania,USA,7.49,Halogen,60,59.9,0.51,0.2,21.86k,used paper diffuser
+sylvania_halogen_72w,Sylvania Halogen 72W,50,Sylvania,USA,3.2,Halogen,72,68.2,0.58,0.2,318.29,
+sylvania_incandescent_60w,Sylvania Incandescent 60W,40,Sylvania,USA,1.5,Incandescent,60,57.5,0.49,0.2,430.98,
+sylvania_incandescent_101w,Sylvania Incandescent 101W,40,Sylvania,USA,6.99,Incandescent,101,96.5,0.82,0.2,716.29,
+sylvania_led_7w,Sylvania LED 7W,40,Sylvania,USA,4.99,LED,7,6.4,0.05,0.2,480.59,
+sylvania_led_7p5w,Sylvania LED 7.5W,40,Sylvania,USA,9.99,LED,7.5,6,0.11,0.2,533.88,
+sylvania_led_8p5w,Sylvania LED 8.5W,40,Sylvania,USA,7.99,LED,8.5,7.6,0.13,0.2,705.93,lux decays with time(?)
+sylvania_led_9w,Sylvania LED 9W,30,Sylvania,USA,4.99,LED,9,8,0.07,0.2,1.62k,
+sylvania_led_11w,Sylvania LED 11W,40,Sylvania,USA,7.99,LED,11,8.6,0.16,0.2,633.33,
+sylvania_led_12w,Sylvania LED 12W,40,Sylvania,USA,4.79,LED,12,10.4,0.19,0.2,1.17k,
+sylvania_led_13w,Sylvania LED 13W,40,Sylvania,USA,8.69,LED,13,11.8,0.1,0.2,2.32k,
+sylvania_led_23w,Sylvania LED 23W,40,Sylvania,USA,15.99,LED,23,19.4,0.17,0.2,2.01k,
+tcp_led_9p5w,TCP LED 9.5W,40,TCP,USA,7.29,LED,9.5,8.9,0.11,0.2,633.86,
+westinghouse_cfl_13w,Westinghouse CFL 13W,30,Westinghouse,USA,3.99,CFL,13,10.3,0.2,0.2,422.98,
+westinghouse_cfl_18w,Westinghouse CFL 18W,30,Westinghouse,USA,4.49,CFL,18,12.9,0.24,0.2,667.95,
+westinghouse_cfl_23w,Westinghouse CFL 23W,30,Westinghouse,USA,4.19,CFL,23,17.2,0.35,0.2,688.86,
+westinghouse_halogen_72w,Westinghouse Halogen 72W,50,Westinghouse,USA,2.5,Halogen,72,69.2,0.59,0.2,1.23k,
+westinghouse_incandescent_60w_clear,Westinghouse Incandescent 60W (Clear),40,Westinghouse,USA,1.49,Incandescent,60,54.8,0.47,0.2,468.58,
+westinghouse_incandescent_60w_white,Westinghouse Incandescent 60W (White),40,Westinghouse,USA,1.29,Incandescent,60,58.8,0.5,0.2,417.97,
+westinghouse_led_5p5w,Westinghouse LED 5.5W,N/A,Westinghouse,USA,4.69,LED,5.5,4.8,0.09,0.2,383.06,No waveform data
+westinghouse_led_8w,Westinghouse LED 8W,40,Westinghouse,USA,7.49,LED,8,8.5,0.08,0.2,1.58k,lux decays with time(?)
+westinghouse_led_9w,Westinghouse LED 9W,40,Westinghouse,USA,4.99,LED,9,8.2,0.09,0.2,597.03,
+westinghouse_led_11w,Westinghouse LED 11W,40,Westinghouse,USA,3.99,LED,11,8.7,0.16,0.2,883.35,lux decays with time(?)
+westinghouse_led_15p5w,Westinghouse LED 15.5W,40,Westinghouse,USA,5.89,LED,15.5,15.2,0.14,0.2,1.66k,lux decays with time(?)
+westinghouse_led_16p5w,Westinghouse LED 16.5W,40,Westinghouse,USA,11.99,LED,16.5,14.5,0.13,0.2,2.76k,
