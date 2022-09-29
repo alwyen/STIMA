@@ -1,10 +1,8 @@
 import time
 import numpy as np
 import pandas as pd
-from scipy import signal, stats
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neighbors import NearestNeighbors
-from sklearn.linear_model import LinearRegression
+# from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import train_test_split
 from itertools import product
 import matplotlib.pyplot as plt
@@ -17,7 +15,8 @@ import pdb
 # local file imports
 import define
 from plotting import plots
-from scope_processing import database_processing, brf_extraction
+from data_processing import database_processing, brf_extraction, scope, ACam
+# from feature_extraction import scope, ACam
 
 #CLEAN UP TIME
 #fix all the global methods/variable names
@@ -67,7 +66,7 @@ class brf_classification():
                         brf_2 = brf_extraction(brf_database_list[j][0], single_or_double).brf_list[k]
                         brf_name_2 = brf_database_list[j][1]
                         brf_type_2 = brf_database_list[j][2]
-                        error_score = brf_analysis.sheinin_min_error(brf_1, brf_2)
+                        error_score = scope.sheinin_min_error(brf_1, brf_2)
                         error_list.append((error_score, brf_name_1, brf_name_2))
 
                     '''
@@ -450,10 +449,10 @@ class brf_classification():
 
         # creating empty array of length of entries in CSV file
         temp_waveform = abs(np.array(pd.read_csv(file_list[0])['Intensity']) - 1)
-        new_temp_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(temp_waveform)
+        new_temp_waveform = ACam.reconstruct_LIVE_ACam_waveform(temp_waveform)
 
         if reconstruct:
-            new_temp_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(temp_waveform)
+            new_temp_waveform = ACam.reconstruct_LIVE_ACam_waveform(temp_waveform)
         else:
             new_temp_waveform = temp_waveform
         sum_traces = np.zeros(len(new_temp_waveform))
@@ -466,7 +465,7 @@ class brf_classification():
             norm_waveform = abs(np.array(df['Intensity']) - 1)
             if reconstruct:
                 # new_waveform = brf_analysis.reconstruct_ACam_waveform(norm_waveform)
-                new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+                new_waveform = ACam.reconstruct_LIVE_ACam_waveform(norm_waveform)
             else:
                 new_waveform = norm_waveform
 
@@ -475,7 +474,7 @@ class brf_classification():
             if average_only:
                 continue
 
-            input_param = brf_analysis.extract_features_ACam(new_waveform)
+            input_param = ACam.extract_features_ACam(new_waveform)
             output = brf_KNN_model.predict([input_param])[0]
             print(output)
             print()

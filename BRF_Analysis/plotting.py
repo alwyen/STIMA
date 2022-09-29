@@ -7,7 +7,8 @@ import seaborn as sn
 from scipy import signal
 
 import define
-from scope_processing import raw_waveform_processing, brf_extraction
+from data_processing import raw_waveform_processing, brf_extraction
+from feature_extraction import ACam
 
 # all plotting graphs
 class plots():
@@ -182,9 +183,9 @@ class plots():
 
             # need this step because somehow the waveforms are flipped
             norm_waveform = abs(np.array(df['Intensity']) - 1)
-            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+            new_waveform = ACam.reconstruct_LIVE_ACam_waveform(norm_waveform)
 
-            input_param = brf_analysis.extract_features_ACam(new_waveform)
+            input_param = ACam.extract_features_ACam(new_waveform)
             output = brf_KNN_model.predict([input_param])[0]
 
             if output != 'Halogen':
@@ -207,9 +208,9 @@ class plots():
 
             # need this step because somehow the waveforms are flipped
             norm_waveform = abs(np.array(df['Intensity']) - 1)
-            new_waveform = brf_analysis.reconstruct_LIVE_ACam_waveform(norm_waveform)
+            new_waveform = ACam.reconstruct_LIVE_ACam_waveform(norm_waveform)
 
-            input_param = brf_analysis.extract_features_ACam(new_waveform)
+            input_param = ACam.extract_features_ACam(new_waveform)
             output = brf_KNN_model.predict([input_param])[0]
 
             if output != 'Incandescent':
