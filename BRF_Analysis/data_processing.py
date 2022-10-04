@@ -7,7 +7,6 @@ import os
 import glob
 
 import define
-from feature_extraction import scope
 
 '''
 this class does all the processing on the database side from the master CSV file; df has the following columns:

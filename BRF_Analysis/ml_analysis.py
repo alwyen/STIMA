@@ -16,7 +16,6 @@ import pdb
 import define
 from plotting import plots
 from data_processing import database_processing, brf_extraction, scope, ACam
-# from feature_extraction import scope, ACam
 
 #CLEAN UP TIME
 #fix all the global methods/variable names

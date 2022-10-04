@@ -1,14 +1,16 @@
 import os
 import glob
 import numpy as np
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sn
 from scipy import signal
 
 import define
-from data_processing import raw_waveform_processing, brf_extraction
-from feature_extraction import ACam
+from data_processing import raw_waveform_processing, brf_extraction, ACam
 
 # all plotting graphs
 class plots():
@@ -285,3 +287,71 @@ class plots():
         plt.show()
         # for brf in halogen_LED_list:
         #     plt.plot(brf)
+
+    def graph_cm_type():
+        bulb_types_list = list(['CFL', 'Halogen', 'Incandescent', 'LED'])
+
+        confusion_matrix = np.zeros((4,4))
+        confusion_matrix[0][0] = 1
+        confusion_matrix[1][1] = 0.67
+        confusion_matrix[1][2] = 0.33
+        confusion_matrix[2][1] = 0.27
+        confusion_matrix[2][2] = 0.73
+        confusion_matrix[3][1] = 0.067
+        confusion_matrix[3][2] = 0.033
+        confusion_matrix[3][3] = 0.9
+
+        # confusion_matrix[0][0] = 1
+        # confusion_matrix[1][1] = 0.78
+        # confusion_matrix[1][2] = 0.22
+        # confusion_matrix[2][1] = 0.091
+        # confusion_matrix[2][2] = 0.91
+        # confusion_matrix[3][2] = 0.067
+        # confusion_matrix[3][3] = 0.93
+
+        # confusion_matrix = np.divide(prediction_matrix, total)
+        fz = 12
+        cmfz = 14
+        lw = 2
+        tick_size = 3
+        df_cm = pd.DataFrame(confusion_matrix, index = [i for i in bulb_types_list], columns = [i for i in bulb_types_list])
+        #(12,7) if just figure title
+        # plt.figure(figsize = (9,9))
+        # plt.figure() 
+        fig, ax = plt.subplots()
+
+        sn.set(rc={'axes.facecolor':'cornflowerblue', 'figure.facecolor':'cornflowerblue'})
+        res = sn.heatmap(data=df_cm, annot=True, annot_kws={'size': cmfz}, square=True, cbar=False, cmap='Blues')
+        cbar = plt.colorbar(matplotlib.cm.ScalarMappable(cmap='Blues'))
+
+        # sn.set(rc={'axes.facecolor':'limegreen', 'figure.facecolor':'limegreen'})
+        # res = sn.heatmap(data=df_cm, annot=True, annot_kws={'size': cmfz}, square=True, cbar=False, cmap='Greens')
+        # cbar = plt.colorbar(matplotlib.cm.ScalarMappable(cmap='Greens'), ax=ax)
+
+        # sn.set(font_scale=200)
+
+        cbar.outline.set_color('black')
+        cbar.outline.set_linewidth(1)
+
+        res.tick_params(left=True, bottom=True, size = tick_size)
+        # for _, spine in res.spines.items():
+        #     spine.set_visible(True)
+        #     spine.set_linewidth(5)
+        res.axhline(y = 0, color='k',linewidth = lw)
+        res.axhline(y = df_cm.shape[1], color = 'k', linewidth = lw)
+        res.axvline(x = 0, color = 'k', linewidth = lw)
+        res.axvline(x = df_cm.shape[0], color = 'k', linewidth = lw)
+
+        # cbar = fig.colorbar(res, ticks=[0,1])
+
+        cbar.ax.tick_params(size = 4, labelsize=fz)
+        cbar.outline.set_visible(True)
+        plt.xlabel('Predicted Labels', fontsize = fz)
+        plt.ylabel('True Labels', fontsize = fz)
+        plt.xticks(fontsize = fz)
+        plt.yticks(va = 'center', rotation=0, fontsize=fz)
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == '__main__':
+    plots.graph_cm_type()
