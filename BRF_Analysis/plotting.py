@@ -288,6 +288,7 @@ class plots():
         # for brf in halogen_LED_list:
         #     plt.plot(brf)
 
+    # FOR REDOING PAPER FIGURES WITH DIFFERENT FONT
     def graph_cm_type():
         bulb_types_list = list(['CFL', 'Halogen', 'Incandescent', 'LED'])
 
