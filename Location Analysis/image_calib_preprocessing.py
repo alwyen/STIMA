@@ -3,6 +3,11 @@ import os
 from PIL import Image, ImageOps
 
 '''
+NOTE: Kai-En's board:
+        4cm x 4cm
+'''
+
+'''
 converts all image names from phones into [base_name]-numbered image names
 manually put in folder paths
 '''
@@ -39,7 +44,7 @@ def grayscale(load_path, save_path):
         grayscaled = ImageOps.grayscale(img)
         # grayscaled.save(save_path + '\\jpg\\' + str_name + '.jpg')
         # grayscaled.save(save_path + '\\tif\\' + str_name + '.tif')
-        grayscaled.save(save_path + os.sep + str_name + '.tif')
+        grayscaled.save(save_path + os.sep + str_name + '.jpg')
         print(str_name + ' done')
 
 
@@ -55,11 +60,11 @@ if __name__ == '__main__':
 
     # rotate_path = r'C:\Users\alexy\Dropbox\UCSD\Research\Stereo\Camera Calibration\calibration_8_4_21\Right\rotate'
 
-    left_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_7_11_22/Left'
-    right_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_7_11_22/Right'
+    left_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_12_06_22/Left'
+    right_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_12_06_22/Right'
 
-    left_save_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_7_11_22/Left_Gray'
-    right_save_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_7_11_22/Right_Gray'
+    left_save_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_12_06_22/Left_Gray'
+    right_save_path = r'/Users/alexyen/Dropbox/UCSD/Research/Stereo/Camera Calibration/calibration_12_06_22/Right_Gray'
 
     # rename_images(left_path, 'left')
     # rename_images(right_path, 'right')
