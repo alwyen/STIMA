@@ -33,7 +33,7 @@ def Deparameterize_Omega(w):
     return R
 
 '''
-remember seeing this equation in class too...
+Angle-Axis Representation (class notes)
 '''
 def Parameterize_Rotation(R):
     # Parameterizes rotation matrix into its axis-angle representation
@@ -66,6 +66,7 @@ def Dehomogenize(x):
 
 '''
 matlab stereo calibration outputs rotation as angle-axis representation
+must be code Ben gave me...
 '''
 def angle_axis_to_rotation(angle, axis):
     c = np.cos(angle)
