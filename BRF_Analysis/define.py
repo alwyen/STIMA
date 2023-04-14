@@ -1,7 +1,7 @@
 import os
 
 cwd = list(os.getcwd().split(os.sep))
-STIMA_dir = os.sep.join(cwd[:len(cwd)-3])
+STIMA_dir = os.sep.join(cwd[:len(cwd)-2])
 
 ACam_path = os.path.join(STIMA_dir, 'ACam')
 database_path = os.path.join(STIMA_dir, 'bulb_database', 'bulb_database_master.csv')

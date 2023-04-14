@@ -748,7 +748,7 @@ if __name__ == "__main__":
     bin_class = 'IH'    # "IH" for incandescent/halogen
                         # "CL" for CFL or LED
     average_only = False
-    debugging = False
+    debugging = True
 
     # pickles features
     print('Run preprocessing? [y]/other')
@@ -762,7 +762,7 @@ if __name__ == "__main__":
     brf_KNN_model = brf_classification.KNN_analysis_pkl(pkl_path, brf_database, 'type', weights, Entire = True, num_test_waveforms=3, number_neighbors=4, num_features=6, name_k=3)
     #after choosing K, train on train+validation set; final with test set
 
-    quit()
+    # quit()
 
     brf_classification.classify_ACam_BRFs(brf_KNN_model, define.ACam_path, folder_name, reconstruct=reconstruct, classification_type=type, binary_classification=bin_class, average_only=average_only, debugging=debugging)
 

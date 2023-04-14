@@ -23,12 +23,18 @@ def skew(w):
     # Returns the skew-symmetrix represenation of a vector
     return np.array([[0, -w[2][0], w[1][0]], [w[2][0], 0, -w[0][0]], [-w[1][0], w[0][0], 0]])
 
+'''
+what is this equation, and where does it come from? what is omega?
+'''
 def Deparameterize_Omega(w):
     # Deparameterizes to get rotation matrix
     mag_w = np.linalg.norm(w)
     R = np.eye(3) + Sinc(mag_w)*skew(w) + (1 - np.cos(mag_w))/(mag_w**2)*skew(w)@skew(w)
     return R
 
+'''
+Angle-Axis Representation (class notes)
+'''
 def Parameterize_Rotation(R):
     # Parameterizes rotation matrix into its axis-angle representation
     
@@ -58,6 +64,10 @@ def Homogenize(x):
 def Dehomogenize(x):   
     return x[:-1]/x[-1]
 
+'''
+matlab stereo calibration outputs rotation as angle-axis representation
+must be code Ben gave me...
+'''
 def angle_axis_to_rotation(angle, axis):
     c = np.cos(angle)
     s = np.sin(angle)
@@ -79,16 +89,31 @@ def angle_axis_to_rotation(angle, axis):
 
     return R
 
+'''
+Email Thread: "Stereo Vision Project"
+July 7th, 2021, 12:12PM
+'''
 def interpolate_rotation(alpha, R1, R2):
     w, theta = Parameterize_Rotation(R2 @ R1.T)
     return Deparameterize_Omega(alpha * w) @ R1
 
+'''
+does this rotate camera 2's frame into camera 1's frame?
+'''
 def camera_translation(R1, t1, R2):
     return R2 @ (R1.T @ t1) # this should just be a 3x3 zero matrix...?
 
+'''
+Email Thread: "Stereo Vision Project"
+July 7th, 2021, 12:17PM
+'''
 def calc_projective_transformation(K1, R1, K2, R2):
     return K2 @ R2 @ R1.T @ np.linalg.inv(K1)
 
+'''
+Email Thread: "Stereo Vision Project"
+July 7th, 2021
+'''
 def epipolar_rectification(K1, R1, t1, K2, R2, t2):
     Rinterp = interpolate_rotation(0.5, R1, R2)
     u = camera_translation(R2, t2, Rinterp) - camera_translation(R1, t1, Rinterp)
@@ -128,7 +153,7 @@ def calc_epipole(E):
     return e
 
 # calculate coefficients of X, Y, Z, and W from a 2D inhomogeneous point and the camera projection matrix
-def sys_of_eq(x, P):
+def backprojection(x, P):
     x1_coeff = P[2][0]*x[0][0] - P[0][0]
     y1_coeff = P[2][1]*x[0][0] - P[0][1]
     z1_coeff = P[2][2]*x[0][0] - P[0][2]
@@ -152,8 +177,8 @@ P2rectified:    rectified camera projection matrix for img2 (right camera)
 '''
 # last row of SVD is answer(?)
 def triangulation2View(x1, x2, P1rectified, P2rectified):
-    row1, row2 = sys_of_eq(x1, P1rectified)
-    row3, row4 = sys_of_eq(x2, P2rectified)
+    row1, row2 = backprojection(x1, P1rectified)
+    row3, row4 = backprojection(x2, P2rectified)
 
     A = np.vstack((row1, row2, row3, row4))
 
@@ -206,6 +231,9 @@ def geocentric_triangulation2View(left_img, right_img, x1, x2, C, latitude_origi
     # print(H2)
     # print()
 
+    '''
+    converting degrees to radians
+    '''
     latitude_radians = np.radians(latitude_origin)
     longitude_radians = np.radians(longitude_origin)
 
@@ -213,6 +241,11 @@ def geocentric_triangulation2View(left_img, right_img, x1, x2, C, latitude_origi
     plat_pitch_radians = np.radians(plat_pitch)
     plat_roll_radians = np.radians(plat_roll)
 
+    '''
+    computing rotation matrix and translation vector for left camera
+
+    left camera is canonical camera
+    '''
     R1_geocentric = rotation.rotationFromWGS84GeocentricToCameraFame(latitude_radians, longitude_radians, gimbal_pitch, gimbal_roll, gimbal_yaw, plat_pitch_radians, plat_roll_radians, plat_yaw_radians)
     t1_geocentric = -R1_geocentric @ C
     # print('rotation from geocentric to camera frame')
@@ -223,9 +256,16 @@ def geocentric_triangulation2View(left_img, right_img, x1, x2, C, latitude_origi
     # print(R1_geocentric @ C)
     # print()
 
+    '''
+    translation of right camera from camera center (left camera)
+    '''
     R2_geocentric = R12 @ R1_geocentric
     t2_geocentric = R12 @ t1_geocentric + t12
 
+    '''
+    corresponding rectified:
+        
+    '''
     Krectified, Rrectified, t1rectified, t2rectified, H1, H2 = epipolar_rectification(K1, R1_geocentric, t1_geocentric, K2, R2_geocentric, t2_geocentric)
     K1rectified, K2rectified = rectified_calibration_matrices(Krectified, H1, H2, left_img, right_img)
 
