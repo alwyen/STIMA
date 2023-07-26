@@ -147,10 +147,10 @@ Matrix3d Rotation::rotationFromWGS84GeocentricToCameraFame(double latitude_radia
 	return Rga;
 }
 
-int main()
-{
-	Rotation R = Rotation();
-	//MatrixXd m = R.rotationFromWGS84GeocentricToCameraFame(-2.0458482456501974, 0.5737776897248366, -1.5707963267948966, 0, 0, 0, 0, 0); Matches
-	MatrixXd m = R.rotationFromWGS84GeocentricToCameraFame(-2.0458482456501974, 0.5737776897248366, -1.5707963267948966, 0, 0, -0.1, 0.1, 3);
-	std::cout << m << std::endl;
-}
+//int main()
+//{
+//	Rotation R = Rotation();
+//	MatrixXd m = R.rotationFromWGS84GeocentricToCameraFame(-2.0458482456501974, 0.5737776897248366, -1.5707963267948966, 0, 0, 0, 0, 0); //Matches
+//	//MatrixXd m = R.rotationFromWGS84GeocentricToCameraFame(-2.0458482456501974, 0.5737776897248366, -1.5707963267948966, 0, 0, -0.1, 0.1, 3);
+//	std::cout << m << std::endl;
+//}
