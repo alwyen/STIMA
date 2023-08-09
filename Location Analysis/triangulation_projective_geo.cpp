@@ -323,9 +323,9 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
     double latitude_radians = latitude_origin * 180.0 / M_PI;
     double longitude_radians = longitude_origin * 180.0 / M_PI;
 
-    double plat_yaw_radians = plat_yaw * 180.0 / M_PI;
-    double plat_pitch_radians = plat_pitch * 180.0 / M_PI;
-    double plat_roll_radians = plat_roll * 180.0 / M_PI;
+    double plat_yaw_radians = plat_yaw; //* 180.0 / M_PI;
+    double plat_pitch_radians = plat_pitch; //* 180.0 / M_PI;
+    double plat_roll_radians = plat_roll; //* 180.0 / M_PI;
 
     Rotation R = Rotation();
 
@@ -340,30 +340,33 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
 
     // corresponding rectified :
 
-    Matrix3d Krectified;
-    Matrix3d Rrectified;
-    Vector3d t1rectified;
-    Vector3d t2rectified;
-    Matrix3d H1;
-    Matrix3d H2;
-    
-    TPGeo tp = TPGeo();
+    //Matrix3d Krectified;
+    //Matrix3d Rrectified;
+    //Vector3d t1rectified;
+    //Vector3d t2rectified;
+    //Matrix3d H1;
+    //Matrix3d H2;
+   
+    TPGeo tp = TPGeo(); 
 
-    std::cout << "Before epipolar_rectification" << std::endl;
-    tp.epipolar_rectification(K1, R1_geocentric, t1_geocentric, K2, R2_geocentric, t2_geocentric,
-        &Krectified, &Rrectified, &t1rectified, &t2rectified, &H1, &H2);
+    //std::cout << "Before epipolar_rectification" << std::endl;
+    //tp.epipolar_rectification(K1, R1_geocentric, t1_geocentric, K2, R2_geocentric, t2_geocentric,
+    //    &Krectified, &Rrectified, &t1rectified, &t2rectified, &H1, &H2);
 
-    std::cout << "After epipolar_rectification" << std::endl;
-    Matrix3d K1rectified;
-    Matrix3d K2rectified;
+    //std::cout << "After epipolar_rectification" << std::endl;
+    //Matrix3d K1rectified;
+    //Matrix3d K2rectified;
 
-    rectified_calibration_matrices(Krectified, H1, H2, left_img, right_img, &K1rectified, &K1rectified);
+    //rectified_calibration_matrices(Krectified, H1, H2, left_img, right_img, &K1rectified, &K1rectified);
 
-    MatrixXd P1_geocentric = tp.calc_camera_proj_matrix(K1rectified, Rrectified, t1rectified);
+    //MatrixXd P1_geocentric = tp.calc_camera_proj_matrix(K1rectified, Rrectified, t1rectified);
 
-    MatrixXd P2_geocentric = tp.calc_camera_proj_matrix(K2rectified, Rrectified, t2rectified);
+    //MatrixXd P2_geocentric = tp.calc_camera_proj_matrix(K2rectified, Rrectified, t2rectified);
 
 
+    MatrixXd P1_geocentric = tp.calc_camera_proj_matrix(K1, R1_geocentric, t1_geocentric);
+
+    MatrixXd P2_geocentric = tp.calc_camera_proj_matrix(K2, R2_geocentric, t2_geocentric);
     //frobius norm projection matrices
     MatrixXd norm_P1_geocentric = P1_geocentric / P1_geocentric.norm();
     MatrixXd norm_P2_geocentric = P2_geocentric / P2_geocentric.norm();
@@ -427,3 +430,65 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
 //    std::cout << "Matrix" << std::endl;
 //    std::cout << returnMat << std::endl;
 //}
+
+
+// Inhouse Experiment
+/*
+int main() {
+    std::string image_path1 = "C:/Users/aquir/Downloads/irRight0.png";
+    cv::Mat img1 = cv::imread(image_path1, cv::IMREAD_GRAYSCALE);
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> img12;
+    cv::cv2eigen(img1, img12);
+
+    std::cout << "IMAGE1" << std::endl;
+    std::cout << "Cols: " << img12.cols() << std::endl;
+    std::cout << "Rows: " << img12.rows() << std::endl;
+
+    std::string image_path2 = "C:/Users/aquir/Downloads/irLeft0.png";
+    cv::Mat img2 = cv::imread(image_path2, cv::IMREAD_GRAYSCALE);
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> img22;
+    cv::cv2eigen(img2, img22);
+
+    std::cout << "IMAGE1" << std::endl;
+    std::cout << "Cols: " << img22.cols() << std::endl;
+    std::cout << "Rows: " << img22.rows() << std::endl;
+
+    MatrixXd x1{ {454}, {71} };
+
+    MatrixXd x2{ {462}, {71} };
+
+    MatrixXd C{ {-2434441.441087},
+                {-4747152.790375},
+                {3483891.721554} };
+
+        
+    double latitude_origin = 33.322106;
+    double longitude_origin = -117.149721;
+    //double plat_yaw = 364.936; 
+    //double plat_pitch = -110.848;
+    //double plat_roll = 1.383;
+
+    //In Radians already
+    double plat_yaw = -2.884;
+    double plat_pitch = 1.473;
+    double plat_roll = -0.350;
+
+    Matrix3d K1{ { 382.976928710938, 0.00000000e+00, 315.660247802734 },
+        {0.00000000e+00,  382.976928710938, 240.120193481445},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    Matrix3d K2{ { 382.976928710938, 0.00000000e+00, 315.660247802734 },
+        {0.00000000e+00,  382.976928710938, 240.120193481445},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    Matrix3d R12{ {1.0, 0.0, 0.0}, 
+        {0.0, 1.0, 0.0},
+        { 0.0, 0.0, 1.0} };
+    Vector3d t12{ { -0.0949900522828102,  0,  0} };
+
+    MatrixXd returnMat;
+
+    returnMat = geocentric_triangulation2View(img22, img12, x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, 
+        plat_roll, K1, K2, R12, t12);
+
+    std::cout << "Matrix" << std::endl;
+    std::cout << std::fixed << returnMat << std::endl; 
+}*/
