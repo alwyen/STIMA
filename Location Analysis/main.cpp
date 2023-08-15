@@ -61,7 +61,7 @@ MatrixXd dehomogenize(MatrixXd x) {
     return xinHomog;
 }
 
-
+/*
 int main() {
     const char* dPath = geospatialDataDir();
     std::cout << dPath << std::endl;
@@ -393,22 +393,31 @@ int main() {
 
     //myfile << std::to_string(pts_3D(0, 0)) << "," << std::to_string(pts_3D(1, 0)) << "," << std::to_string(pts_3D(2, 0)) << "\n"; 
     //myfile.close(); 
-}
+}*/
 
 
 //Test gps to geocentric
+
 /*
 int main() {
     const char* dPath = geospatialDataDir();
     std::cout << dPath << std::endl;
 
-    double lon = -117.149721;
-    double lat = 33.322106;
+    double lon = -117.234517;
+    double lat = 32.882108;
 
+    // UCSD Experiment
+    // Original 3D Point 5m Point
+    //double lonPt = -117.234553;
+    //double latPt = 32.882141; 
 
-    // Original 3D Point
-    double lonPt = -117.149725; //+ 360.0;
-    double latPt = 33.322146;
+    // Original 3D Point 10m Point
+    //double lonPt = -117.234613;
+    //double latPt = 32.882148;
+
+    // Original 3D Point 15m Point
+    double lonPt = -117.234622;
+    double latPt = 32.882201;
 
     // //3D Point moved up to 17 m
     //double lonPt = -117.234094;
@@ -432,9 +441,9 @@ int main() {
     setGeospatialDataDir(dPath);
 
 
-    double ellipsoidHeight = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRad, lonRad, 83);
+    double ellipsoidHeight = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRad, lonRad, 108);
 
-    double ellipsoidHeightPt = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRadPt, lonRadPt, 83);
+    double ellipsoidHeightPt = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRadPt, lonRadPt, 108);
 
     std::cout << "Camera Height" << std::endl;
     std::cout << ellipsoidHeight << std::endl;
@@ -456,15 +465,19 @@ int main() {
     std::cout << std::fixed << pts_3D << std::endl;
 
     //Geocentric to Local Cartesian
-    Eigen::Vector3d LCO_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(pts_3D, latRad, lonRad, ellipsoidHeight);
+    Eigen::Vector3d LCO_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(pts, latRad, lonRad, ellipsoidHeight);
 
-    Eigen::Vector3d est_pt {   { -2434442.290780 },
-                        { -4747150.816758 },
-                        { 3483887.031847 }};
+    //Eigen::Vector3d est_pt {   { -2434442.290780 },
+    //                    { -4747150.816758 },
+    //                    { 3483887.031847 }};
 
-    Eigen::Vector3d LC_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(est_pt, latRad, lonRad, ellipsoidHeight);
+    Eigen::Vector3d LC_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(pts_3D, latRad, lonRad, ellipsoidHeight); 
 
     double distance = sqrt(pow(LCO_3D_Pt[0] - LC_3D_Pt[0], 2) + pow(LCO_3D_Pt[1] - LC_3D_Pt[1], 2) + pow(LCO_3D_Pt[2] - LC_3D_Pt[2], 2)); 
-
+    std::cout << "Distance" << std::endl;
     std::cout << std::fixed << distance << std::endl; 
+
+    double distance2 = sqrt(pow(pts[0] - pts_3D[0], 2) + pow(pts[1] - pts_3D[1], 2) + pow(pts[2] - pts_3D[2], 2));
+    std::cout << "Distance" << std::endl; 
+    std::cout << std::fixed << distance2 << std::endl;
 }*/

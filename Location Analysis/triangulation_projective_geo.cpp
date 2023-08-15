@@ -2,6 +2,7 @@
 
 
 #include "triangulation_projective_geo.h"
+#include "geospatial.h"
 #include <eigen3/Eigen/Dense>
 #include <cmath>
 #include <iostream>
@@ -315,10 +316,16 @@ void rectified_calibration_matrices(Matrix3d Krectified, Matrix3d H1, Matrix3d H
 MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf &right_img, MatrixXd x1, MatrixXd x2,
     MatrixXd C, double latitude_origin, double longitude_origin, double plat_yaw, double plat_pitch, 
     double plat_roll, Matrix3d K1, Matrix3d K2, Matrix3d R12, Vector3d t12) {
+    
+    // Bottom of Phone is "TOP"
+    //double gimbal_yaw = M_PI; 
+    //double gimbal_pitch = -M_PI / 2;
+    //double gimbal_roll = 0;
 
-    double gimbal_yaw = 0;
-    double gimbal_pitch = -M_PI / 2;
-    double gimbal_roll = 0;
+    // Correct Direction For Gimble?
+    double gimbal_yaw = -M_PI/2;  // -M_PI/2
+    double gimbal_pitch = M_PI/6; // 0 
+    double gimbal_roll = 0;       //-M_PI/2;
 
     double latitude_radians = latitude_origin * 180.0 / M_PI;
     double longitude_radians = longitude_origin * 180.0 / M_PI;
@@ -433,45 +440,45 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
 
 
 // Inhouse Experiment
-/*
+
 int main() {
-    std::string image_path1 = "C:/Users/aquir/Downloads/irRight0.png";
+    std::string image_path1 = "C:/Users/aquir/Downloads/irRight15m2.png";
     cv::Mat img1 = cv::imread(image_path1, cv::IMREAD_GRAYSCALE);
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> img12;
-    cv::cv2eigen(img1, img12);
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> imgRight; 
+    cv::cv2eigen(img1, imgRight); 
 
     std::cout << "IMAGE1" << std::endl;
-    std::cout << "Cols: " << img12.cols() << std::endl;
-    std::cout << "Rows: " << img12.rows() << std::endl;
+    std::cout << "Cols: " << imgRight.cols() << std::endl; 
+    std::cout << "Rows: " << imgRight.rows() << std::endl; 
 
-    std::string image_path2 = "C:/Users/aquir/Downloads/irLeft0.png";
+    std::string image_path2 = "C:/Users/aquir/Downloads/irLeft15m2.png";
     cv::Mat img2 = cv::imread(image_path2, cv::IMREAD_GRAYSCALE);
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> img22;
-    cv::cv2eigen(img2, img22);
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> imgLeft;
+    cv::cv2eigen(img2, imgLeft);
 
     std::cout << "IMAGE1" << std::endl;
-    std::cout << "Cols: " << img22.cols() << std::endl;
-    std::cout << "Rows: " << img22.rows() << std::endl;
+    std::cout << "Cols: " << imgLeft.cols() << std::endl;
+    std::cout << "Rows: " << imgLeft.rows() << std::endl;
 
-    MatrixXd x1{ {454}, {71} };
+    MatrixXd x1{ {493}, {253} };
 
-    MatrixXd x2{ {462}, {71} };
+    MatrixXd x2{ {491}, {253} };
 
-    MatrixXd C{ {-2434441.441087},
-                {-4747152.790375},
-                {3483891.721554} };
+    MatrixXd C{ {-2453669.548677},
+                {-4767258.169004},
+                { 3443025.621651} };
 
         
-    double latitude_origin = 33.322106;
-    double longitude_origin = -117.149721;
+    double latitude_origin = 32.882108;
+    double longitude_origin = -117.234517;
     //double plat_yaw = 364.936; 
     //double plat_pitch = -110.848;
     //double plat_roll = 1.383;
 
     //In Radians already
-    double plat_yaw = -2.884;
-    double plat_pitch = 1.473;
-    double plat_roll = -0.350;
+    double plat_yaw = -1.7109921715232919;
+    double plat_pitch = -0.2167141711792392;
+    double plat_roll = 1.5199985268960532;
 
     Matrix3d K1{ { 382.976928710938, 0.00000000e+00, 315.660247802734 },
         {0.00000000e+00,  382.976928710938, 240.120193481445},
@@ -486,9 +493,63 @@ int main() {
 
     MatrixXd returnMat;
 
-    returnMat = geocentric_triangulation2View(img22, img12, x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch, 
+    returnMat = geocentric_triangulation2View(imgLeft, imgRight, x1, x2, C, latitude_origin, longitude_origin, plat_yaw, plat_pitch,
         plat_roll, K1, K2, R12, t12);
+
+    // 5M point
+    //MatrixXd realPt{ {-2453671.634673}, 
+    //                 {-4767254.860514}, 
+    //                 { 3443028.695045} }; 
+
+    // 10M point
+    //MatrixXd realPt{ {-2453676.433921}, 
+    //                 {-4767251.916037},
+    //                 { 3443029.346818} };
+
+    // 15m Point
+    MatrixXd realPt{ {-2453675.722371},
+                     {-4767248.693225},
+                     { 3443034.283022} };
 
     std::cout << "Matrix" << std::endl;
     std::cout << std::fixed << returnMat << std::endl; 
-}*/
+
+    double distance2 = sqrt(pow(realPt(0, 0) - returnMat(0, 0), 2) + pow(realPt(1, 0) - returnMat(1, 0), 2) + pow(realPt(2, 0) - returnMat(2, 0), 2));
+    std::cout << "Distance" << std::endl; 
+    std::cout << std::fixed << distance2 << std::endl; 
+
+    double distance = sqrt(pow(C(0, 0) - returnMat(0, 0), 2) + pow(C(1, 0) - returnMat(1, 0), 2) + pow(C(2, 0) - returnMat(2, 0), 2));
+    std::cout << "Distance from center to estimated Point" << std::endl;
+    std::cout << std::fixed << distance << std::endl;
+
+    //Camera Center Point
+    double lon = -117.234517;
+    double lat = 32.882108;
+    double lonRad = lon * (M_PI / 180); 
+    double latRad = lat * (M_PI / 180);
+
+    double ellipsoidHeight = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRad, lonRad, 108); 
+     
+    Eigen::Vector3d pts = WGS84GeodeticToWGS84Geocentric(latRad, lonRad, ellipsoidHeight); 
+
+    //Geocentric to Local Cartesian - Origin
+    Eigen::Vector3d LCO_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(pts, latRad, lonRad, ellipsoidHeight); 
+
+    Eigen::Vector3d realPts {{realPt(0, 0), realPt(1, 0), realPt(2, 0)}};
+    Eigen::Vector3d estPts {{returnMat(0, 0), returnMat(1, 0), returnMat(2, 0)}};
+
+    Eigen::Vector3d LCE_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(estPts, latRad, lonRad, ellipsoidHeight); 
+    Eigen::Vector3d LCM_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(realPts, latRad, lonRad, ellipsoidHeight);
+
+    std::cout << "Center Point " << std::endl;
+    std::cout << std::fixed << pts << std::endl; 
+
+    std::cout << "Center Point LC" << std::endl;
+    std::cout << std::fixed << LCO_3D_Pt << std::endl; 
+
+    std::cout << "Estimated Point LC" << std::endl;
+    std::cout << std::fixed << LCE_3D_Pt << std::endl;
+    
+    std::cout << "Real 3D Point LC" << std::endl;
+    std::cout << std::fixed << LCM_3D_Pt << std::endl;
+}
