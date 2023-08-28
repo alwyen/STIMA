@@ -78,16 +78,16 @@ int main() {
 
     // Test Points
     //// 30.04 Meters From first camera Center
-    //double lonPt = -117.234019;
-    //double latPt = 32.876920;
+    double lonPt = -117.234019;
+    double latPt = 32.876920;
 
     //// 20 Meters From first camera Center
-    double lonPt = -117.234069;
-    double latPt = 32.877002;
+    //double lonPt = -117.234069;
+    //double latPt = 32.877002;
 
     // 15.06 Meters From first camera Center
-    //double lonPt = -117.234103;
-    //double latPt = 32.877036;
+    //double lonPt = -117.234103; 
+    //double latPt = 32.877036; 
 
     //// 10.02 Meters From first camera Center
     //double lonPt = -117.234129;
@@ -175,7 +175,8 @@ int main() {
 
     // Second Camera Setup
     //double inch = 13 * 0.0254; //3(1) Inch Baseline
-    double inch = 0.095; //Meter baseline
+    //double inch = 0.095; //Realsense Baseline
+    double inch = 0.20;
 
 
     Eigen::MatrixXd C2 = C; //inch + C.array();
@@ -347,7 +348,7 @@ int main() {
 
     
     std::ofstream myfile;
-    myfile.open("example.csv");//, std::ofstream::app);
+    myfile.open("extrinsics30m.csv", std::ofstream::app); 
 
     myfile << std::to_string(C(0, 0)) << "," << std::to_string(C(0, 1)) << "," << std::to_string(C(0, 2)) << ","; 
     myfile << std::to_string(C(1, 0)) << "," << std::to_string(C(1, 1)) << "," << std::to_string(C(1, 2)) << ","; 
