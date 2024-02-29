@@ -19,7 +19,7 @@ int main() try
     using namespace rs2;
 
     // Create and initialize GUI related objects
-    window app(2560, 720, "RealSense Align Example"); // Simple window handling
+    window app(1280, 480, "RealSense Align Example"); // Simple window handling
     ImGui_ImplGlfw_Init(app, false); 
     texture l1_image, l2_image;
 
@@ -27,8 +27,8 @@ int main() try
 
     rs2::pipeline p;
     rs2::config cfg;
-    cfg.enable_stream(RS2_STREAM_INFRARED, 1, 1280, 720, RS2_FORMAT_Y8, 30);
-    cfg.enable_stream(RS2_STREAM_INFRARED, 2, 1280, 720, RS2_FORMAT_Y8, 30);
+    cfg.enable_stream(RS2_STREAM_INFRARED, 1, 640, 480, RS2_FORMAT_Y8, 30);
+    cfg.enable_stream(RS2_STREAM_INFRARED, 2, 640, 480, RS2_FORMAT_Y8, 30);
     cfg.enable_stream(RS2_STREAM_COLOR, 640, 480, RS2_FORMAT_BGR8, 30);
 
     p.start(cfg);
@@ -43,6 +43,7 @@ int main() try
     //New Code
 
     snapshot snap = snapshot::to_wait;
+    int pNum = 3;
     while (app)
     {
         rs2::frameset frames = p.wait_for_frames();
@@ -52,17 +53,29 @@ int main() try
         auto depth = frames.get_depth_frame(); 
         auto colored_frame = frames.get_color_frame(); 
 
-        l1_image.render(ir_frame_left, { 0, 0, 1280, app.height() });
-        l2_image.render(ir_frame_right, { 1280, 0, 1280, app.height() });
+        l1_image.render(ir_frame_left, { 0, 0, 640, app.height() });
+        l2_image.render(ir_frame_right, { 640, 0, 640, app.height() });
 
         if (snap == snapshot::to_capture) {
-            cv::Mat dMat_left = cv::Mat(cv::Size(1280, 720), CV_8UC1, (void*)ir_frame_left.get_data()); 
-            cv::Mat dMat_right = cv::Mat(cv::Size(1280, 720), CV_8UC1, (void*)ir_frame_right.get_data()); 
+            snapshot snap = snapshot::to_wait; 
+            cv::Mat dMat_left = cv::Mat(cv::Size(640, 480), CV_8UC1, (void*)ir_frame_left.get_data()); 
+            cv::Mat dMat_right = cv::Mat(cv::Size(640, 480), CV_8UC1, (void*)ir_frame_right.get_data()); 
             cv::Mat dMat_colored = cv::Mat(cv::Size(640, 480), CV_8UC1, (void*)colored_frame.get_data()); 
 
-            cv::imwrite("C:/Users/aquir/Documents/Images/irLeft0.png", dMat_left); 
-            cv::imwrite("C:/Users/aquir/Documents/Images/irRight0.png", dMat_right);  
-            cv::imwrite("C:/Users/aquir/Documents/Images/coloredCV0.png", dMat_colored); 
+            /*cv::imwrite("C:/Users/aquir/Documents/Images/irLeftLongTest1IMU3Str.png", dMat_left); 
+            cv::imwrite("C:/Users/aquir/Documents/Images/irRightLongTest1IMU3Str.png", dMat_right);  
+            cv::imwrite("C:/Users/aquir/Documents/Images/coloredCV12m1IMU3Str.png", dMat_colored); */
+            std::string png = ".png";
+            std::string sLeft = "C:/Users/aquir/Documents/Images/irLeftTest1IMU1Str" + std::to_string(pNum) + png;
+            std::string sRight = "C:/Users/aquir/Documents/Images/irRightTest1IMU1Str" + std::to_string(pNum) + png;
+            std::string sColor = "C:/Users/aquir/Documents/Images/coloredCVIMU1Str" + std::to_string(pNum) + png;
+
+            cv::imwrite(sLeft, dMat_left); 
+            cv::imwrite(sRight, dMat_right);
+            cv::imwrite(sColor, dMat_colored); 
+
+            pNum++;
+      
             break;
         }
         // Render the UI:
