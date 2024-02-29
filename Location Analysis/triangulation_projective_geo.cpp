@@ -252,7 +252,7 @@ MatrixXd TPGeo::triangulation2View(VectorXd x1, VectorXd x2, MatrixXd P1rectifie
     JacobiSVD<MatrixXd> svd(C, Eigen::ComputeThinU | Eigen::ComputeThinV);
     MatrixXd v = svd.matrixV().col(3);
 
-    return dehomogenize(v);//MAKE SURE TO ADD dehomogenize!!!
+    return dehomogenize(v);
 }
 //Testing functions
 
@@ -318,26 +318,51 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
     double plat_roll, Matrix3d K1, Matrix3d K2, Matrix3d R12, Vector3d t12, bool rectified) {
     
     // Bottom of Phone is "TOP"
-    double gimbal_yaw = M_PI; 
-    double gimbal_pitch = -M_PI / 2;
-    double gimbal_roll = 0;
+    //double gimbal_yaw = M_PI; 
+    //double gimbal_pitch = -M_PI / 2;
+    //double gimbal_roll = 0;
 
     //// Top of phone is "top"
     //double gimbal_yaw = 0;
     //double gimbal_pitch = -M_PI / 2;
     //double gimbal_roll = 0;
 
-    //// Correct Direction For Gimble?
-    //double gimbal_yaw = -M_PI/2;  // -M_PI/2
-    //double gimbal_pitch = M_PI/6; // 0 
-    //double gimbal_roll = 0;       //-M_PI/2;
+    //// Top of phone is screen (Laid flat)
+    double gimbal_yaw = 0;
+    double gimbal_pitch = -M_PI / 4;
+    double gimbal_roll = 0;
+
+    //// Left of phone is screen (Laid flat)
+    //double gimbal_yaw = -M_PI / 4;
+    //double gimbal_pitch = M_PI / 4;
+    //double gimbal_roll = 0;
+
+    //// Back of phone is screen (Laid flat)
+    //double gimbal_yaw = M_PI / 2;
+    //double gimbal_pitch = M_PI / 4;
+    //double gimbal_roll = 0;
+
+    //// Right of phone is screen (Laid flat)
+    //double gimbal_yaw = -M_PI / 4;
+    //double gimbal_pitch = M_PI / 4;
+    //double gimbal_roll = 0;
+
+    //// Correct Direction For Gimble on iPhone
+    //double gimbal_yaw = -M_PI / 2;
+    //double gimbal_pitch = 0;
+    //double gimbal_roll = M_PI/2; 
+
+    // Current orientation of IMU Sensor
+    //double gimbal_yaw = M_PI / 2;
+    //double gimbal_pitch = 0;
+    //double gimbal_roll = 0;
 
     double latitude_radians = latitude_origin * 180.0 / M_PI;
     double longitude_radians = longitude_origin * 180.0 / M_PI;
 
-    double plat_yaw_radians = plat_yaw; //* 180.0 / M_PI;
-    double plat_pitch_radians = plat_pitch; //* 180.0 / M_PI;
-    double plat_roll_radians = plat_roll; //* 180.0 / M_PI;
+    double plat_yaw_radians = plat_yaw*180.0 / M_PI; 
+    double plat_pitch_radians = plat_pitch*180.0 / M_PI; 
+    double plat_roll_radians = plat_roll*180.0 / M_PI; 
 
     Rotation R = Rotation();
 
@@ -453,7 +478,7 @@ MatrixXd geocentric_triangulation2View(const MatrixXf &left_img, const MatrixXf 
 // Inhouse Experiment
 
 int main() {
-    std::string image_path1 = "C:/Users/aquir/Downloads/RealSenseExperiment/irRightLongTest1.png";
+    std::string image_path1 = "C:/Users/Anthony/Downloads/irLeftBackTest1IMU4Str.png";
     cv::Mat img1 = cv::imread(image_path1, cv::IMREAD_GRAYSCALE);
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> imgRight; 
     cv::cv2eigen(img1, imgRight); 
@@ -462,7 +487,7 @@ int main() {
     std::cout << "Cols: " << imgRight.cols() << std::endl; 
     std::cout << "Rows: " << imgRight.rows() << std::endl; 
 
-    std::string image_path2 = "C:/Users/aquir/Downloads/RealSenseExperiment/irLeftLongTest1.png";
+    std::string image_path2 = "C:/Users/Anthony/Downloads/irRightBackTest1IMU4Str.png";
     cv::Mat img2 = cv::imread(image_path2, cv::IMREAD_GRAYSCALE);
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> imgLeft;
     cv::cv2eigen(img2, imgLeft);
@@ -472,14 +497,66 @@ int main() {
     std::cout << "Rows: " << imgLeft.rows() << std::endl;
 
 
-    MatrixXd x1{ {1147}, {1187} };
+    MatrixXd x1{ {343},{200} };
+    MatrixXd x2{ {337},{200} };
+     
+    // Experiment Test with Different Phone position
+    // Center 
+    double latitude_origin = 32.881169;
+    double longitude_origin = -117.234427;
 
-    MatrixXd x2{ {1266}, {1219} };
+    // Location 0
+    //double lonPt = -117.234485;
+    //double latPt = 32.881169;
 
-        
-    double latitude_origin = 32.881167;
-    double longitude_origin = -117.234421;
+    //// Location 1
+    //double lonPt = -117.234454; 
+    //double latPt = 32.881193; 
+
+    //// Location 2
+    //double lonPt = -117.234455;
+    //double latPt = 32.881139;
+
+    //// Location 3
+    double lonPt = -117.234355;
+    double latPt = 32.881169;
+
+
+    // Original Location (Warren)
+    //double latitude_origin = 32.881168;
+    //double longitude_origin = -117.234429; // Was 23
+
+    // Experiment 10 Backwards test (Warren)
+    //double latitude_origin = 32.881169;
+    //double longitude_origin = -117.234415;
     
+    //New Location Experiment Points (CSE)
+    // Center Point
+    //double latitude_origin = 32.882286;
+    //double longitude_origin = -117.234298;
+
+    // Testing Points
+    // Short Test
+    //double lonPt = -117.234286;
+    //double latPt = 32.882280;
+    //// Medium Distance
+    //double lonPt = -117.234398;
+    //double latPt = 32.882325;
+    //// Long Distance
+    //double lonPt = -117.234398;
+    //double latPt = 32.882358;
+
+    //// Experiments 2/3 and 4/5
+    //double lonPt = -117.234326;
+    //double latPt = 32.882310;
+
+    // Flipped Direction Test
+    //double latitude_origin = 32.882299;
+    //double longitude_origin = -117.234297;
+
+    //double lonPt = -117.234262;
+    //double latPt = 32.882267;
+
     //Camera Center Point
 
     double lonRad = longitude_origin * (M_PI / 180); 
@@ -487,7 +564,7 @@ int main() {
 
     double ellipsoidHeightC = orthometricHeightToWGS84EllipsoidHeight_EGM2008(latRad, lonRad, 108); 
 
-    Eigen::Vector3d pts = WGS84GeodeticToWGS84Geocentric(latRad, lonRad, ellipsoidHeightC); 
+    Eigen::Vector3d pts = WGS84GeodeticToWGS84Geocentric(latRad, lonRad, ellipsoidHeightC);  
      
 
     MatrixXd C{ {pts[0]},
@@ -495,16 +572,17 @@ int main() {
                 {pts[2]} };
 
 
-    std::cout << "Center Point Original" << std::endl;
-    std::cout << std::fixed << C << std::endl;
-    //double plat_yaw = 364.936; 
-    //double plat_pitch = -110.848;
-    //double plat_roll = 1.383;
+    std::cout << "Center Point Original" << std::endl; 
+    std::cout << std::fixed << C << std::endl; 
+    double plat_yaw = 69.818;
+    double plat_pitch = -0.746;
+    double plat_roll = -1.712;
 
     // Yaw - Pitch - Roll (In Radians already)
-    double plat_yaw = -2.8682815193863243;
-    double plat_pitch = -0.2458059254620501;
-    double plat_roll = 1.4190139129715338;
+    //double plat_yaw = -1.5465989145492396;
+    //double plat_pitch = 0.03573705188246896;
+    //double plat_roll = 3.1067147175061356;
+
 
 
     // Realsense Chris's Device Intrinsics
@@ -521,30 +599,38 @@ int main() {
     //bool rectified = false;
 
     // Realsense Henrik's Device Intrinsics
-    //Matrix3d K1{ { 385.439086914062, 0.00000000e+00, 320.542755126953 },
-    //    {0.00000000e+00,  385.439086914062,  238.801696777344},
-    //    {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
-    //Matrix3d K2{ { 385.439086914062, 0.00000000e+00, 320.542755126953 },
-    //    {0.00000000e+00,  385.439086914062,  238.801696777344},
-    //    {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
-    //Matrix3d R12{ {1.0, 0.0, 0.0},
-    //    {0.0, 1.0, 0.0},
-    //    { 0.0, 0.0, 1.0} };
-    //Vector3d t12{ {  -0.0949690192937851,  0,  0} };
-    //bool rectified = false;
+    // 640x480 resolution Intrinsics
+    Matrix3d K1{ { 385.439086914062, 0.00000000e+00, 320.542755126953 },
+        {0.00000000e+00,  385.439086914062,  238.801696777344},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    Matrix3d K2{ { 385.439086914062, 0.00000000e+00, 320.542755126953 },
+        {0.00000000e+00,  385.439086914062,  238.801696777344},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    // 1280x720 Resolution Intrinsics
+   /* Matrix3d K1{ { 642.398498535156, 0.00000000e+00, 640.904602050781 },
+        {0.00000000e+00,  642.398498535156,  358.002838134766},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    Matrix3d K2{ { 642.398498535156, 0.00000000e+00, 640.904602050781 },
+        {0.00000000e+00,  642.398498535156,  358.002838134766},
+        {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };*/
+    Matrix3d R12{ {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        { 0.0, 0.0, 1.0} };
+    Vector3d t12{ {  -0.0949690192937851,  0,  0} };
+    bool rectified = false;
 
     // Stereo Pi Current Setup
-    Matrix3d K1{ { 2532.773172521942, 0.0, 1350.7570883317933 },
-                 {0.0, 2541.2325836479586, 1028.5304816428852},
-                 {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
-    Matrix3d K2{ { 2557.701212171833, 0.0, 1319.7204310359377 },
-                 {0.0, 2559.471954322741, 941.8771063738342},
-                 {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
-    Matrix3d R12{ {0.9991077703835887, 0.01971767089402807, 0.03734804698573909},
-                  {-0.018825551472505076, 0.9995325360669186, - 0.0240895818849177},
-                  {-0.03780557856838377, 0.023364990865585446, 0.9990119195640065} };
-    Vector3d t12{ { -15.520310529893415, - 0.5189885330296539,- 1.851893155108135 } };
-    bool rectified = true;
+    //Matrix3d K1{ {1245.2085834929785, 0.0, 628.1461920126694},
+    //             {0.0, 1247.5756375917842, 484.27607116996796},
+    //             {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    //Matrix3d K2{ {1242.3555795517973, 0.0, 637.1034091132533},
+    //             {0.0, 1245.4676044054588, 507.99521696245586 },
+    //             {0.00000000e+00, 0.00000000e+00, 1.00000000e+00} };
+    //Matrix3d R12{ {0.9981716091797479, - 0.019977693908171286, - 0.057046738501198756},
+    //              {0.019214181981025133, 0.9997187449075249, - 0.013901305381984053},
+    //              {0.05730840983933149, 0.012779781947848153, 0.9982747233778149} };
+    //Vector3d t12{ {15.366123963456182, 0.3234755344160923, 0.31904065555118155} };
+    //bool rectified = true;
 
     // Experiment
     MatrixXd returnMat;
@@ -575,8 +661,41 @@ int main() {
     //double latPt = 32.881168;
 
     // Long Test Point of Interest
-    double lonPt = -117.234556;
-    double latPt = 32.881167;
+    //double lonPt = -117.234556; 
+    //double latPt = 32.881167; 
+
+    // Experiment 3
+
+    // Short Test
+    //double lonPt = -117.234485;
+    //double latPt = 32.881168;
+
+    // Long Test
+    //double lonPt = -117.234557;
+    //double latPt = 32.881168;
+
+    // Experiment 4
+    
+    // Short Test
+    //double lonPt = -117.234482;
+    //double latPt = 32.881169;
+    
+    // Long Test
+    //double lonPt = -117.234557;
+    //double latPt = 32.881168;
+
+    // Experiment 7/9
+    // Short Test Point of Interest
+    //double lonPt = -117.234497;
+    //double latPt = 32.881168;
+
+    // Long Test Point of Interest
+    //double lonPt = -117.234563; 
+    //double latPt = 32.881168; 
+
+    // Experiment 10 Backward Test
+    //double lonPt = -117.234358;
+    //double latPt = 32.881169;
 
     double lonRadPt = lonPt * (M_PI / 180); 
     double latRadPt = latPt * (M_PI / 180); 
@@ -590,11 +709,11 @@ int main() {
     std::cout << std::fixed << returnMat << std::endl; 
 
     double distance = sqrt(pow(realPts[0] - C(0, 0), 2) + pow(realPts[1] - C(1, 0), 2) + pow(realPts[2] - C(2, 0), 2));
-    std::cout << "Distance from Camera Center to Real Point" << std::endl;
+    std::cout << "Distance from Camera Center to Ground Truth Point" << std::endl;
     std::cout << std::fixed << distance << std::endl;
 
     double distance1 = sqrt(pow(C(0, 0) - returnMat(0, 0), 2) + pow(C(1, 0) - returnMat(1, 0), 2) + pow(C(2, 0) - returnMat(2, 0), 2));
-    std::cout << "Distance from center to estimated Point" << std::endl;
+    std::cout << "Distance from Camera Center to Estimated Point" << std::endl;
     std::cout << std::fixed << distance1 << std::endl;
 
     double distance2 = sqrt(pow(realPts[0] - returnMat(0, 0), 2) + pow(realPts[1] - returnMat(1, 0), 2) + pow(realPts[2] - returnMat(2, 0), 2));
@@ -610,8 +729,26 @@ int main() {
     Eigen::Vector3d LCE_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(estPts, latRad, lonRad, ellipsoidHeightC); 
     Eigen::Vector3d LCM_3D_Pt = WGS84GeocentricToWGS84LocalCartesian(realPts, latRad, lonRad, ellipsoidHeightC);
 
-    std::cout << "Center Point " << std::endl;
-    std::cout << std::fixed << pts << std::endl; 
+
+
+    //Angles
+    // Angle between Realpoint and Estimated Point
+    double angleRE = acos((LCM_3D_Pt[0] * LCE_3D_Pt(0) + LCM_3D_Pt[1] * LCE_3D_Pt(1) + LCM_3D_Pt[2] * LCE_3D_Pt(2)) / (
+        (sqrt(pow(LCM_3D_Pt[0], 2) + pow(LCM_3D_Pt[1], 2) + pow(LCM_3D_Pt[2], 2))) *
+        (sqrt(pow(LCE_3D_Pt(0), 2) + pow(LCE_3D_Pt(1), 2) + pow(LCE_3D_Pt(2), 2))))) * (180 / M_PI);
+
+    // Angle between Estimated Point and Center
+    double angleEC = acos((LCO_3D_Pt(0) * LCE_3D_Pt(0) + LCO_3D_Pt(1) * LCE_3D_Pt(1) + LCO_3D_Pt(2) * LCE_3D_Pt(2)) / (
+        (sqrt(pow(LCO_3D_Pt(0), 2) + pow(LCO_3D_Pt(1), 2) + pow(LCO_3D_Pt(2), 2))) * 
+        (sqrt(pow(LCE_3D_Pt(0), 2) + pow(LCE_3D_Pt(1), 2) + pow(LCE_3D_Pt(2), 2)))));
+
+    // Angle between Realpoint and Center
+    double angleRC = acos((LCM_3D_Pt[0] * LCO_3D_Pt(0) + LCM_3D_Pt[1] * LCO_3D_Pt(1) + LCM_3D_Pt[2] * LCO_3D_Pt(2)) / (
+        (sqrt(pow(LCM_3D_Pt[0], 2) + pow(LCM_3D_Pt[1], 2) + pow(LCM_3D_Pt[2], 2))) * 
+        (sqrt(pow(LCO_3D_Pt(0), 2) + pow(LCO_3D_Pt(1), 2) + pow(LCO_3D_Pt(2), 2)))));
+
+    //std::cout << "Center Point " << std::endl;
+    //std::cout << std::fixed << pts << std::endl; 
 
     std::cout << "Center Point LC" << std::endl;
     std::cout << std::fixed << LCO_3D_Pt << std::endl; 
@@ -621,4 +758,8 @@ int main() {
     
     std::cout << "Real 3D Point LC" << std::endl;
     std::cout << std::fixed << LCM_3D_Pt << std::endl;
+
+    std::cout << std::endl << "(" << LCM_3D_Pt[0] << "," << LCM_3D_Pt[1] << "," << LCM_3D_Pt[2] << ")" << " " 
+        << "(" << LCE_3D_Pt[0] << "," << LCE_3D_Pt[1] << "," << LCE_3D_Pt[2] << ")" << " "
+        << distance << " " << distance1 << " " << distance2 << " " << angleRE << " " << angleEC << " " << angleRC; 
 }
