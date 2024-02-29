@@ -116,6 +116,10 @@ Matrix3d Rotation::rotationFromWGS84GeocentricToCameraFame(double latitude_radia
 	Eigen::Matrix3d Rba { {0, 1, 0}, {0, 0, 1}, {1, 0 ,0 } };
 
 	Eigen::Matrix3d Rcb = eulerAnglesZYXToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll);
+	// iPhone version
+	//Eigen::Matrix3d Rcb = eulerAnglesZXYToRotationMatrix(gimbal_yaw, gimbal_pitch, gimbal_roll); 
+
+
 	Rcb.transposeInPlace(); 
 
 	std::cout << "RCB" << std::endl;
