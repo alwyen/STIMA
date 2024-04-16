@@ -52,10 +52,11 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
     # t2 = datetime.now()
     # if the 'p' key was pressed on main, save the frame
     if (pin.is_active):
-        if (os.path.isdir("./scenes/right")==False):
-            os.makedirs("./scenes/right")
+        if (os.path.isdir("./scenes/left")==False):
+            os.makedirs("./scenes/left")
         #pin.on()
         cv2.imwrite(filename + str(imgNum) + ".png", frame)
+        time.sleep(0.200)
         imgNum += 1
         #pin.off()
 
