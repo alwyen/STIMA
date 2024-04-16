@@ -8,7 +8,7 @@ from datetime import datetime
 import gpiozero
 
 # File for captured image
-filename = './scenes/left/frame'
+filename = './scenes/right/frame'
 
 # Camera settimgs
 cam_width = 1280
@@ -47,13 +47,13 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
     t1 = datetime.now()
     timediff = t1-t2
     avgtime = avgtime + (timediff.total_seconds())
-    cv2.imshow("pair", frame)
+    cv2.imshow("Right Image", frame)
     key = cv2.waitKey(1) & 0xFF
     t2 = datetime.now()
     # if the 'p' key was pressed, save the frame
     if key == ord("p"):
-        if (os.path.isdir("./scenes/left")==False):
-            os.makedirs("./scenes/left")
+        if (os.path.isdir("./scenes/right")==False):
+            os.makedirs("./scenes/right")
         pin.on()
         cv2.imwrite(filename + str(imgNum) + ".png", frame)
         imgNum += 1
