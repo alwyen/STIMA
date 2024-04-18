@@ -67,7 +67,10 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
         if (os.path.isdir(dirname)==False):
             os.makedirs(dirname)
         #pin.on()
+        time1 = time.time()
         cv2.imwrite(filename + str(imgNum) + ".png", frame)
+        time2 = time.time()
+        print("Time for image frame" + str(imgNum) + ":", time2 - time1)
         time.sleep(0.200)
         imgNum += 1
         #pin.off()

@@ -12,17 +12,23 @@ def main():
 
    now = datetime.now()
    current_time = now.strftime("%H:%M:%S")
-   print("Current Time Before Pin activation:", current_time)
-   print("unix_timestamp => ",
-      (time.mktime(now.timetuple())))
+#   print("Current Time Before Pin activation:", current_time)
+#   print("unix_timestamp => ",
+#      (time.mktime(now.timetuple())))
+   time1 = time.time()
    check = pin.is_active
-   while(not check): check = pin.is_active
+   while(not check): 
+       time1 = time.time()
+       check = pin.is_active
+       #time1 = time.time()
+   time2 = time.time()
    #pin.on()
+   timePassed = time2 - time1
    now = datetime.now()
-   current_time = now.strftime("%H:%M:%S")
-   print("unix_timestamp => ",
-      (time.mktime(now.timetuple())))
-   print("Current Time After Pin activation:", current_time)
+#   current_time = now.strftime("%H:%M:%S")
+#   print("unix_timestamp => ",
+#      (time.mktime(now.timetuple())))
+   print("Current Time Passed", timePassed)
    #pin.off()
 
 
