@@ -12,15 +12,19 @@ def main():
 
    now = datetime.now()
    current_time = now.strftime("%H:%M:%S")
-   print("Current Time Before Pin activation:", current_time)
-   print("unix_timestamp => ",
-      (time.mktime(now.timetuple())))
+#   print("Current Time Before Pin activation:", current_time)
+#   print("unix_timestamp => ",
+#      (time.mktime(now.timetuple())))
+   t1 = time.time()
    pin.on()
-   now = datetime.now()
-   current_time = now.strftime("%H:%M:%S")
-   print("unix_timestamp => ",
-      (time.mktime(now.timetuple())))
-   print("Current Time After Pin activation:", current_time)
+   t2 = time.time()
+
+   tTime = t2 - t1
+   #now = datetime.now()
+   #current_time = now.strftime("%H:%M:%S")
+   #print("unix_timestamp => ",
+   #   (time.mktime(now.timetuple())))
+   print("Current Time After Pin activation:", tTime)
    pin.off()
 
 

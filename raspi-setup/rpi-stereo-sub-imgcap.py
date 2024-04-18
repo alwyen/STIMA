@@ -6,9 +6,21 @@ import numpy as np
 import os
 from datetime import datetime
 import gpiozero
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Process images for specific setting')
+parser.add_argument('-c', action='store_true') #, '--calibration')
+
+args = parser.parse_args()
 
 # File for captured image
-filename = './scenes/left/frame'
+if args.c:
+    filename = './scenes/left/frame'
+    dirname = './scenes/left'
+else:
+    filename = './frames/left/image'
+    dirname = './frames/left'
 
 # Camera settimgs
 cam_width = 1280
@@ -52,8 +64,8 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
     # t2 = datetime.now()
     # if the 'p' key was pressed on main, save the frame
     if (pin.is_active):
-        if (os.path.isdir("./scenes/left")==False):
-            os.makedirs("./scenes/left")
+        if (os.path.isdir(dirname)==False):
+            os.makedirs(dirname)
         #pin.on()
         cv2.imwrite(filename + str(imgNum) + ".png", frame)
         time.sleep(0.200)
