@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 
 # Photo session settings
-total_photos = 45             # Number of images to take
+total_photos = 89             # Number of images to take
 countdown = 8                 # Interval for count-down timer, seconds
 font=cv2.FONT_HERSHEY_SIMPLEX # Cowntdown timer font
  
@@ -64,7 +64,7 @@ camera.hflip = True
 path = './calibration/scene_'+str(img_width)+'x'+str(img_height)+'_'
 
 # Lets start taking photos! 
-counter = 0
+counter = 79
 t2 = datetime.now()
 print ("Starting photo sequence")
 for frame in camera.capture_continuous(capture, format="bgra", \
