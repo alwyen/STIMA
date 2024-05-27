@@ -21,9 +21,7 @@ def main():
     for i in range(1,num_images+1):
         if i%10 == 0:
             print(f'Image {i}/{num_images} done.')
-        #if i in [56,57]: continue
-        #print(HOME)
-        #path = '/Dropbox/LightsCameraGrid/Calibration Data/Stereo_Pi/calibration_images'
+            
         img = cv2.imread(HOME + "/scene_{}x{}_{}.png".format(width, height, i))
 
         img1 = img[:, :int(img.shape[1]/2), :]
