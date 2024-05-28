@@ -115,14 +115,13 @@ def save_frames_single_camera(camera_name):
 
 
 #Calibrate single camera to obtain camera intrinsic parameters from saved frames.
-def calibrate_camera_for_intrinsic_parameters(images_prefix):
+def calibrate_camera_for_intrinsic_parameters(images_prefix, npz_file_name):
     
     #NOTE: images_prefix contains camera name: "frames/camera0*".
-    images_names = glob.glob(images_prefix)
-    #print(images_names)
-
+    images_names = os.listdir(images_prefix)
+    # print(images_names)
     #read all frames
-    images = [cv.imread(imname, 1) for imname in images_names]
+    images = [cv.imread(os.path.join(images_prefix, imname), 1) for imname in images_names]
 
     #criteria used by checkerboard pattern detector.
     #Change this if the code can't find the checkerboard. 
@@ -149,6 +148,7 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix):
 
 
     for i, frame in enumerate(images):
+        print(f'Image {i+1}/{len(images)}')
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         #find the checkerboard
@@ -181,7 +181,13 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix):
     print('camera matrix:\n', cmtx)
     print('distortion coeffs:', dist)
 
-    return cmtx, dist
+    #create folder if it does not exist
+    if not os.path.exists('camera_parameters'):
+        os.mkdir('camera_parameters')
+
+    out_filename = os.path.join('camera_parameters', npz_file_name + '_intrinsics')
+    np.savez(out_filename, intrinsic=cmtx, dist=dist, rot=rvecs, trans=tvecs)
+
 
 #save camera intrinsic parameters to file
 def save_camera_intrinsics(camera_matrix, distortion_coefs, camera_name):
@@ -589,42 +595,60 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
-        print('Call with settings filename: "python3 calibrate.py calibration_settings.yaml"')
+        print('Call with settings filename: "python3 calib.py calibration_settings.yaml"')
         quit()
     
     #Open and parse the settings file
     parse_calibration_settings_file(sys.argv[1])
 
     #HOME = os.path.expanduser( '~' ) + '/Projects/LightsCameraGrid/Calibration Data/Stereo_pi/individual_images'
-    HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate/calibration_image_pairs'
+    # HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate/calibration_image_pairs'
+    HOME = os.path.join(os.sep, *os.getcwd().split(os.sep), 'calibration_image_pairs')
     """Step1. Save calibration frames for single cameras"""
-    # save_frames_single_camera('camera0') #save frames for camera0
-    # save_frames_single_camera('camera1') #save frames for camera1
+    print('Do you want to collect new images? (Y/n)')
+    user_input = input()
+    if user_input == 'Y':
+        save_frames_single_camera('camera0') #save frames for camera0
+        save_frames_single_camera('camera1') #save frames for camera1
 
+    print('Do you want to recalibrate cameras? (Y/n)')
+    user_input = input()
+    if user_input == 'Y':
+        """Step2. Obtain camera intrinsic matrices and save them"""
+        #camera0 intrinsics
+        images_prefix = os.path.join(HOME, 'left_camera')
+        print("HERE", images_prefix)
+        calibrate_camera_for_intrinsic_parameters(images_prefix, 'left_camera') 
+        # save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
 
-    """Step2. Obtain camera intrinsic matrices and save them"""
-    #camera0 intrinsics
-    images_prefix = os.path.join(HOME, 'left_camera/*')
-    print("HERE", images_prefix)
-    cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_prefix) 
-    save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
+        #HOME = os.path.expanduser( '~' ) + '/Downloads/StereoPiCalibrationImages'
+        #camera1 intrinsics
+        images_prefix = os.path.join(HOME, 'right_camera')
+        # print(images_prefix)
+        calibrate_camera_for_intrinsic_parameters(images_prefix, 'right_camera')
+        # save_camera_intrinsics(cmtx1, dist1, 'camera1') #this will write cmtx and dist to disk
 
-    #HOME = os.path.expanduser( '~' ) + '/Downloads/StereoPiCalibrationImages'
-    #camera1 intrinsics
-    images_prefix = os.path.join(HOME, 'right_camera/*')
-    print(images_prefix)
-    cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
-    save_camera_intrinsics(cmtx1, dist1, 'camera1') #this will write cmtx and dist to disk
-
+    quit()
 
     """Step3. Save calibration frames for both cameras simultaneously"""
     # save_frames_two_cams('camera0', 'camera1') #save simultaneous frames
 
-    HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate'
+
     """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
-    frames_prefix_c0 = os.path.join(HOME, 'calibration_image_pairs', 'left_camera/*')
-    frames_prefix_c1 = os.path.join(HOME, 'calibration_image_pairs', 'right_camera/*')
-    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, frames_prefix_c0, frames_prefix_c1)
+    left_camera_parameters = np.load(os.path.join(HOME, 'left_camera', 'left_camera_intrinsics.npz'))
+    right_camera_parameters = np.load(os.path.join(HOME, 'right_camera', 'right_camera_intrinsics.npz'))
+
+    
+
+    frames_prefix_c0 = os.path.join(HOME, 'right_camera')
+    right_image_names = os.listdir(frames_prefix_c0)
+    right_images = [cv.imread(os.path.join(images_prefix, imname), 1) for imname in right_image_names]
+
+    frames_prefix_c1 = os.path.join(HOME, 'left_camera')
+    left_image_names = os.listdir(frames_prefix_c1)
+    left_images = [cv.imread(os.path.join(images_prefix, imname), 1) for imname in left_image_names]
+
+    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_images, right_images)
     
     save_extrinsic_calibration_c0_to_c1(R, T)
 
