@@ -293,9 +293,15 @@ def save_frames_two_cams(camera0_name, camera1_name):
 
 #open paired calibration frames and stereo calibrate for cam0 to cam1 coorindate transformations
 def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c1):
+
+    assert len(frames_prefix_c0) == len(frames_prefix_c1)
+
+    image_counter = 1
+    total_images = len(frames_prefix_c0)
+
     #read the synched frames
-    c0_images_names = sorted(glob.glob(frames_prefix_c0))
-    c1_images_names = sorted(glob.glob(frames_prefix_c1))
+    c0_images_names = sorted(frames_prefix_c0)
+    c1_images_names = sorted(frames_prefix_c1)
 
     #open images
     c0_images = [cv.imread(imname, 1) for imname in c0_images_names]
@@ -326,6 +332,9 @@ def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c
     objpoints = [] # 3d point in real world space
 
     for frame0, frame1 in zip(c0_images, c1_images):
+        print(f'Pair {image_counter}/{total_images}')
+        image_counter += 1
+
         gray1 = cv.cvtColor(frame0, cv.COLOR_BGR2GRAY)
         gray2 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
         c_ret1, corners1 = cv.findChessboardCorners(gray1, (rows, columns), None)
@@ -603,7 +612,8 @@ if __name__ == '__main__':
 
     #HOME = os.path.expanduser( '~' ) + '/Projects/LightsCameraGrid/Calibration Data/Stereo_pi/individual_images'
     # HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate/calibration_image_pairs'
-    HOME = os.path.join(os.sep, *os.getcwd().split(os.sep), 'calibration_image_pairs')
+    HOME = os.path.join(os.sep, *os.getcwd().split(os.sep))
+    CALIBRATION_IMAGE_PAIRS = os.path.join(HOME, 'calibration_image_pairs')
     """Step1. Save calibration frames for single cameras"""
     print('Do you want to collect new images? (Y/n)')
     user_input = input()
@@ -616,39 +626,41 @@ if __name__ == '__main__':
     if user_input == 'Y':
         """Step2. Obtain camera intrinsic matrices and save them"""
         #camera0 intrinsics
-        images_prefix = os.path.join(HOME, 'left_camera')
+        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
         print("HERE", images_prefix)
         calibrate_camera_for_intrinsic_parameters(images_prefix, 'left_camera') 
         # save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
 
         #HOME = os.path.expanduser( '~' ) + '/Downloads/StereoPiCalibrationImages'
         #camera1 intrinsics
-        images_prefix = os.path.join(HOME, 'right_camera')
+        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'right_camera')
         # print(images_prefix)
         calibrate_camera_for_intrinsic_parameters(images_prefix, 'right_camera')
         # save_camera_intrinsics(cmtx1, dist1, 'camera1') #this will write cmtx and dist to disk
-
-    quit()
 
     """Step3. Save calibration frames for both cameras simultaneously"""
     # save_frames_two_cams('camera0', 'camera1') #save simultaneous frames
 
 
     """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
-    left_camera_parameters = np.load(os.path.join(HOME, 'left_camera', 'left_camera_intrinsics.npz'))
-    right_camera_parameters = np.load(os.path.join(HOME, 'right_camera', 'right_camera_intrinsics.npz'))
+    left_camera_parameters = np.load(os.path.join(HOME, 'camera_parameters', 'left_camera_intrinsics.npz'))
+    right_camera_parameters = np.load(os.path.join(HOME, 'camera_parameters', 'right_camera_intrinsics.npz'))
 
-    
+    cmtx0 = left_camera_parameters['intrinsic']
+    dist0 = left_camera_parameters['dist']
 
-    frames_prefix_c0 = os.path.join(HOME, 'right_camera')
-    right_image_names = os.listdir(frames_prefix_c0)
-    right_images = [cv.imread(os.path.join(images_prefix, imname), 1) for imname in right_image_names]
+    cmtx1 = right_camera_parameters['intrinsic']
+    dist1 = right_camera_parameters['dist']
 
-    frames_prefix_c1 = os.path.join(HOME, 'left_camera')
-    left_image_names = os.listdir(frames_prefix_c1)
-    left_images = [cv.imread(os.path.join(images_prefix, imname), 1) for imname in left_image_names]
+    frames_prefix_c0 = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
+    left_image_names = os.listdir(frames_prefix_c0)
+    left_image_paths = [os.path.join(frames_prefix_c0, imname) for imname in left_image_names]
 
-    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_images, right_images)
+    frames_prefix_c1 = os.path.join(CALIBRATION_IMAGE_PAIRS, 'right_camera')
+    right_image_names = os.listdir(frames_prefix_c1)
+    right_image_paths = [os.path.join(frames_prefix_c1, imname) for imname in right_image_names]
+
+    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_image_paths, right_image_paths)
     
     save_extrinsic_calibration_c0_to_c1(R, T)
 
