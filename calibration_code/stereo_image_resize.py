@@ -27,6 +27,9 @@ def main():
         img1 = img[:, :int(img.shape[1]/2), :]
         img2 = img[:, int(img.shape[1]/2):, :]
 
+        img1 = cv2.flip(img1, 1)
+        img2 = cv2.flip(img2, 1)
+        
         if not os.path.exists('calibration_image_pairs'):
             os.mkdir('calibration_image_pairs')
         if not os.path.exists('calibration_image_pairs/left_camera'):
