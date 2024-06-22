@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 import board
 import adafruit_bno055
-
+import sys
 import qwiic_titan_gps
 
 
@@ -25,17 +25,33 @@ i2c = board.I2C()  # uses board.SCL and board.SDA
 # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
 sensor = adafruit_bno055.BNO055_I2C(i2c)
 
+# Make experiment directory
+if len(sys.argv) < 2:
+    print ("Must include experiment num: python record.py [NUM]")
+    exit(1)
+
+expNum = sys.argv[1]
+expDir = "./datasets/exp_{}".format(expNum)
+if (os.path.isdir(expDir) == False):
+    os.makedirs(expDir)
+
 # Creating metadata file
-if (os.path.isdir("./imu_data2") == False):
-    os.makedirs("./imu_data2")
+metaf_dir = expDir + "/imu_data_{}".format(expNum)
+if (os.path.isdir(metaf_dir) == False):
+    os.makedirs(metaf_dir)
 
 # Initialize CSV file for metadata
-csv_file = open("./imu_data2/frame_data.csv", 'w')
+csv_file_loc = metaf_dir + "/frame_data.csv"
+csv_file = open(csv_file_loc, 'w')
 writer = csv.writer(csv_file)
 writer.writerows([['frame', 'X', 'Y', 'Z', 'q1', 'q2', 'q3', 'q4', 'lat', 'lon']])
 
 # Path for captured image
-path = './frames_data/frame'
+dir_path = expDir + "/frames_data_{}".format(expNum)
+if (os.path.isdir(dir_path) == False):
+    os.makedirs(dir_path)
+
+path = dir_path + "/frame"
 font=cv2.FONT_HERSHEY_SIMPLEX # Fame Num. font
 
 
@@ -57,7 +73,7 @@ img_height = int (cam_height * scale_ratio)
 capture = np.zeros((img_height, img_width, 4), dtype=np.uint8)
 print ("Scaled image resolution: "+str(img_width)+" x "+str(img_height))
 
-# Initialize the camera
+# Initialize athe camera
 camera = PiCamera(stereo_mode='side-by-side',stereo_decimate=False)
 camera.resolution=(cam_width, cam_height)
 camera.framerate = 20
@@ -67,6 +83,7 @@ camera.hflip = True
 t2 = datetime.now()
 img_count = 0
 counter = 0
+true_count = 0
 avgtime = 0
 # Capture frames from the camera
 for frame in camera.capture_continuous(capture, format="bgra", use_video_port=True): #, resize=(img_width,img_height)):
@@ -87,8 +104,6 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
         #print ("Average time between frames: " + str(avgtime))
         #print ("Average FPS: " + str(1/avgtime))
         print ("Frame Number: " + str(img_count))
-        if (os.path.isdir("./frames_data") == False):
-            os.makedirs("./frames_data")
 
         # Getting Metadata for Images
         euler_data = [str(d) for d in sensor.euler]
@@ -98,12 +113,18 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
            if qwiicGPS.get_nmea_data() is True:
                gpsData = [qwiicGPS.gnss_messages['Latitude'], qwiicGPS.gnss_messages['Longitude']]
                gps_data = [str(d) for d in gpsData]
-        except: gps_data = [0.0, 0.0]
+               #if '0.0' in gps_data:
+                   #continue
+        except: gps_data = ['0.0', '0.0']
         line_csv = [['frame' + str(img_count)] + euler_data + quaternion_data + gps_data]
         writer.writerows(line_csv)
 
         filename = path + str(img_count) + '.png'
         cv2.imwrite(filename, frame)
+        if '0.0' not in gps_data:
+            true_count += 1
+            print( 'True image count: ', true_count)
+        #print("GPS DATA:", gps_data)
         img_count += 1
     if key == ord("q"):
         break

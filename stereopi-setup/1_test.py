@@ -50,9 +50,52 @@ qwiicGPS.begin()
 i2c = board.I2C()  # uses board.SCL and board.SDA
 # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
 sensor = adafruit_bno055.BNO055_I2C(i2c)
+time.sleep(0.5)
+HOME = os.path.join(os.sep, *os.getcwd().split(os.sep)[:-2], 'Adafruit_CircuitPython_BNO055', 'examples')
+cal_file = open(HOME + '/calibration_data.csv')
+all_offsets = []
+
+for line in cal_file:
+    offsets = line.split(',')
+    offset = []
+    for data in offsets:
+        offset.append(int(data))
+    all_offsets.append(offset)
+print(all_offsets)
+sensor.offsets_magnetometer = (all_offsets[0][0], all_offsets[0][1], all_offsets[0][2])
+sensor.offsets_gyroscope = (all_offsets[1][0], all_offsets[1][1], all_offsets[1][2])
+sensor.offsets_accelerometer = (all_offsets[2][0], all_offsets[2][1], all_offsets[2][2])
+
+
+def quat_to_euler(q):
+    q0, q1, q2, q3 = q[0], q[1], q[2], q[3]
+    # print (q0, q1, q2, q3)
+    R00 = q0 * q0 + q1 * q1 -0.5
+    R01 = q1 * q2 - q0 * q3
+    R02 = q1 * q3 + q0 * q2
+    R10 = q1 * q2 + q0 * q3
+    R11 = q0 * q0 + q2 * q2 -0.5
+    R12 = q2 * q3 - q0 * q1
+    R20 = q1 * q3 - q0 * q2
+    R21 = q2 * q3 + q0 * q1
+    R22 = q0 * q0 + q3 * q3 -0.5
+
+    # Angle from Rotation matrix
+#    yaw   =  np.arctan2(R10 , R00) 
+#    pitch =  - np.arcsin(R20) #; =  -  asinf(gx);
+#    roll  =  np.arctan2(R21 , R22) #; = atan2f(gy , gz);
+
+    # Angle from Tait-Bryan Angles
+    yaw   =  np.arctan2(q1 * q2 + q0 * q3, q0 * q0 + q1 * q1 - 0.5)
+    pitch =  -  np.arcsin(2.0 * (q1 * q3 - q0 * q2))
+    roll  =  np.arctan2(q0 * q1 + q2 * q3, q0 * q0 + q3 * q3 - 0.5)
+
+    print('Yaw:', yaw, 'Pitch:', roll, 'Roll:', pitch)
+    
+    return yaw, roll, pitch
 
 # Creating metadata file
-metaf_dir = "./imu_data_{}".format(dataNum)
+metaf_dir = "./static_exp/exp{}/imu_data_{}".format(dataNum, dataNum)
 if (os.path.isdir(metaf_dir) == False):
     os.makedirs(metaf_dir)
 
@@ -60,10 +103,10 @@ if (os.path.isdir(metaf_dir) == False):
 csv_file_name = metaf_dir + "/frame_data.csv"
 csv_file = open(csv_file_name, 'w')
 writer = csv.writer(csv_file)
-writer.writerows([['frame', 'X', 'Y', 'Z', 'q1', 'q2', 'q3', 'q4', 'lat', 'lon']])
+writer.writerows([['frame', 'X', 'Y', 'Z', 'yaw', 'pitch', 'roll', 'lat', 'lon']])
 
 # Path for captured image
-img_dir = "./scenes_{}".format(dataNum)
+img_dir = "./static_exp/exp{}/scenes_{}".format(dataNum, dataNum)
 if (os.path.isdir(img_dir) == False):
     os.makedirs(img_dir)
 
@@ -120,7 +163,9 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
 
         # Getting Metadata for Images
         euler_data = [str(d) for d in sensor.euler]
-        quaternion_data = [str(d) for d in sensor.quaternion]
+        yaw, pitch, roll = quat_to_euler(sensor.quaternion)
+        q = [yaw, pitch, roll]
+        quaternion_data = [str(d) for d in q] #sensor.quaternion]
         gps_data = []
         try:
            if qwiicGPS.get_nmea_data() is True:
