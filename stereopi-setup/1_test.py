@@ -37,6 +37,7 @@ import qwiic_titan_gps
 
 args = sys.argv
 dataNum = args[1]
+calibrate = args[2]
 
 qwiicGPS = qwiic_titan_gps.QwiicTitanGps()
 
@@ -55,16 +56,17 @@ HOME = os.path.join(os.sep, *os.getcwd().split(os.sep)[:-2], 'Adafruit_CircuitPy
 cal_file = open(HOME + '/calibration_data.csv')
 all_offsets = []
 
-for line in cal_file:
-    offsets = line.split(',')
-    offset = []
-    for data in offsets:
-        offset.append(int(data))
-    all_offsets.append(offset)
-print(all_offsets)
-sensor.offsets_magnetometer = (all_offsets[0][0], all_offsets[0][1], all_offsets[0][2])
-sensor.offsets_gyroscope = (all_offsets[1][0], all_offsets[1][1], all_offsets[1][2])
-sensor.offsets_accelerometer = (all_offsets[2][0], all_offsets[2][1], all_offsets[2][2])
+if calibrate.lower() == "t" or calibrate.lower() == "true":
+    for line in cal_file:
+        offsets = line.split(',')
+        offset = []
+        for data in offsets:
+            offset.append(int(data))
+        all_offsets.append(offset)
+    print(all_offsets)
+    sensor.offsets_magnetometer = (all_offsets[0][0], all_offsets[0][1], all_offsets[0][2])
+    sensor.offsets_gyroscope = (all_offsets[1][0], all_offsets[1][1], all_offsets[1][2])
+    sensor.offsets_accelerometer = (all_offsets[2][0], all_offsets[2][1], all_offsets[2][2])
 
 
 def quat_to_euler(q):
@@ -103,7 +105,7 @@ if (os.path.isdir(metaf_dir) == False):
 csv_file_name = metaf_dir + "/frame_data.csv"
 csv_file = open(csv_file_name, 'w')
 writer = csv.writer(csv_file)
-writer.writerows([['frame', 'X', 'Y', 'Z', 'yaw', 'pitch', 'roll', 'lat', 'lon']])
+writer.writerows([['frame', 'yaw', 'pitch', 'roll', 'q0', 'q1', 'q2', 'q3', 'lat', 'lon']])
 
 # Path for captured image
 img_dir = "./static_exp/exp{}/scenes_{}".format(dataNum, dataNum)
@@ -162,10 +164,10 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
         print ("Frame Number: " + str(img_count))
 
         # Getting Metadata for Images
-        euler_data = [str(d) for d in sensor.euler]
         yaw, pitch, roll = quat_to_euler(sensor.quaternion)
         q = [yaw, pitch, roll]
-        quaternion_data = [str(d) for d in q] #sensor.quaternion]
+        euler_data = [str(d) for d in q]
+        quaternion_data = [str(d) for d in sensor.quaternion]
         gps_data = []
         try:
            if qwiicGPS.get_nmea_data() is True:
