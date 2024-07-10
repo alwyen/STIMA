@@ -55,8 +55,8 @@ def frame_capture(dataNum):
     img_count = 0
     # Capture frames from the camera
     for frame in camera.capture_continuous(capture, format="bgra", use_video_port=True): #, resize=(img_width,img_height)):
-        timestamp = datetime.now()
-        #counter+=1
+        date_time = datetime.now()
+        timestamp = datetime.timestamp(date_time)*1000
 
         frame_show = cv2.resize(frame, (int(img_width*0.25), int(img_height*0.25)))
         cv2.putText(frame_show, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
