@@ -61,8 +61,12 @@ if __name__ == '__main__':
 
     read_gps(expNum)
 '''
-def run_example(dataNum):
-    
+def run_example(dataNum, detail):
+    if detail.lower() == "true":
+        details = True
+    else:
+        details = False
+
     # Creating metadata file
     metaf_dir = "../motion_exp/exp{}/gps_data_{}".format(dataNum, dataNum)
     if (os.path.isdir(metaf_dir) == False):
@@ -72,7 +76,12 @@ def run_example(dataNum):
     csv_file_name = metaf_dir + "/gps_data.csv"
     csv_file = open(csv_file_name, 'w')
     writer = csv.writer(csv_file)
-    writer.writerows([['timestamp', 'longitude', 'latitude', 'altitude']])
+    if details:
+        writer.writerows([['timestamp', 'Latitude', 'Lat', 'Lat_Direction', 'Longitude', 'Long',
+                           'Long_Direction', 'Altitude', 'Altitude_Units',
+                           'Sat_Number', 'Geo_Separation', 'Geo_Sep_Units']])
+    else:
+        writer.writerows([['timestamp', 'longitude', 'latitude', 'altitude']])
 
     print("SparkFun GPS Breakout - XA1110!")
     qwiicGPS = qwiic_titan_gps.QwiicTitanGps()
@@ -91,8 +100,16 @@ def run_example(dataNum):
 #                qwiicGPS.gnss_messages['Latitude'],
 #                qwiicGPS.gnss_messages['Longitude'],
 #                qwiicGPS.gnss_messages['Altitude']))
-               gpsData = [qwiicGPS.gnss_messages['Latitude'], qwiicGPS.gnss_messages['Longitude'], qwiicGPS.gnss_messages['Altitude']]
-               gps_data = [str(d) for d in gpsData]
+               if details:
+                   gps_data = []
+                   for k,v in qwiicGPS.gnss_messages.items():
+                   #print(k, ":", v)
+                       if k.lower() == "time":
+                           continue
+                       gps_data.append(str(v))
+               else:
+                   gpsData = [qwiicGPS.gnss_messages['Latitude'], qwiicGPS.gnss_messages['Longitude'], qwiicGPS.gnss_messages['Altitude']]
+                   gps_data = [str(d) for d in gpsData]
 
                date_time = datetime.now()
                timestamp = datetime.timestamp(date_time)*1000
@@ -109,8 +126,9 @@ def run_example(dataNum):
 if __name__ == '__main__':
     args = sys.argv
     expNum = args[1]
+    detail = args[2]
     try:
-        run_example(expNum)
+        run_example(expNum, detail)
     except (KeyboardInterrupt, SystemExit) as exErr:
         print("Ending Basic Example.")
         sys.exit(0)
