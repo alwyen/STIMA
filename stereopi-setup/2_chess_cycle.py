@@ -31,13 +31,13 @@ import cv2
 import numpy as np
 
 # Photo session settings
-total_photos = 89             # Number of images to take
-countdown = 8                 # Interval for count-down timer, seconds
+total_photos = 205             # Number of images to take
+countdown = 5                 # Interval for count-down timer, seconds
 font=cv2.FONT_HERSHEY_SIMPLEX # Cowntdown timer font
  
 # Camera settimgs
-cam_width = 2560              # Cam sensor width settings
-cam_height = 960              # Cam sensor height settings
+cam_width = 1280              # Cam sensor width settings
+cam_height = 480              # Cam sensor height settings
 
 # Final image capture settings
 scale_ratio = 1
@@ -61,22 +61,22 @@ camera.hflip = True
 
 
 # Initialize Camera Calibration Folder
-path = './calibration/scene_'+str(img_width)+'x'+str(img_height)+'_'
+path = './calibration2/scene_'+str(img_width)+'x'+str(img_height)+'_'
 
 # Lets start taking photos! 
-counter = 79
+counter = 190
 t2 = datetime.now()
 print ("Starting photo sequence")
 for frame in camera.capture_continuous(capture, format="bgra", \
                   use_video_port=True, resize=(cam_width,cam_height)):
-    frame_show = cv2.resize(frame, (int(img_width*0.5),int(img_height*0.5)))
+    #frame_show = cv2.resize(frame, (int(img_width*0.5),int(img_height*0.5)))
     t1 = datetime.now()
     cntdwn_timer = countdown - int ((t1-t2).total_seconds())
     # If cowntdown is zero - let's record next image
     if cntdwn_timer == -1:
       counter += 1
-      if (os.path.isdir("./calibration")==False):
-            os.makedirs("./calibration")
+      if (os.path.isdir("./calibration2")==False):
+            os.makedirs("./calibration2")
       filename = path + str(counter) + '.png'
       cv2.imwrite(filename, frame)
       print (' ['+str(counter)+' of '+str(total_photos)+'] '+filename)
@@ -85,8 +85,8 @@ for frame in camera.capture_continuous(capture, format="bgra", \
       cntdwn_timer = 0      # To avoid "-1" timer display 
       next
     # Draw cowntdown counter, seconds
-    cv2.putText(frame_show, str(cntdwn_timer), (50,50), font, 2.0, (0,0,255),4, cv2.LINE_AA)
-    cv2.imshow("pair", frame_show)
+    cv2.putText(frame, str(cntdwn_timer), (50,90), font, 3.5, (0,0,255),4, cv2.LINE_AA)
+    cv2.imshow("pair", frame)
     key = cv2.waitKey(1) & 0xFF
     
     # Press 'Q' key to quit, or wait till all photos are taken
