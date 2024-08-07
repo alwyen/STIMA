@@ -69,6 +69,7 @@ def read_imu(dataNum, calibrate=False):
         writer.writerows(line_csv)
 
         print (quaternion_data)
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     args = sys.argv

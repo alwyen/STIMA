@@ -29,8 +29,8 @@ def frame_capture(dataNum):
     writer.writerows([['frame', 'timestamp']])
 
     # Camera settimgs
-    cam_width = 2560
-    cam_height = 960
+    cam_width = 1280 #2560
+    cam_height = 480 #960
 
     # Final image capture settings
     scale_ratio = 1
@@ -49,7 +49,7 @@ def frame_capture(dataNum):
     # Initialize the camera
     camera = PiCamera(stereo_mode='side-by-side',stereo_decimate=False)
     camera.resolution=(cam_width, cam_height)
-    camera.framerate = 20
+    camera.framerate = 10
     camera.hflip = True
 
     img_count = 0
@@ -58,9 +58,9 @@ def frame_capture(dataNum):
         date_time = datetime.now()
         timestamp = datetime.timestamp(date_time)*1000
 
-        frame_show = cv2.resize(frame, (int(img_width*0.25), int(img_height*0.25)))
-        cv2.putText(frame_show, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
-        cv2.imshow("pair", frame_show)
+        #frame_show = cv2.resize(frame, (int(img_width*0.25), int(img_height*0.25)))
+        cv2.putText(frame, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
+        cv2.imshow("pair", frame)
 
         filename = path + str(img_count) + '.png'
         cv2.imwrite(filename, frame)
