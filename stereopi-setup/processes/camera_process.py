@@ -49,8 +49,10 @@ def frame_capture(dataNum):
     # Initialize the camera
     camera = PiCamera(stereo_mode='side-by-side',stereo_decimate=False)
     camera.resolution=(cam_width, cam_height)
-    camera.framerate = 10
+    camera.framerate = 15
     camera.hflip = True
+    camera.exposure_mode = "night"
+    time.sleep(2)
 
     img_count = 0
     # Capture frames from the camera
@@ -59,7 +61,7 @@ def frame_capture(dataNum):
         timestamp = datetime.timestamp(date_time)*1000
 
         #frame_show = cv2.resize(frame, (int(img_width*0.25), int(img_height*0.25)))
-        cv2.putText(frame, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
+        # cv2.putText(frame, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
         cv2.imshow("pair", frame)
 
         filename = path + str(img_count) + '.png'
@@ -71,6 +73,8 @@ def frame_capture(dataNum):
         writer.writerows(line_csv)
 
         key = cv2.waitKey(1) & 0xFF
+
+        print ("Frame Num:", img_count, "Taken")
         # if the `f` key was pressed, break from the loop and finish process
         if key == ord("f"):
             break
