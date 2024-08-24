@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 import sys
 
-def frame_capture(dataNum):
+def frame_capture(dataNum, nightSet):
     # Path for captured image
     img_dir = "../motion_exp/exp{}/scenes_{}".format(dataNum, dataNum)
     if (os.path.isdir(img_dir) == False):
@@ -51,7 +51,12 @@ def frame_capture(dataNum):
     camera.resolution=(cam_width, cam_height)
     camera.framerate = 15
     camera.hflip = True
-    camera.exposure_mode = "night"
+    if nightSet:
+       camera.exposure_compensation = 15
+       camera.iso = 100
+       time.sleep(1)
+
+       camera.exposure_mode = "off"
     time.sleep(2)
 
     img_count = 0
@@ -82,5 +87,10 @@ def frame_capture(dataNum):
 if __name__ == '__main__':
     args = sys.argv
     expNum = args[1]
+    nightTime = args[2]
+    nightSet = False
 
-    frame_capture(expNum)
+    if (nightTime.lower() == "t") or (nightTime.lower() == "true"):
+        nightSet = True
+
+    frame_capture(expNum, nightSet)
