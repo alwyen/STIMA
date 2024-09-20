@@ -1,30 +1,15 @@
+import sys
+sys.path.append('C:\\Users\\Anthony\\Documents\\Projects\\LightsCameraGrid\\Exp_Analysis\\mobile_analysis')
 import cv2 as cv
 import glob
+from calibration_reader import *
 import numpy as np
-import sys
 from scipy import linalg
 import yaml
 import os
 
 #This will contain the calibration settings from the calibration_settings.yaml file
 calibration_settings = {}
-
-#Given Projection matrices P1 and P2, and pixel coordinates point1 and point2, return triangulated 3D point.
-def DLT(P1, P2, point1, point2):
-
-    A = [point1[1]*P1[2,:] - P1[1,:],
-         P1[0,:] - point1[0]*P1[2,:],
-         point2[1]*P2[2,:] - P2[1,:],
-         P2[0,:] - point2[0]*P2[2,:]
-        ]
-    A = np.array(A).reshape((4,4))
-
-    B = A.transpose() @ A
-    U, s, Vh = linalg.svd(B, full_matrices = False)
-
-    #print('Triangulated point: ')
-    #print(Vh[3,0:3]/Vh[3,3])
-    return Vh[3,0:3]/Vh[3,3]
 
 
 #Open and load the calibration_settings.yaml file
@@ -45,73 +30,6 @@ def parse_calibration_settings_file(filename):
     if 'camera0' not in calibration_settings.keys():
         print('camera0 key was not found in the settings file. Check if correct calibration_settings.yaml file was passed')
         quit()
-
-
-#Open camera stream and save frames
-def save_frames_single_camera(camera_name):
-
-    #create frames directory
-    if not os.path.exists('frames'):
-        os.mkdir('frames')
-
-    #get settings
-    camera_device_id = calibration_settings[camera_name]
-    width = calibration_settings['frame_width']
-    height = calibration_settings['frame_height']
-    number_to_save = calibration_settings['mono_calibration_frames']
-    view_resize = calibration_settings['view_resize']
-    cooldown_time = calibration_settings['cooldown']
-
-    #open video stream and change resolution.
-    #Note: if unsupported resolution is used, this does NOT raise an error.
-    cap = cv.VideoCapture(camera_device_id)
-    cap.set(3, width)
-    cap.set(4, height)
-    
-    cooldown = cooldown_time
-    start = False
-    saved_count = 0
-
-    while True:
-    
-        ret, frame = cap.read()
-        if ret == False:
-            #if no video data is received, can't calibrate the camera, so exit.
-            print("No video data received from camera. Exiting...")
-            quit()
-
-        frame_small = cv.resize(frame, None, fx = 1/view_resize, fy=1/view_resize)
-
-        if not start:
-            cv.putText(frame_small, "Press SPACEBAR to start collection frames", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 1)
-        
-        if start:
-            cooldown -= 1
-            cv.putText(frame_small, "Cooldown: " + str(cooldown), (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-            cv.putText(frame_small, "Num frames: " + str(saved_count), (50,100), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-            
-            #save the frame when cooldown reaches 0.
-            if cooldown <= 0:
-                savename = os.path.join('frames', camera_name + '_' + str(saved_count) + '.png')
-                cv.imwrite(savename, frame)
-                saved_count += 1
-                cooldown = cooldown_time
-
-        cv.imshow('frame_small', frame_small)
-        k = cv.waitKey(1)
-        
-        if k == 27:
-            #if ESC is pressed at any time, the program will exit.
-            quit()
-
-        if k == 32:
-            #Press spacebar to start data collection
-            start = True
-
-        #break out of the loop when enough number of frames have been saved
-        if saved_count == number_to_save: break
-
-    cv.destroyAllWindows()
 
 
 #Calibrate single camera to obtain camera intrinsic parameters from saved frames.
@@ -146,18 +64,18 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix, npz_file_name):
     #coordinates of the checkerboard in checkerboard world space.
     objpoints = [] # 3d point in real world space
 
-
+    flags = (cv.CALIB_CB_EXHAUSTIVE + cv.CALIB_CB_ACCURACY)
     for i, frame in enumerate(images):
         print(f'Image {i+1}/{len(images)}')
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         #find the checkerboard
-        ret, corners = cv.findChessboardCorners(gray, (rows, columns), None)
+        ret, corners = cv.findChessboardCornersSB(gray, (rows, columns), flags)
 
         if ret == True:
 
             #Convolution size used to improve corner detection. Don't make this too large.
-            conv_size = (11, 11)
+            conv_size = (9, 9)#(11, 11)
 
             #opencv can attempt to improve the checkerboard coordinates
             corners = cv.cornerSubPix(gray, corners, conv_size, (-1, -1), criteria)
@@ -211,88 +129,8 @@ def save_camera_intrinsics(camera_matrix, distortion_coefs, camera_name):
     outf.write('\n')
 
 
-#open both cameras and take calibration frames
-def save_frames_two_cams(camera0_name, camera1_name):
-
-    #create frames directory
-    if not os.path.exists('frames_pair'):
-        os.mkdir('frames_pair')
-
-    #settings for taking data
-    view_resize = calibration_settings['view_resize']
-    cooldown_time = calibration_settings['cooldown']    
-    number_to_save = calibration_settings['stereo_calibration_frames']
-
-    #open the video streams
-    cap0 = cv.VideoCapture(calibration_settings[camera0_name])
-    cap1 = cv.VideoCapture(calibration_settings[camera1_name])
-
-    #set camera resolutions
-    width = calibration_settings['frame_width']
-    height = calibration_settings['frame_height']
-    cap0.set(3, width)
-    cap0.set(4, height)
-    cap1.set(3, width)
-    cap1.set(4, height)
-
-    cooldown = cooldown_time
-    start = False
-    saved_count = 0
-    while True:
-
-        ret0, frame0 = cap0.read()
-        ret1, frame1 = cap1.read()
-
-        if not ret0 or not ret1:
-            print('Cameras not returning video data. Exiting...')
-            quit()
-
-        frame0_small = cv.resize(frame0, None, fx=1./view_resize, fy=1./view_resize)
-        frame1_small = cv.resize(frame1, None, fx=1./view_resize, fy=1./view_resize)
-
-        if not start:
-            cv.putText(frame0_small, "Make sure both cameras can see the calibration pattern well", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 1)
-            cv.putText(frame0_small, "Press SPACEBAR to start collection frames", (50,100), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 1)
-        
-        if start:
-            cooldown -= 1
-            cv.putText(frame0_small, "Cooldown: " + str(cooldown), (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-            cv.putText(frame0_small, "Num frames: " + str(saved_count), (50,100), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-            
-            cv.putText(frame1_small, "Cooldown: " + str(cooldown), (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-            cv.putText(frame1_small, "Num frames: " + str(saved_count), (50,100), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
-
-            #save the frame when cooldown reaches 0.
-            if cooldown <= 0:
-                savename = os.path.join('frames_pair', camera0_name + '_' + str(saved_count) + '.png')
-                cv.imwrite(savename, frame0)
-
-                savename = os.path.join('frames_pair', camera1_name + '_' + str(saved_count) + '.png')
-                cv.imwrite(savename, frame1)
-
-                saved_count += 1
-                cooldown = cooldown_time
-
-        cv.imshow('frame0_small', frame0_small)
-        cv.imshow('frame1_small', frame1_small)
-        k = cv.waitKey(1)
-        
-        if k == 27:
-            #if ESC is pressed at any time, the program will exit.
-            quit()
-
-        if k == 32:
-            #Press spacebar to start data collection
-            start = True
-
-        #break out of the loop when enough number of frames have been saved
-        if saved_count == number_to_save: break
-
-    cv.destroyAllWindows()
-
-
 #open paired calibration frames and stereo calibrate for cam0 to cam1 coorindate transformations
-def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c1):
+def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c1, R_est, T_est):
 
     assert len(frames_prefix_c0) == len(frames_prefix_c1)
 
@@ -330,15 +168,15 @@ def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c
 
     #coordinates of the checkerboard in checkerboard world space.
     objpoints = [] # 3d point in real world space
-
+    flags = (cv.CALIB_CB_EXHAUSTIVE + cv.CALIB_CB_ACCURACY)
     for frame0, frame1 in zip(c0_images, c1_images):
         print(f'Pair {image_counter}/{total_images}')
         image_counter += 1
 
         gray1 = cv.cvtColor(frame0, cv.COLOR_BGR2GRAY)
         gray2 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
-        c_ret1, corners1 = cv.findChessboardCorners(gray1, (rows, columns), None)
-        c_ret2, corners2 = cv.findChessboardCorners(gray2, (rows, columns), None)
+        c_ret1, corners1 = cv.findChessboardCornersSB(gray1, (rows, columns), flags)
+        c_ret2, corners2 = cv.findChessboardCornersSB(gray2, (rows, columns), flags)
 
         if c_ret1 == True and c_ret2 == True:
 
@@ -365,9 +203,10 @@ def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c
             imgpoints_left.append(corners1)
             imgpoints_right.append(corners2)
 
-    stereocalibration_flags = cv.CALIB_FIX_INTRINSIC
-    ret, CM1, dist0, CM2, dist1, R, T, E, F = cv.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx0, dist0,
-                                                                 mtx1, dist1, (width, height), criteria = criteria, flags = stereocalibration_flags)
+    stereocalibration_flags = cv.CALIB_FIX_INTRINSIC + cv.CALIB_USE_EXTRINSIC_GUESS
+
+    ret, CM0, dist0, CM1, dist1, R, T, E, F, rvecs, tvecs, perViewErrors = cv.stereoCalibrateExtended(objpoints, imgpoints_left, imgpoints_right, mtx0, dist0,
+                                                                 mtx1, dist1, (width, height), R=R_est, T=T_est, criteria = criteria, flags = stereocalibration_flags)
 
     print('rmse: ', ret)
     cv.destroyAllWindows()
@@ -603,39 +442,40 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 2:
-        print('Call with settings filename: "python3 calib.py calibration_settings.yaml"')
+    if len(sys.argv) != 3:
+        print('Call with settings filename: "python3 calib.py calibration_settings.yaml image_resolution"')
         quit()
     
     #Open and parse the settings file
     parse_calibration_settings_file(sys.argv[1])
+    img_resol = sys.argv[2]
+
 
     #HOME = os.path.expanduser( '~' ) + '/Projects/LightsCameraGrid/Calibration Data/Stereo_pi/individual_images'
     # HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate/calibration_image_pairs'
-    HOME = os.path.join(os.sep, *os.getcwd().split(os.sep))
-    CALIBRATION_IMAGE_PAIRS = os.path.join(HOME, 'calibration_image_pairs')
+    HOME = os.path.join(os.sep, *os.getcwd().split(os.sep)[:-1])
+    if os.name == 'nt':
+        HOME = HOME[:2] + '\\' + HOME[2:]
+        print(HOME)
+
+    CALIBRATION_IMAGE_PAIRS = os.path.join(HOME, f'stereopi-setup\\images_exp{img_resol}')#'calibration_image_pairs')
     """Step1. Save calibration frames for single cameras"""
-    print('Do you want to collect new images? (Y/n)')
-    user_input = input()
-    if user_input == 'Y':
-        save_frames_single_camera('camera0') #save frames for camera0
-        save_frames_single_camera('camera1') #save frames for camera1
 
     print('Do you want to recalibrate cameras? (Y/n)')
     user_input = input()
-    if user_input == 'Y':
+    if user_input.lower() == 'y':
         """Step2. Obtain camera intrinsic matrices and save them"""
         #camera0 intrinsics
         images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
         print("HERE", images_prefix)
-        calibrate_camera_for_intrinsic_parameters(images_prefix, 'left_camera') 
+        calibrate_camera_for_intrinsic_parameters(images_prefix, f'left_camera_{img_resol}') 
         # save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
 
         #HOME = os.path.expanduser( '~' ) + '/Downloads/StereoPiCalibrationImages'
         #camera1 intrinsics
         images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'right_camera')
         # print(images_prefix)
-        calibrate_camera_for_intrinsic_parameters(images_prefix, 'right_camera')
+        calibrate_camera_for_intrinsic_parameters(images_prefix, f'right_camera_{img_resol}')
         # save_camera_intrinsics(cmtx1, dist1, 'camera1') #this will write cmtx and dist to disk
 
     """Step3. Save calibration frames for both cameras simultaneously"""
@@ -643,14 +483,21 @@ if __name__ == '__main__':
 
 
     """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
-    left_camera_parameters = np.load(os.path.join(HOME, 'camera_parameters', 'left_camera_intrinsics.npz'))
-    right_camera_parameters = np.load(os.path.join(HOME, 'camera_parameters', 'right_camera_intrinsics.npz'))
+    left_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'camera_parameters', 'left_camera_intrinsics.npz'))
+    right_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'camera_parameters', 'right_camera_intrinsics.npz'))
 
     cmtx0 = left_camera_parameters['intrinsic']
     dist0 = left_camera_parameters['dist']
-
     cmtx1 = right_camera_parameters['intrinsic']
     dist1 = right_camera_parameters['dist']
+
+    # cali_path = os.path.join(os.sep, *os.getcwd().split(os.sep)[:-1], f'stereopi-setup\\calibration_data\\640_480')
+    # if os.name == 'nt':
+    #     cali_path = cali_path[:2] + '\\' + cali_path[2:]
+    
+    # cali_path = cali_path + '\\' + get_calibration_file(cali_path)[0]
+    # cmtx0, cmtx1, dist0, dist1, _ = read_mat_calibration(cali_path)
+
 
     frames_prefix_c0 = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
     left_image_names = os.listdir(frames_prefix_c0)
@@ -660,7 +507,11 @@ if __name__ == '__main__':
     right_image_names = os.listdir(frames_prefix_c1)
     right_image_paths = [os.path.join(frames_prefix_c1, imname) for imname in right_image_names]
 
-    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_image_paths, right_image_paths)
+    R_est = np.eye(3)
+    T_est = np.array([[-0.24],
+                      [-0.004],
+                      [-0.01]])
+    R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_image_paths, right_image_paths, R_est, T_est)
     
     save_extrinsic_calibration_c0_to_c1(R, T)
 
