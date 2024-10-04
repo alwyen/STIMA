@@ -52,12 +52,13 @@ def frame_capture(dataNum, nightSet):
     camera.framerate = 15
     camera.hflip = True
     if nightSet:
-       camera.exposure_compensation = 15
-       camera.iso = 100
+       camera.exposure_compensation = 20
+       camera.iso = 200
        time.sleep(1)
 
        camera.exposure_mode = "off"
     time.sleep(2)
+    camera.exposure_mode = "off"
 
     img_count = 0
     # Capture frames from the camera
@@ -79,6 +80,7 @@ def frame_capture(dataNum, nightSet):
 
         key = cv2.waitKey(1) & 0xFF
 
+        time.sleep(0.1)
         print ("Frame Num:", img_count, "Taken")
         # if the `f` key was pressed, break from the loop and finish process
         if key == ord("f"):

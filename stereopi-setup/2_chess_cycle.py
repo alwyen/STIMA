@@ -21,7 +21,7 @@
 # Thanks to Adrian and http://pyimagesearch.com, as there are lot of
 # code in this tutorial was taken from his lessons.
 # 
-
+import sys
 import os
 import time
 from datetime import datetime
@@ -30,14 +30,20 @@ from picamera import PiCamera
 import cv2
 import numpy as np
 
+if len(sys.argv) < 4:
+    print("Must use with script call: 'python 2_chess_cycle.py [calib_num] [width] [height]'")
+    exit(1)
+
 # Photo session settings
 total_photos = 205             # Number of images to take
 countdown = 5                 # Interval for count-down timer, seconds
 font=cv2.FONT_HERSHEY_SIMPLEX # Cowntdown timer font
- 
+
+calib_num = sys.argv[1] 
+
 # Camera settimgs
-cam_width = 1280              # Cam sensor width settings
-cam_height = 480              # Cam sensor height settings
+cam_width = int(sys.argv[2])               # Cam sensor width settings
+cam_height = int(sys.argv[3])              # Cam sensor height settings
 
 # Final image capture settings
 scale_ratio = 1
@@ -57,26 +63,26 @@ print ("Scaled image resolution: "+str(img_width)+" x "+str(img_height))
 camera = PiCamera(stereo_mode='side-by-side', stereo_decimate=False)
 camera.resolution=(cam_width, cam_height)
 camera.framerate = 20
-camera.hflip = True
+camera.hflip = False
 
 
 # Initialize Camera Calibration Folder
-path = './calibration2/scene_'+str(img_width)+'x'+str(img_height)+'_'
+path = f'./calibration{calib_num}/scene_'+str(img_width)+'x'+str(img_height)+'_'
 
 # Lets start taking photos! 
-counter = 190
+counter = 0
 t2 = datetime.now()
 print ("Starting photo sequence")
 for frame in camera.capture_continuous(capture, format="bgra", \
                   use_video_port=True, resize=(cam_width,cam_height)):
-    #frame_show = cv2.resize(frame, (int(img_width*0.5),int(img_height*0.5)))
+    
     t1 = datetime.now()
     cntdwn_timer = countdown - int ((t1-t2).total_seconds())
     # If cowntdown is zero - let's record next image
     if cntdwn_timer == -1:
       counter += 1
-      if (os.path.isdir("./calibration2")==False):
-            os.makedirs("./calibration2")
+      if (os.path.isdir(f"./calibration{calib_num}")==False):
+            os.makedirs(f"./calibration{calib_num}")
       filename = path + str(counter) + '.png'
       cv2.imwrite(filename, frame)
       print (' ['+str(counter)+' of '+str(total_photos)+'] '+filename)
@@ -85,6 +91,9 @@ for frame in camera.capture_continuous(capture, format="bgra", \
       cntdwn_timer = 0      # To avoid "-1" timer display 
       next
     # Draw cowntdown counter, seconds
+    if img_width > 1280:
+        frame = cv2.resize(frame, (int(img_width*0.5),int(img_height*0.5)))
+
     cv2.putText(frame, str(cntdwn_timer), (50,90), font, 3.5, (0,0,255),4, cv2.LINE_AA)
     cv2.imshow("pair", frame)
     key = cv2.waitKey(1) & 0xFF

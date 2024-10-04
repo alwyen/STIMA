@@ -117,8 +117,8 @@ font=cv2.FONT_HERSHEY_SIMPLEX # Fame Num. font
 
 
 # Camera settimgs
-cam_width = 2560
-cam_height = 960
+cam_width = 1280 #2560
+cam_height = 480 #960
 
 # Final image capture settings
 scale_ratio = 1
@@ -139,7 +139,13 @@ camera = PiCamera(stereo_mode='side-by-side',stereo_decimate=False)
 camera.resolution=(cam_width, cam_height)
 camera.framerate = 20
 camera.hflip = True
+#camera.exposure_compensation = 15
+#camera.iso = 180
+time.sleep(1)
 
+#camera.exposure_mode = 'off'
+#camera.exposure_compensation = 25
+#camera.brightness = 51
 
 t2 = datetime.now()
 img_count = 0
@@ -151,7 +157,7 @@ for frame in camera.capture_continuous(capture, format="bgra", use_video_port=Tr
     #t1 = datetime.now()
     #timediff = t1-t2
     #avgtime = avgtime + (timediff.total_seconds())
-    frame_show = cv2.resize(frame, (int(img_width*0.25), int(img_height*0.25)))
+    frame_show = cv2.resize(frame, (int(img_width*1), int(img_height*1)))
     cv2.putText(frame_show, str(img_count), (50,50), font, 2.0, (0,255,0),4, cv2.LINE_AA)
     cv2.imshow("pair", frame_show)
     key = cv2.waitKey(1) & 0xFF
