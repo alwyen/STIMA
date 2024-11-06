@@ -33,7 +33,7 @@ def parse_calibration_settings_file(filename):
 
 
 #Calibrate single camera to obtain camera intrinsic parameters from saved frames.
-def calibrate_camera_for_intrinsic_parameters(images_prefix, npz_file_name):
+def calibrate_camera_for_intrinsic_parameters(images_prefix, npz_file_name, directory):
     
     #NOTE: images_prefix contains camera name: "frames/camera0*".
     images_names = os.listdir(images_prefix)
@@ -103,7 +103,7 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix, npz_file_name):
     if not os.path.exists('camera_parameters'):
         os.mkdir('camera_parameters')
 
-    out_filename = os.path.join('camera_parameters', npz_file_name + '_intrinsics')
+    out_filename = os.path.join(directory, npz_file_name + '_intrinsics')
     np.savez(out_filename, intrinsic=cmtx, dist=dist, rot=rvecs, trans=tvecs)
 
 
@@ -381,7 +381,7 @@ def save_extrinsic_calibration_c0_to_c1(R12, T12, prefix = ''):
     if not os.path.exists('camera_parameters'):
         os.mkdir('camera_parameters')
 
-    c1_to_c2_rot_trans_filename = os.path.join('camera_parameters', prefix + 'cL_to_cR_extrinsiscs.dat')
+    c1_to_c2_rot_trans_filename = os.path.join(prefix, 'cL_to_cR_extrinsiscs.dat') #os.path.join('camera_parameters', prefix + 'cL_to_cR_extrinsiscs.dat')
     outf = open(c1_to_c2_rot_trans_filename, 'w')
 
     outf.write('R:\n')
@@ -405,7 +405,7 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
     if not os.path.exists('camera_parameters'):
         os.mkdir('camera_parameters')
 
-    camera0_rot_trans_filename = os.path.join('camera_parameters', prefix + 'camera0_rot_trans.dat')
+    camera0_rot_trans_filename = os.path.join(prefix, 'camera0_rot_trans.dat')
     outf = open(camera0_rot_trans_filename, 'w')
 
     outf.write('R:\n')
@@ -422,7 +422,7 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
     outf.close()
 
     #R1 and T1 are just stereo calibration returned values
-    camera1_rot_trans_filename = os.path.join('camera_parameters', prefix + 'camera1_rot_trans.dat')
+    camera1_rot_trans_filename = os.path.join(prefix, 'camera1_rot_trans.dat')
     outf = open(camera1_rot_trans_filename, 'w')
 
     outf.write('R:\n')
@@ -442,14 +442,17 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        print('Call with settings filename: "python3 calib.py calibration_settings.yaml image_resolution"')
+    if len(sys.argv) != 4:
+        print('Call with settings filename: "python3 calib.py calibration_settings.yaml calib_num image_resolution"')
         quit()
     
     #Open and parse the settings file
     parse_calibration_settings_file(sys.argv[1])
-    img_resol = sys.argv[2]
+    calib_file_num = sys.argv[2]
+    img_resol = sys.argv[3]
 
+    # Directory for data storage
+    prefix = f'calibration_parameters\\calibration_data_{img_resol}\\'
 
     #HOME = os.path.expanduser( '~' ) + '/Projects/LightsCameraGrid/Calibration Data/Stereo_pi/individual_images'
     # HOME = os.path.expanduser( '~' ) + '/Downloads/python_stereo_camera_calibrate/calibration_image_pairs'
@@ -458,7 +461,13 @@ if __name__ == '__main__':
         HOME = HOME[:2] + '\\' + HOME[2:]
         print(HOME)
 
-    CALIBRATION_IMAGE_PAIRS = os.path.join(HOME, f'stereopi-setup\\images_exp{img_resol}')#'calibration_image_pairs')
+    calib_dir = os.path.join(HOME, f'calibration_code\\calibration_parameters\\calib_{img_resol}')
+    if (os.path.isdir(calib_dir) == False):
+        os.makedirs(calib_dir)
+
+    CALIBRATION_IMAGE_PAIRS_STEREO = os.path.join(HOME, f'stereopi-setup\\calibration{calib_file_num}\\images_exp{calib_file_num}')#'calibration_image_pairs')
+    CALIBRATION_IMAGE_LEFT_CAMREA = os.path.join(HOME, f'stereopi-setup\\calibration{calib_file_num}\\single0')
+    CALIBRATION_IMAGE_RIGHT_CAMERA = os.path.join(HOME, f'stereopi-setup\\calibration{calib_file_num}\\single1')
     """Step1. Save calibration frames for single cameras"""
 
     print('Do you want to recalibrate cameras? (Y/n)')
@@ -466,16 +475,18 @@ if __name__ == '__main__':
     if user_input.lower() == 'y':
         """Step2. Obtain camera intrinsic matrices and save them"""
         #camera0 intrinsics
-        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
-        print("HERE", images_prefix)
-        calibrate_camera_for_intrinsic_parameters(images_prefix, f'left_camera_{img_resol}') 
+        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS_STEREO, 'left_camera')
+        #print("HERE", images_prefix)
+        # calibrate_camera_for_intrinsic_parameters(CALIBRATION_IMAGE_LEFT_CAMREA, f'left_camera_{img_resol}', calib_dir)
+        calibrate_camera_for_intrinsic_parameters(images_prefix, f'right_camera_{img_resol}', calib_dir) 
         # save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
 
         #HOME = os.path.expanduser( '~' ) + '/Downloads/StereoPiCalibrationImages'
         #camera1 intrinsics
-        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS, 'right_camera')
+        images_prefix = os.path.join(CALIBRATION_IMAGE_PAIRS_STEREO, 'right_camera')
         # print(images_prefix)
-        calibrate_camera_for_intrinsic_parameters(images_prefix, f'right_camera_{img_resol}')
+        # calibrate_camera_for_intrinsic_parameters(CALIBRATION_IMAGE_RIGHT_CAMERA, f'right_camera_{img_resol}', calib_dir)
+        calibrate_camera_for_intrinsic_parameters(images_prefix, f'right_camera_{img_resol}', calib_dir)
         # save_camera_intrinsics(cmtx1, dist1, 'camera1') #this will write cmtx and dist to disk
 
     """Step3. Save calibration frames for both cameras simultaneously"""
@@ -483,8 +494,8 @@ if __name__ == '__main__':
 
 
     """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
-    left_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'camera_parameters', 'left_camera_intrinsics.npz'))
-    right_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'camera_parameters', 'right_camera_intrinsics.npz'))
+    left_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'calibration_parameters', f'calib_{img_resol}', f'left_camera_{img_resol}_intrinsics.npz'))
+    right_camera_parameters = np.load(os.path.join(HOME, 'calibration_code', 'calibration_parameters', f'calib_{img_resol}', f'right_camera_{img_resol}_intrinsics.npz'))
 
     cmtx0 = left_camera_parameters['intrinsic']
     dist0 = left_camera_parameters['dist']
@@ -499,11 +510,11 @@ if __name__ == '__main__':
     # cmtx0, cmtx1, dist0, dist1, _ = read_mat_calibration(cali_path)
 
 
-    frames_prefix_c0 = os.path.join(CALIBRATION_IMAGE_PAIRS, 'left_camera')
+    frames_prefix_c0 = os.path.join(CALIBRATION_IMAGE_PAIRS_STEREO, 'left_camera')
     left_image_names = os.listdir(frames_prefix_c0)
     left_image_paths = [os.path.join(frames_prefix_c0, imname) for imname in left_image_names]
 
-    frames_prefix_c1 = os.path.join(CALIBRATION_IMAGE_PAIRS, 'right_camera')
+    frames_prefix_c1 = os.path.join(CALIBRATION_IMAGE_PAIRS_STEREO, 'right_camera')
     right_image_names = os.listdir(frames_prefix_c1)
     right_image_paths = [os.path.join(frames_prefix_c1, imname) for imname in right_image_names]
 
@@ -513,14 +524,15 @@ if __name__ == '__main__':
                       [-0.01]])
     R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, left_image_paths, right_image_paths, R_est, T_est)
     
-    save_extrinsic_calibration_c0_to_c1(R, T)
+    prefix = f'calibration_parameters\\calibration_data_{img_resol}\\'
+    save_extrinsic_calibration_c0_to_c1(R, T, prefix=calib_dir)
 
     """Step5. Save calibration data where camera0 defines the world space origin."""
     #camera0 rotation and translation is identity matrix and zeros vector
     R0 = np.eye(3, dtype=np.float32)
     T0 = np.array([0., 0., 0.]).reshape((3, 1))
 
-    save_extrinsic_calibration_parameters(R0, T0, R, T) #this will write R and T to disk
+    save_extrinsic_calibration_parameters(R0, T0, R, T, prefix=calib_dir) #this will write R and T to disk
     R1 = R; T1 = T #to avoid confusion, camera1 R and T are labeled R1 and T1
     #check your calibration makes sense
     camera0_data = [cmtx0, dist0, R0, T0]

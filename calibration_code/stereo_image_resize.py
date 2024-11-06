@@ -16,6 +16,9 @@ def get_max_num_images(home_path):
 
 
 HOME = os.path.join(os.sep, *os.getcwd().split(os.sep)[:-1], 'stereopi-setup', 'calibration')
+#Windows Only
+if os.name == 'nt':
+    HOME = HOME[:2] + '\\' + HOME[2:]
 def main():
     num_images = get_max_num_images(HOME)
     for i in range(1,num_images+1):
